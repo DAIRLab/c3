@@ -8,7 +8,7 @@ This is a standalone repository for the C3 algorithm. For more in-depth examples
 2. Download and extract Gurobi 9.5.0: https://packages.gurobi.com/9.5/gurobi9.5.0_linux64.tar.gz
 3. Install pyc3
 ```
-pip install pyc3
+pip install https://www.seas.upenn.edu/~posa/files/pyc3-0.0.1-py3-none-linux_x86_64.whl
 ```
 4. Set LD_LIBRARY_PATH
 ```
