@@ -26,19 +26,21 @@ class C3MIQP : public C3 {
          const std::vector<Eigen::VectorXd>& warm_start_u = {},
          bool warm_start = false);
 
-  C3MIQP(const LCS& LCS, const Eigen::MatrixXd& Q,
-         const Eigen::MatrixXd& R,
-         const Eigen::MatrixXd& G,
-         const Eigen::MatrixXd& U,
-         const Eigen::VectorXd& xdesired,
-         const C3Options& options,
-         int N,
-         const Eigen::VectorXd& warm_start_delta = {},
-         const Eigen::VectorXd& warm_start_binary = {},
-         const Eigen::VectorXd& warm_start_x = {},
-         const Eigen::VectorXd& warm_start_lambda = {},
-         const Eigen::VectorXd& warm_start_u = {},
-         bool warm_start = false);
+  static std::unique_ptr<C3MIQP> MakeTimeInvariantC3MIQP(const LCS& LCS,
+        const Eigen::MatrixXd& Q,
+        const Eigen::MatrixXd& R,
+        const Eigen::MatrixXd& G,
+        const Eigen::MatrixXd& U,
+        const Eigen::VectorXd& xdesired,
+        const Eigen::MatrixXd& Qf,
+        const C3Options& options,
+        int N,
+        const Eigen::VectorXd& warm_start_delta = {},
+        const Eigen::VectorXd& warm_start_binary = {},
+        const Eigen::VectorXd& warm_start_x = {},
+        const Eigen::VectorXd& warm_start_lambda = {},
+        const Eigen::VectorXd& warm_start_u = {},
+        bool warm_start = false);
 
   /// Virtual projection method
   Eigen::VectorXd SolveSingleProjection(const Eigen::MatrixXd& U,

@@ -28,18 +28,23 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q,
   env_.start();
 }
 
-C3MIQP::C3MIQP(const LCS& LCS, const MatrixXd& Q,
-               const MatrixXd& R, const MatrixXd& G,
-               const MatrixXd& U, const VectorXd& xdesired,
-               const C3Options& options,
-               int N,
-               const VectorXd& warm_start_delta,
-               const VectorXd& warm_start_binary,
-               const VectorXd& warm_start_x,
-               const VectorXd& warm_start_lambda,
-               const VectorXd& warm_start_u,
-               bool warm_start)
-    : C3MIQP(LCS, vector<MatrixXd>(N+1, Q), vector<MatrixXd>(N, R),
+std::unique_ptr<C3MIQP> C3MIQP::MakeTimeInvariantC3MIQP(
+    const LCS& LCS, const MatrixXd& Q,
+    const MatrixXd& R, const MatrixXd& G,
+    const MatrixXd& U, const VectorXd& xdesired,
+    const MatrixXd& Qf,
+    const C3Options& options,
+    int N,
+    const VectorXd& warm_start_delta,
+    const VectorXd& warm_start_binary,
+    const VectorXd& warm_start_x,
+    const VectorXd& warm_start_lambda,
+    const VectorXd& warm_start_u,
+    bool warm_start) {
+  vector<MatrixXd> Q_all(N+1, Q);
+  Q_all[N] = Qf;
+
+  return std::make_unique<C3MIQP>(LCS, Q_all, vector<MatrixXd>(N, R),
              vector<MatrixXd>(N, G), vector<MatrixXd>(N, U),
              vector<VectorXd>(N+1, xdesired), options,
              vector<VectorXd>(N, warm_start_delta),
@@ -47,7 +52,8 @@ C3MIQP::C3MIQP(const LCS& LCS, const MatrixXd& Q,
              vector<VectorXd>(N, warm_start_x),
              vector<VectorXd>(N, warm_start_lambda),
              vector<VectorXd>(N, warm_start_u),
-             warm_start) {}
+             warm_start);
+}
 
 VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
                                        const VectorXd& delta_c,

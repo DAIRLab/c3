@@ -61,15 +61,10 @@ namespace c3 {
                 arg("warm_start_u") = vector<VectorXd>(),
                 arg("warm_start") = false
         )
-        .def(py::init<const LCS &,
-                const MatrixXd &, const MatrixXd &,
-                const MatrixXd &, const MatrixXd &,
-                const VectorXd &, const C3Options &, int,
-                const VectorXd &, const VectorXd &,
-                const VectorXd &, const VectorXd &,
-                const VectorXd &, bool>(),
+        .def_static("MakeTimeInvariantC3MIQP",
+                &C3MIQP::MakeTimeInvariantC3MIQP,
                 arg("LCS"), arg("Q"), arg("R"), arg("G"), arg("U"),
-                arg("x_desired"), arg("options"), arg("N"),
+                arg("x_desired"), arg("Qf"), arg("options"), arg("N"),
                 arg("warm_start_delta") = vector<VectorXd>(),
                 arg("warm_start_binary") = vector<VectorXd>(),
                 arg("warm_start_x") = vector<VectorXd>(),
