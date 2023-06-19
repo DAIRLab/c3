@@ -1,6 +1,6 @@
 #include "src/c3.h"
 #include <chrono>
-
+#include <iostream>
 #include <omp.h>
 
 #include "src/lcs.h"
@@ -115,12 +115,12 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
     }
   }
 
-  OSQPoptions_.SetOption(OsqpSolver::id(), "verbose", 0);
+  OSQPoptions_.SetOption(OsqpSolver::id(), "verbose", options_.OSQP_verbose_flag);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "ebs_abs", 1e-7);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
-  OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  100);  //30
+  OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  options_.OSQP_maximum_iterations);  //30
   prog_.SetSolverOptions(OSQPoptions_);
 }
 
@@ -131,13 +131,7 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 
   for (int i = 0; i < options_.admm_iter-1; i++) {
 
-    //std::cout << "Iteration" << i <<  std::endl;
-
     z = ADMMStep(x0, &delta, &w, &Gv);
-// std::cout << "new delta" << i <<  std::endl;
-//std::cout << delta.at(0).segment(n_,m_) << std::endl;
-//    std::cout << "w" << i <<  std::endl;
-//    std::cout << w.at(0) << std::endl;
 
   }
 
@@ -150,44 +144,6 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 
   z = zfin[0];
 
-//  std::cout <<  "contact prediction" << std::endl;
-//      std::cout << zfin[0].segment(n_, m_) << std::endl;
-
-//    std::cout << "violation" << std::endl;
-//  std::cout << delta.at(0) << std::endl;
-
-//  std::cout << "delta_force" << std::endl;
-//  std::cout << delta.at(0).segment(n_,m_) << std::endl;
-//
-//  std::cout << "delta_displace" << std::endl;
-//  std::cout << delta.at(0).segment(0,n_) << std::endl;
-
-//VectorXd hold = delta.at(0).segment(n_,m_);
-  //VectorXd hold = z.segment(n_,m_);
-
-//  double count = 0;
-//
-//  for (int i = 3; i < 5; i++) {
-//    count = count + hold(i);
-//  }
-//
-//  if ( count >= 0.001){
-//    std::cout << "guessing_contact" << std::endl;
-//  }
-
-//  std::cout << "w" << std::endl;
-//  std::cout << w.at(0).segment(n_+3,3) << std::endl;
-
-//      std::cout <<  "input" << std::endl;
-//      std::cout << z.segment(n_+m_, k_) << std::endl;
-
-//      std::cout <<  "contact prediction" << std::endl;
-//      std::cout << z.segment(n_, m_) << std::endl;
-
-//      std::cout <<  "prediction state" << std::endl;
-  //    std::cout << z.segment(0, n_) << std::endl;
-
-
   return z.segment(n_ + m_, k_);
 }
 
@@ -199,49 +155,29 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
     WD.at(i) = delta->at(i) - w->at(i);
   }
 
-//  auto start = std::chrono::high_resolution_clock::now();
 
   vector<VectorXd> z = SolveQP(x0, *Gv, WD);
-
-
-//  auto finish = std::chrono::high_resolution_clock::now();
-//std::chrono::duration<double> elapsed = finish - start;
-//std::cout << "Solve time:" << elapsed.count() << std::endl;
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_ + m_ + k_));
   for (int i = 0; i < N_; i++) {
     ZW[i] = w->at(i) + z[i];
   }
 
-//auto start = std::chrono::high_resolution_clock::now();
 
   if (U_[0].isZero(0) == 0) {
     vector<MatrixXd> Uv = U_;
-
-    //std::cout << "W:" << w->at(0) << std::endl;
-
 
     *delta = SolveProjection(Uv, ZW);
   } else {
     *delta = SolveProjection(*Gv, ZW);
   }
 
-
-//auto finish = std::chrono::high_resolution_clock::now();
-//std::chrono::duration<double> elapsed = finish - start;
-//std::cout << "Solve time:" << elapsed.count() << std::endl;
-
   for (int i = 0; i < N_; i++) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);
     w->at(i) = w->at(i) / options_.rho_scale;
 
-    //w->at(i) = VectorXd::Zero(58);
-
     Gv->at(i) = Gv->at(i) * options_.rho_scale;
   }
-
- //std::cout << "Viol:" << z[1] - delta->at(1) << std::endl;
-  //std::cout << "Z" << z[1] << std::endl;
 
   return z[0];
 }
@@ -285,16 +221,6 @@ vector<VectorXd> C3::SolveQP(VectorXd& x0, vector<MatrixXd>& G,
                                  u_.at(i), 1));
     }
   }
-
-//  /// initialize decision variables to warm start
-//  if (warm_start_){
-//    for (int i = 0; i < N_; i++){
-//      prog_.SetInitialGuess(x_[i], warm_start_x_[i]);
-//      prog_.SetInitialGuess(lambda_[i], warm_start_lambda_[i]);
-//      prog_.SetInitialGuess(u_[i], warm_start_u_[i]);
-//    }
-//    prog_.SetInitialGuess(x_[N_], warm_start_x_[N_]);
-//  }
 
   MathematicalProgramResult result = osqp_.Solve(prog_);
   VectorXd xSol = result.GetSolution(x_[0]);

@@ -1,80 +1,39 @@
 import numpy as np
-from scipy import linalg
-
+from system_dynamics import*
+from system_costs import*
+import matplotlib.pyplot as plt
 from pyc3 import LCS, C3MIQP, C3Options
 
-n=4
-m=2
-k=1
-N = 10
-g = 9.81
-mp = 0.411
-mc = 0.978
-len_p = 0.6
-len_com = 0.4267
-d1 = 0.35
-d2 = -0.35
-ks= 100
-Ts = 0.01
-A = [[0, 0, 1, 0], [0, 0, 0, 1], [0, g*mp/mc, 0, 0], [0, g*(mc+mp)/(len_com*mc), 0, 0]]
-A = np.asarray(A)
-B = [[0],[0],[1/mc],[1/(len_com*mc)]]
-B = np.asarray(B)
-D = [[0,0], [0,0], [(-1/mc) + (len_p/(mc*len_com)), (1/mc) - (len_p/(mc*len_com)) ], [(-1 / (mc*len_com) ) + (len_p*(mc+mp)) / (mc*mp*len_com*len_com)  , -((-1 / (mc*len_com) ) + (len_p*(mc+mp)) / (mc*mp*len_com*len_com))    ]]
-D = np.asarray(D)
-E = [[-1, len_p, 0, 0], [1, -len_p, 0, 0 ]]
-E = np.asarray(E)
-F = 1/ks * np.eye(2)
-F = np.asarray(F)
-c = [[d1], [-d2]]
-c = np.asarray(c)
-d = np.zeros((4,1))
-H = np.zeros((2,1))
-A = np.eye(n) + Ts * A
-B = Ts*B
-D = Ts*D
-d = Ts*d
+#Parameters of the linear complementarity system [ x_{k+1} = A x_k + B u_k + D lam_k + d, 0 <= lam \perp E x_k + F lam_k + H u_k >= 0 ]
+#[ n = state vector dimensions, m = contact vector dimension, k = input vector dimension ]
+A, B, D, d, E, c, F, H, n, m, k = system_dynamics()
 
-Q = np.array([[10, 0, 0, 0], [0, 3, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+#Parameters of the cost [ \sum_k x_k^T Q x_k + u_k^T R u_k + x_N^T Q_N x_N ]
+#[ x0 = initial condition, N = MPC horizon, x_des = goal (desired) state ]
+Q, R, G, U, x_des, QN, x0, N = system_costs(A, B)
 
-R = np.array([[1]])
-
-G = 0.1*np.identity(n+m+k)
-G[6,6] = 0
-
-px = 1000
-plam = 1
-pu = 0
-U = [[px, 0, 0, 0, 0, 0, 0], [0, px, 0, 0, 0, 0, 0 ], [0, 0, px, 0, 0, 0, 0 ], [0, 0, 0, px, 0 ,0 ,0], [0, 0, 0, 0, plam, 0, 0], [0, 0, 0, 0, 0, plam, 0  ], [0,0,0,0,0,0,0]]
-U= np.asarray(U)
-
-x_des = np.zeros(n)
-
-#change with algebraic ricatti
-QN = linalg.solve_discrete_are(A, B, Q, R)
-
+#Create the LCS
 cartpole = LCS(A,B,D,d,E,F,H,c,N)
 
+#Options for the C3 Solver
 options = C3Options()
+options.admm_iter = 10
+options.rho_scale = 2
+options.OSQP_verbose_flag = 0
+options.OSQP_maximum_iterations = 50
+options.Gurobi_verbose_flag = 0
+options.Gurobi_maximum_iterations = 10
 
+#Create the optimizer
 opt = C3MIQP.MakeTimeInvariantC3MIQP(cartpole, Q, R, G, U, x_des, QN, options, N)
 
-#print(Qp)
-
-x0 = np.zeros((4,1))
-
-x0[0] = 0.1
-x0[2] = 0.3
 
 delta_add = np.zeros((n+m+k, 1))
 w_add = np.zeros((n+m+k, 1))
 
-#input = [5]
-
 system_iter = 500
 
 x = np.zeros((n, system_iter+1))
-
 x[:, [0]]  = x0
 
 for i in range(system_iter):
@@ -98,6 +57,6 @@ for i in range(system_iter):
 
 dt = 0.01
 time_x = np.arange(0, system_iter * dt + dt, dt)
-# plt.plot(time_x, x.T)
-# plt.show()
+plt.plot(time_x, x.T)
+plt.show()
 
