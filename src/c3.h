@@ -15,8 +15,17 @@
 namespace c3 {
 class C3 {
  public:
-  /// @param LCS LCS parameters
-  /// @param Q, R, G, U Cost function parameters
+  /// ( State vector dimension = n, contact vector dimension = m, input vector dimension = k )
+  /// @param LCS Linear complementarity system ( x_{k+1} = A_k x_k + B_k u_k + D_k lam_k + d_k, 0 <= lam_k perp E_k x_k + F_k lam_k + H_k u_k + c_k >= 0 )
+  /// A_k in R^{n times n}, B_k in R^{n times k}, D_k in R^{n times m}, d_k in R^{n}, E_k in R^{m times n}, F_k in R^{m times m}, H_k in R^{m times k}, c_k in R^{m}
+  /// @param Q, R Quadratic Cost function parameters ( sum_k x_k^T Q_k x_k + u_k^T R_k u_k )
+  /// Q_k in R^{n times n}, R_k in R^{k times k}
+  /// @param G, U ADMM Cost parameters ( check (17) and (19) in paper https://arxiv.org/pdf/2304.11259.pdf )
+  /// G_k in R^{n+m+k times n+m+k}, U_k in R^{n+m+k times n+m+k}
+  /// @param xdesired Goal (desired) state (x_k - xdesired_k)^T Q_k (x_k - xdesired_k)
+  /// xdesired_k in R^{n}
+  /// @param options (Solver options such as admm iterations, rho scaling, verbose flags/max iter numbers for OSQP and Gurobi, threading options)
+
   C3(const LCS& LCS, const std::vector<Eigen::MatrixXd>& Q,
      const std::vector<Eigen::MatrixXd>& R,
      const std::vector<Eigen::MatrixXd>& G,
@@ -31,9 +40,9 @@ class C3 {
      bool warm_start = false);
 
   /// Solve the MPC problem
-  /// @param x0 The initial state of the system
-  /// @param delta A pointer to the copy variable solution
-  /// @param w A pointer to the scaled dual variable solution
+  /// @param x0 The initial state of the system (in R^{n})
+  /// @param delta Copy variable (delta_k in R^{n+m+k})
+  /// @param w Scaled dual variable (w_k in R^{n+m+k})
   /// @return The first control action to take, u[0]
   Eigen::VectorXd Solve(Eigen::VectorXd& x0,
                         std::vector<Eigen::VectorXd>& delta,
@@ -43,7 +52,7 @@ class C3 {
   /// @param x0 The initial state of the system
   /// @param delta The copy variables from the previous step
   /// @param w The scaled dual variables from the previous step
-  /// @param G A pointer to the G variables from previous step
+  /// @param G Cost parameter from previous step
   Eigen::VectorXd ADMMStep(Eigen::VectorXd& x0,
                            std::vector<Eigen::VectorXd>* delta,
                            std::vector<Eigen::VectorXd>* w,
@@ -51,15 +60,15 @@ class C3 {
 
   /// Solve a single QP
   /// @param x0 The initial state of the system
-  /// @param WD A pointer to the (w - delta) variables
-  /// @param G A pointer to the G variables from previous step
+  /// @param WD (w - delta) variable
+  /// @param G Cost parameter from previous step
   std::vector<Eigen::VectorXd> SolveQP(Eigen::VectorXd& x0,
                                        std::vector<Eigen::MatrixXd>& G,
                                        std::vector<Eigen::VectorXd>& WD);
 
   /// Solve the projection problem for all timesteps
-  /// @param WZ A pointer to the (z + w) variables
-  /// @param G A pointer to the G variables from previous step
+  /// @param WZ (z + w) variable
+  /// @param G Cost parameter from previous step
   std::vector<Eigen::VectorXd> SolveProjection(
       std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ);
 
@@ -79,8 +88,8 @@ class C3 {
 
   /// Solve a single projection step
   /// @param E, F, H, c LCS parameters
-  /// @param U A pointer to the U variables
-  /// @param delta_c A pointer to the copy of (z + w) variables
+  /// @param U MIQP cost variable
+  /// @param delta_c (z + w) variable
   virtual Eigen::VectorXd SolveSingleProjection(const Eigen::MatrixXd& U,
                                                 const Eigen::VectorXd& delta_c,
                                                 const Eigen::MatrixXd& E,

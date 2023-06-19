@@ -12,7 +12,7 @@ namespace c3 {
 
 class C3MIQP : public C3 {
  public:
-  /// Default constructor for time-varying LCS
+  ///Check documentation in c3.h
   C3MIQP(const LCS& LCS, const std::vector<Eigen::MatrixXd>& Q,
          const std::vector<Eigen::MatrixXd>& R,
          const std::vector<Eigen::MatrixXd>& G,
