@@ -1,4 +1,4 @@
-# c3
+# C3
 Consensus Complementarity Control
 
 This is a standalone repository for the C3 algorithm. For more in-depth examples, see dairlib.
