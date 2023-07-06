@@ -107,13 +107,13 @@ namespace c3 {
         options.def(py::init<>())
         .def_readwrite("admm_iter", &C3Options::admm_iter)
         .def_readwrite("rho", &C3Options::rho)
+        .def_readwrite("rho_scale", &C3Options::rho_scale)
+        .def_readwrite("num_threads", &C3Options::num_threads)
+        .def_readwrite("delta_option", &C3Options::delta_option)
         .def_readwrite("OSQP_verbose_flag", &C3Options::OSQP_verbose_flag)
         .def_readwrite("OSQP_maximum_iterations", &C3Options::OSQP_maximum_iterations)
         .def_readwrite("Gurobi_verbose_flag", &C3Options::Gurobi_verbose_flag)
-        .def_readwrite("Gurobi_maximum_iterations", &C3Options::Gurobi_maximum_iterations)
-        .def_readwrite("rho_scale", &C3Options::rho_scale);
-
-
+        .def_readwrite("Gurobi_maximum_iterations", &C3Options::Gurobi_maximum_iterations);
     }
 
 }    // namespace pyc3

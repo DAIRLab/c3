@@ -13,6 +13,14 @@ cc_binary(
 
 
 py_binary(
+    name = "c3_py_ti_test",
+    srcs = ["test/c3_py_ti_test.py"],
+    deps = [
+        "//bindings/pyc3:c3_py"
+    ]
+)
+
+py_binary(
     name = "c3_py_test",
     srcs = ["test/c3_py_test.py"],
     deps = [

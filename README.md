@@ -10,7 +10,7 @@ Currently, it is only confirmed that this process works on Ubuntu 20.04 with Pyt
 2. Download and extract Gurobi 9.5.0: https://packages.gurobi.com/9.5/gurobi9.5.0_linux64.tar.gz
 3. Install pyc3
 ```
-pip install https://www.seas.upenn.edu/~posa/files/pyc3-0.0.1-py3-none-linux_x86_64.whl
+pip install https://github.com/DAIRLab/c3/releases/download/v0.0.1/pyc3-0.0.1-py3-none-linux_x86_64.whl
 ```
 4. Set LD_LIBRARY_PATH
 ```
