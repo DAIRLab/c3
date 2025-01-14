@@ -19,7 +19,7 @@ cc_library(
         "c3_qp.cc",
     ],
     hdrs = [
-        "c3_py.h",
+        "c3.h",
         "c3_options.h",
         "c3_qp.h",
     ],
@@ -48,7 +48,7 @@ cc_library(
             ],
         }),
     hdrs = [
-        "c3_py.h",
+        "c3.h",
         "c3_miqp.h",
         "c3_options.h",
     ],

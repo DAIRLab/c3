@@ -4,7 +4,7 @@
 
 #include <Eigen/Dense>
 
-#include "c3_py.h"
+#include "c3.h"
 #include "lcs.h"
 
 #include "drake/solvers/mathematical_program.h"

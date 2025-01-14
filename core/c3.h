@@ -91,7 +91,7 @@ class C3 {
 
   /*!
    * Solve a single projection step
-   * TODO: Need a C3 expert to comment on the meaning pof these variables
+   * TODO: Need a C3 expert to comment on the meaning of these variables
    *
    */
   virtual Eigen::VectorXd SolveSingleProjection(
@@ -129,7 +129,7 @@ class C3 {
   /*!
  * Solve a single ADMM step
  * @param x0 initial state of the system
- * @param delta copy variables fomr the previous step
+ * @param delta copy variables from the previous step
  * @param w dual variables from the previous step
  * @param G G variables from the previous step
  * @param admm_iteration Index of the current ADMM iteration
@@ -154,7 +154,7 @@ class C3 {
                                        bool is_final_solve = false);
 
   LCS lcs_;
-  double AnDn_ = 1.0; // Scaling factor for lambda
+  double AnDn_ = 1.0; // Scaling factor for lambdas
   const CostMatrices cost_matrices_;
   std::vector<Eigen::VectorXd> x_desired_;
   const C3Options options_;

@@ -1,4 +1,4 @@
-#include "c3_py.h"
+#include "c3.h"
 
 #include <chrono>
 #include <iostream>
