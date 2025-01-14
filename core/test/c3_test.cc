@@ -1,7 +1,8 @@
 #include <chrono>
 #include <string>
+#include <iostream>
 
-#include "src/c3_miqp.h"
+#include "core/c3_miqp.h"
 
 #include "drake/math/discrete_algebraic_riccati_equation.h"
 
@@ -91,9 +92,11 @@ int DoMain(int argc, char* argv[]) {
   const int n = nd;
   const int m = md;
   const int k = kd;
+  const double dt = 0.01;
 
-  LCS system(A, B, D, d, E, F, H, c);
-  C3MIQP opt(system, Q, R, G, U, xdesired, options);
+  LCS system(A, B, D, d, E, F, H, c, dt);
+  C3::CostMatrices cost(Q, R, G, U);
+  C3MIQP opt(system, cost, xdesired, options);
 
   if (example == 1) {
     /// clear all user constraints
@@ -160,17 +163,19 @@ int DoMain(int argc, char* argv[]) {
     if (example == 2) {
       init_pivoting(x[i], &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd,
                     &cd, &Qd, &Rd, &Gd, &Ud, &x0, &xdesired, &options);
-      LCS system(A, B, D, d, E, F, H, c);
-      C3MIQP opt(system, Q, R, G, U, xdesired, options);
+      LCS system(A, B, D, d, E, F, H, c, dt);
+      C3::CostMatrices cost(Q, R, G, U);
+      C3MIQP opt(system, cost, xdesired, options);
     }
 
 
     auto start = std::chrono::high_resolution_clock::now();
     /// calculate the input given x[i]
-    input[i] = opt.Solve(x[i], delta, w);
+    opt.Solve(x[i]);
+    input[i] = opt.GetInputSolution()[0];
 
 
-    auto finish = std::chrono::high_resolution_clock::now();
+        auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
     std::cout << "Solve time:" << elapsed.count() << std::endl;
     total_time = total_time + elapsed.count();

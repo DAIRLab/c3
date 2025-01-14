@@ -2,8 +2,8 @@
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 
-#include "src/c3_miqp.h"
-#include "src/lcs.h"
+#include "core/c3_miqp.h"
+#include "core/lcs.h"
 
 namespace py = pybind11;
 

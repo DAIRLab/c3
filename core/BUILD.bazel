@@ -1,0 +1,94 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+
+cc_library(
+    name = "solver_options_io",
+    hdrs = ["solver_options_io.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "c3",
+    srcs = [
+        "c3.cc",
+        "c3_qp.cc",
+    ],
+    hdrs = [
+        "c3_py.h",
+        "c3_options.h",
+        "c3_qp.h",
+    ],
+    copts = [
+        "-fopenmp",
+    ],
+    linkopts = [
+        "-fopenmp",
+    ],
+    deps = [
+        ":c3_miqp",
+        ":lcs",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "c3_miqp",
+    srcs =
+        select({
+            "//tools:with_gurobi": [
+                ":c3_miqp.cc",
+            ],
+            "//conditions:default": [
+                ":c3_miqp_no_gurobi.cc",
+            ],
+        }),
+    hdrs = [
+        "c3_py.h",
+        "c3_miqp.h",
+        "c3_options.h",
+    ],
+    deps =
+        select({
+            "//tools:with_gurobi": [
+                ":lcs",
+                "@drake//:drake_shared_library",
+                "@gurobi//:gurobi_cxx",
+            ],
+            "//conditions:default": [
+                ":lcs",
+                "@drake//:drake_shared_library",
+            ],
+        }),
+)
+
+cc_library(
+    name = "c3_output",
+    srcs = ["c3_output.cc"],
+    hdrs = ["c3_output.h"],
+    deps = [
+        "@eigen",
+    ],
+)
+
+cc_library(
+    name = "lcs",
+    srcs = ["lcs.cc"],
+    hdrs = ["lcs.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_binary(
+    name = "c3_test",
+    srcs = ["test/c3_test.cc"],
+    deps = [
+        ":c3",
+    ],
+)

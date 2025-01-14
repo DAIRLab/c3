@@ -28,7 +28,3 @@ http_archive(
 load("@drake//tools/workspace:default.bzl", "add_default_workspace")
 
 add_default_workspace()
-
-load("@c3//tools/workspace/osqp:repository.bzl", "osqp_repository")
-
-osqp_repository(name = "osqp")
