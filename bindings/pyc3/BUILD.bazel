@@ -10,7 +10,6 @@ load(
     "get_pybind_package_info",
     "pybind_py_library",
 )
-
 load("@rules_python//python:packaging.bzl", "py_wheel")
 load("@rules_python//python:packaging.bzl", "py_package")
 
@@ -59,18 +58,21 @@ py_package(
     name = "c3_pkg",
     # Only include these Python packages.
     packages = [],
-    deps = [":pyc3",
-            "@gurobi//:gurobi_c"],
+    deps = [
+        ":pyc3",
+        "@gurobi//:gurobi_c",
+    ],
 )
 
 py_wheel(
     name = "pyc3_wheel",
     # Package data. We're building "example_minimal_package-0.0.1-py3-none-any.whl"
     distribution = "pyc3",
-    python_tag = "py3",
-    version = "0.0.1",
-    deps = [":c3_pkg"],
     license = "MIT",
     platform = "linux_x86_64",
+    python_tag = "py3",
     strip_path_prefixes = ["bindings/"],
+    tags = ["manual"],
+    version = "0.0.1",
+    deps = [":c3_pkg"],
 )

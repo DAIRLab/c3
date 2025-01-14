@@ -7,25 +7,24 @@ cc_binary(
     name = "c3_test",
     srcs = ["test/c3_test.cc"],
     deps = [
-        ":c3"
+        ":c3",
     ],
 )
-
 
 py_binary(
     name = "c3_py_ti_test",
     srcs = ["test/c3_py_ti_test.py"],
     deps = [
-        "//bindings/pyc3:c3_py"
-    ]
+        "//bindings/pyc3:c3_py",
+    ],
 )
 
 py_binary(
     name = "c3_py_test",
     srcs = ["test/c3_py_test.py"],
     deps = [
-        "//bindings/pyc3:c3_py"
-    ]
+        "//bindings/pyc3:c3_py",
+    ],
 )
 
 cc_library(
@@ -39,18 +38,17 @@ cc_library(
         "c3_miqp.h",
         "c3_options.h",
     ],
+    copts = [
+        "-fopenmp",
+    ],
+    linkopts = [
+        "-lgomp",
+    ],
     deps = [
         ":lcs",
         "@drake//:drake_shared_library",
         "@gurobi//:gurobi_cxx",
-         "//src:fast_osqp_solver",
     ],
-    copts = [
-        "-fopenmp"
-    ],
-    linkopts = [
-        "-lgomp"
-    ]
 )
 
 cc_library(
@@ -63,19 +61,5 @@ cc_library(
     ],
     deps = [
         "@drake//:drake_shared_library",
-    ],
-)
-cc_library(
-    name = "fast_osqp_solver",
-    srcs = [
-        "fast_osqp_solver.cc",
-        "fast_osqp_solver_common.cc",
-    ],
-    hdrs = [
-        "fast_osqp_solver.h",
-    ],
-    deps = [
-        "@drake//:drake_shared_library",
-        "@osqp",
     ],
 )

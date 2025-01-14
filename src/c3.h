@@ -5,7 +5,6 @@
 #include <Eigen/Dense>
 
 #include "src/c3_options.h"
-#include "src/fast_osqp_solver.h"
 #include "src/lcs.h"
 
 #include "drake/solvers/mathematical_program.h"
