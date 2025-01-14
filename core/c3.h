@@ -12,6 +12,7 @@
 
 namespace c3 {
 class C3 {
+
  public:
   struct CostMatrices {
     CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
@@ -63,6 +64,7 @@ class C3 {
    * for force constraints.
    *
    * TODO (@Brian-Acosta or @ebianchini) make constraint an enum
+   *   (or better yet, make this three functions)
    */
   void AddLinearConstraint(const Eigen::MatrixXd& A,
                            const Eigen::VectorXd& lower_bound,
@@ -72,6 +74,7 @@ class C3 {
    * Add a single-row linear constraint
    * See above
    * TODO (@Brian-Acosta or @ebianchini) make constraint an enum
+   *  (or better yet, make this three functions)
    */
   void AddLinearConstraint(const Eigen::RowVectorXd& A,
                            double lower_bound, double upper_bound, int constraint);
