@@ -20,7 +20,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
                                        const int& warm_start_index) {
   // Create an environment
   GRBEnv env;
-  //  env.set("LogToConsole", "0");
+  env.set("LogToConsole", "0");
   env.set("OutputFlag", "0");
   env.set("Threads", "0");
   env.start();
