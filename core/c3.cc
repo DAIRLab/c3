@@ -220,7 +220,7 @@ void C3::Solve(const VectorXd& x0) {
   }
   std::vector<VectorXd> delta(N_, delta_init);
   std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
-  vector<MatrixXd> Gv = cost_matrices_.G;
+  vector<MatrixXd> G = cost_matrices_.G;
 
   for (int i = 0; i < N_; ++i) {
     input_costs_[i]->UpdateCoefficients(2 * cost_matrices_.R.at(i),
@@ -228,7 +228,7 @@ void C3::Solve(const VectorXd& x0) {
   }
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
-    ADMMStep(x0, &delta, &w, &Gv, iter);
+    ADMMStep(x0, &delta, &w, &G, iter);
   }
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
@@ -236,7 +236,7 @@ void C3::Solve(const VectorXd& x0) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
 
-  vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
+  vector<VectorXd> zfin = SolveQP(x0, G, WD, options_.admm_iter, true);
 
   *w_sol_ = w;
   *delta_sol_ = delta;
@@ -268,7 +268,7 @@ void C3::Solve(const VectorXd& x0) {
 }
 
 void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
-                  vector<VectorXd>* w, vector<MatrixXd>* Gv,
+                  vector<VectorXd>* w, vector<MatrixXd>* G,
                   int admm_iteration) {
   vector<VectorXd> WD(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
 
@@ -276,7 +276,7 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
     WD.at(i) = delta->at(i) - w->at(i);
   }
 
-  vector<VectorXd> z = SolveQP(x0, *Gv, WD, admm_iteration, true);
+  vector<VectorXd> z = SolveQP(x0, *G, WD, admm_iteration, true);
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
   for (int i = 0; i < N_; ++i) {
@@ -284,7 +284,7 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   }
 
   if (cost_matrices_.U[0].isZero(0)) {
-    *delta = SolveProjection(*Gv, ZW, admm_iteration);
+    *delta = SolveProjection(*G, ZW, admm_iteration);
 
   } else {
     *delta = SolveProjection(cost_matrices_.U, ZW, admm_iteration);
@@ -293,7 +293,7 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   for (int i = 0; i < N_; ++i) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);
     w->at(i) = w->at(i) / options_.rho_scale;
-    Gv->at(i) = Gv->at(i) * options_.rho_scale;
+    G->at(i) = G->at(i) * options_.rho_scale;
   }
 }
 
@@ -378,7 +378,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   return *z_sol_;
 }
 
-vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
+vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
                                      vector<VectorXd>& WZ, int admm_iteration) {
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
   int i;
@@ -394,16 +394,16 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
     if (warm_start_) {
       if (i == N_ - 1) {
         deltaProj[i] =
-            SolveSingleProjection(G[i], WZ[i], lcs_.E_[i], lcs_.F_[i],
+            SolveSingleProjection(U[i], WZ[i], lcs_.E_[i], lcs_.F_[i],
                                   lcs_.H_[i], lcs_.c_[i], admm_iteration, -1);
       } else {
-        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], lcs_.E_[i],
+        deltaProj[i] = SolveSingleProjection(U[i], WZ[i], lcs_.E_[i],
                                              lcs_.F_[i], lcs_.H_[i], lcs_.c_[i],
                                              admm_iteration, i + 1);
       }
     } else {
       deltaProj[i] =
-          SolveSingleProjection(G[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i],
+          SolveSingleProjection(U[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i],
                                 lcs_.c_[i], admm_iteration, -1);
     }
   }

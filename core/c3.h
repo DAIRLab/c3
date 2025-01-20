@@ -14,6 +14,12 @@ namespace c3 {
 class C3 {
 
  public:
+
+  /*!
+   * Cost matrices for the MPC and ADMM  algorithm.
+   * Q and R define standard MPC costs, while G and U are used as similarity
+   * costs in the ADMM Augmented lagrangian and projection solves, respectively
+   */
   struct CostMatrices {
     CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
                  const std::vector<Eigen::MatrixXd>& R,
@@ -27,7 +33,9 @@ class C3 {
 
   /*!
    * @param LCS system dynamics, defined as an LCS (see lcs.h)
-   * @param Q, R, G, U Cost function parameters
+   * @param costs Cost function parameters
+   * @param x_desired reference trajectory
+   * @param options see c3_options.h
    */
   C3(const LCS& LCS, const CostMatrices& costs,
      const std::vector<Eigen::VectorXd>& x_desired, const C3Options& options);
@@ -37,9 +45,6 @@ class C3 {
   /*!
    * Solve the MPC problem
    * @param x0 The initial state of the system
-   * @param delta A pointer to the copy variable solution
-   * @param w A pointer to the scaled dual variable solution
-   * @return The first control action to take, u[0]
    */
   void Solve(const Eigen::VectorXd& x0);
 
@@ -82,27 +87,6 @@ class C3 {
   /*! Remove all constraints previously added by AddLinearConstraint */
   void RemoveConstraints();
 
-  /*!
-   * Solve the projection problem for all time-steps
-   * @param WZ A pointer to the (z + w) variables
-   * @param G A pointer to the G variables from previous step
-   * @param admm_iteration Index of the current ADMM iteration
-   */
-  std::vector<Eigen::VectorXd> SolveProjection(
-      const std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ,
-      int admm_iteration);
-
-  /*!
-   * Solve a single projection step
-   * TODO: Need a C3 expert to comment on the meaning of these variables
-   *
-   */
-  virtual Eigen::VectorXd SolveSingleProjection(
-      const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
-      const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
-      const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
-      const int admm_iteration, const int& warm_start_index) = 0;
-
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     prog_.SetSolverOptions(options);
   }
@@ -126,15 +110,40 @@ class C3 {
   const int n_lambda_;  // m
   const int n_u_;  // k
 
+  /*!
+  * Project delta_c onto the LCP constraint.
+  * @param U cost weight on the similarity between the pre and post projection
+  *          values
+  * @param delta_c value to project to the LCP constraint
+  * @param E, F, H, c LCS state, force, input, and constant terms
+  * @param admm_iteration index of the current ADMM iteration
+  * @param warm_start_index index into cache of warm start variables
+  * @return
+  */
+  virtual Eigen::VectorXd SolveSingleProjection(
+      const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
+      const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
+      const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
+      const int admm_iteration, const int& warm_start_index) = 0;
+
  private:
 
+  /*!
+   * Solve the projection problem for all time-steps
+   * @param U Similarity cost weights for the
+   * @param WZ A pointer to the (z + w) variables
+   * @param admm_iteration Index of the current ADMM iteration
+   */
+  std::vector<Eigen::VectorXd> SolveProjection(
+      const std::vector<Eigen::MatrixXd>& U, std::vector<Eigen::VectorXd>& WZ,
+      int admm_iteration);
 
   /*!
  * Solve a single ADMM step
  * @param x0 initial state of the system
  * @param delta copy variables from the previous step
  * @param w dual variables from the previous step
- * @param G G variables from the previous step
+ * @param G augmented lagrangian similarity cost from the previous step
  * @param admm_iteration Index of the current ADMM iteration
  */
   void ADMMStep(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta,
@@ -145,8 +154,8 @@ class C3 {
   /*!
   * Solve a single QP, without LCP constraints
   * @param x0 The initial state of the system
+  * @param G Weights for the augmented lagrangian
   * @param WD A pointer to the (w - delta) variables
-  * @param G A pointer to the G variables from previous step
   * @param admm_iteration Index of the current ADMM iteration
   * @param is_final_solve Whether this is the final ADMM iteration
   */
