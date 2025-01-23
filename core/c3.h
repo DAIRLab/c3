@@ -129,6 +129,12 @@ class C3 {
  private:
 
   /*!
+   * Scales the LCS matrices internally to better condition the problem.
+   * This only scales the lambdas.
+   */
+  void ScaleLCS();
+
+  /*!
    * Solve the projection problem for all time-steps
    * @param U Similarity cost weights for the projection optimization
    * @param WZ A reference to the (z + w) variables

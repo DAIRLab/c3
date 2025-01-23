@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <Eigen/Dense>
+#include "drake/common/drake_assert.h"
 
 namespace c3 {
 class LCS {
@@ -27,8 +28,8 @@ class LCS {
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const int& N,
       double dt);
 
-  LCS(const LCS& other);
-  LCS& operator=(const LCS&);
+  LCS(const LCS& other) = default;
+  LCS& operator=(const LCS&) = default;
   LCS(LCS&&) = default;
   LCS& operator=(LCS&&) = default;
 
@@ -39,6 +40,74 @@ class LCS {
                                  Eigen::VectorXd& input);
 
  public:
+  [[nodiscard]] const std::vector<Eigen::MatrixXd>& A() const {
+    return A_;
+  }
+  [[nodiscard]] const std::vector<Eigen::MatrixXd>& B() const {
+    return B_;
+  }
+  [[nodiscard]] const std::vector<Eigen::MatrixXd>& D() const {
+    return D_;
+  }
+  [[nodiscard]] const std::vector<Eigen::VectorXd>& d() const {
+    return d_;
+  }
+  [[nodiscard]] const std::vector<Eigen::MatrixXd>& E() const {
+    return E_;
+  }
+  [[nodiscard]] const std::vector<Eigen::MatrixXd>& F() const {
+    return F_;
+  }
+  [[nodiscard]] const std::vector<Eigen::MatrixXd>& H() const {
+    return H_;
+  }
+  [[nodiscard]] const std::vector<Eigen::VectorXd>& c() const {
+    return c_;
+  }
+  [[nodiscard]] double dt() const { return dt_; }
+  [[nodiscard]] int N() const { return N_; }
+  [[nodiscard]] int num_states() const { return n_; }
+  [[nodiscard]] int num_inputs() const { return k_; }
+  [[nodiscard]] int num_lambdas() const { return m_; }
+
+  void set_A(const std::vector<Eigen::MatrixXd>& A) {
+    DRAKE_DEMAND(A.size() == N_);
+    A_ = A;
+  }
+  void set_B(const std::vector<Eigen::MatrixXd>& B) {
+    DRAKE_DEMAND(B.size() == N_);
+    B_ = B;
+  }
+  void set_D(const std::vector<Eigen::MatrixXd>& D) {
+    DRAKE_DEMAND(D.size() == N_);
+    D_ = D;
+  }
+  void set_d(const std::vector<Eigen::VectorXd>& d) {
+    DRAKE_DEMAND(d.size() == N_);
+    d_ = d;
+  }
+  void set_E(const std::vector<Eigen::MatrixXd>& E) {
+    DRAKE_DEMAND(E.size() == N_);
+    E_ = E;
+  }
+  void set_F(const std::vector<Eigen::MatrixXd>& F) {
+    DRAKE_DEMAND(F.size() == N_);
+    F_ = F;
+  }
+  void set_H(const std::vector<Eigen::MatrixXd>& H) {
+    DRAKE_DEMAND(H.size() == N_);
+    H_ = H;
+  }
+  void set_c(const std::vector<Eigen::VectorXd>& c) {
+    DRAKE_DEMAND(c.size() == N_);
+    c_ = c;
+  }
+
+  void ScaleComplementarityDynamics(double scale);
+
+  bool HasSameDimensionsAs(const LCS& other) const;
+
+ private:
   std::vector<Eigen::MatrixXd> A_;
   std::vector<Eigen::MatrixXd> B_;
   std::vector<Eigen::MatrixXd> D_;
@@ -47,9 +116,8 @@ class LCS {
   std::vector<Eigen::MatrixXd> F_;
   std::vector<Eigen::MatrixXd> H_;
   std::vector<Eigen::VectorXd> c_;
-  bool has_tangent_linearization_ = false;
-  Eigen::MatrixXd J_c_;
-  int N_;
+
+  size_t N_;
   double dt_;
 
   int n_;

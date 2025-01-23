@@ -158,9 +158,9 @@ struct C3Options {
     Eigen::VectorXd u = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->u_vector.data(), this->u_vector.size());
 
-    DRAKE_DEMAND(g_lambda.size() == num_contacts * num_friction_directions * 2);
-    DRAKE_DEMAND(u_lambda.size() == num_contacts * num_friction_directions * 2);
-    DRAKE_DEMAND(mu.size() == num_contacts);
+    DRAKE_DEMAND(static_cast<int>(g_lambda.size()) == num_contacts * num_friction_directions * 2);
+    DRAKE_DEMAND(static_cast<int>(u_lambda.size()) == num_contacts * num_friction_directions * 2);
+    DRAKE_DEMAND(static_cast<int>(mu.size()) == num_contacts);
     DRAKE_DEMAND(g.size() == u.size());
 
     Q = w_Q * q.asDiagonal();

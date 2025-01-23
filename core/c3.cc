@@ -41,15 +41,15 @@ C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
 C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
        const vector<VectorXd>& x_desired, const C3Options& options)
     : warm_start_(options.warm_start),
-      N_((lcs.A_).size()),
-      n_x_((lcs.A_)[0].cols()),
-      n_lambda_((lcs.D_)[0].cols()),
-      n_u_((lcs.B_)[0].cols()),
+      N_(lcs.N()),
+      n_x_(lcs.num_states()),
+      n_lambda_(lcs.num_lambdas()),
+      n_u_(lcs.num_inputs()),
       lcs_(lcs),
       cost_matrices_(costs),
       x_desired_(x_desired),
       options_(options),
-      h_is_zero_(lcs.H_[0].isZero(0)),
+      h_is_zero_(lcs.H()[0].isZero(0)),
       prog_(MathematicalProgram()),
       osqp_(OsqpSolver()) {
   if (warm_start_) {
@@ -82,17 +82,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
     }
   }
 
-  auto Dn = lcs.D_.at(0).norm();
-  auto An = lcs.A_.at(0).norm();
-  AnDn_ = An / Dn;
-
-  for (int i = 0; i < N_; ++i) {
-    lcs_.D_.at(i) *= AnDn_;
-    lcs_.E_.at(i) /= AnDn_;
-    lcs_.c_.at(i) /= AnDn_;
-    lcs_.H_.at(i) /= AnDn_;
-  }
-
+  ScaleLCS();
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
@@ -130,14 +120,14 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   LinEq.block(0, n_x_ + n_lambda_ + n_u_, n_x_, n_x_) =
       -1 * MatrixXd::Identity(n_x_, n_x_);
   for (int i = 0; i < N_; ++i) {
-    LinEq.block(0, 0, n_x_, n_x_) = lcs.A_.at(i);
-    LinEq.block(0, n_x_, n_x_, n_lambda_) = lcs.D_.at(i);
-    LinEq.block(0, n_x_ + n_lambda_, n_x_, n_u_) = lcs.B_.at(i);
+    LinEq.block(0, 0, n_x_, n_x_) = lcs.A().at(i);
+    LinEq.block(0, n_x_, n_x_, n_lambda_) = lcs.D().at(i);
+    LinEq.block(0, n_x_ + n_lambda_, n_x_, n_u_) = lcs.B().at(i);
 
     dynamics_constraints_[i] =
         prog_
             .AddLinearEqualityConstraint(
-                LinEq, -lcs.d_.at(i),
+                LinEq, -lcs_.d().at(i),
                 {x_.at(i), lambda_.at(i), u_.at(i), x_.at(i + 1)})
             .evaluator()
             .get();
@@ -159,38 +149,30 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   }
 }
 
+void C3::ScaleLCS() {
+  DRAKE_DEMAND(lcs_.D()[0].norm() > 0);
+  double Dn = lcs_.D()[0].norm();
+  double An = lcs_.A()[0].norm();
+  AnDn_ = An / Dn;
+  lcs_.ScaleComplementarityDynamics(AnDn_);
+}
+
 void C3::UpdateLCS(const LCS& lcs) {
-  DRAKE_DEMAND(lcs.A_.size() == N_);
-  DRAKE_DEMAND(lcs.A_[0].rows() == n_x_);
-  DRAKE_DEMAND(lcs.A_[0].cols() == n_x_);
-  DRAKE_DEMAND(lcs.D_[0].cols() == n_lambda_);
-  DRAKE_DEMAND(lcs.B_[0].cols() == n_u_);
+  DRAKE_DEMAND(lcs_.HasSameDimensionsAs(lcs));
 
   lcs_ = lcs;
-  h_is_zero_ = lcs_.H_[0].isZero(0);
-
-  // Scaling dynamics matrices constraint for better numerics
-  // This only scales lambda
-  auto Dn = lcs_.D_[0].norm();
-  auto An = lcs_.A_[0].norm();
-  AnDn_ = An / Dn;
-
-  for (int i = 0; i < N_; ++i) {
-    lcs_.D_.at(i) *= AnDn_;
-    lcs_.E_.at(i) /= AnDn_;
-    lcs_.c_.at(i) /= AnDn_;
-    lcs_.H_.at(i) /= AnDn_;
-  }
+  h_is_zero_ = lcs_.H()[0].isZero(0);
+  ScaleLCS();
 
   MatrixXd LinEq = MatrixXd::Zero(n_x_, 2 * n_x_ + n_lambda_ + n_u_);
   LinEq.block(0, n_x_ + n_u_ + n_lambda_, n_x_, n_x_) =
       -1 * MatrixXd::Identity(n_x_, n_x_);
   for (int i = 0; i < N_; ++i) {
-    LinEq.block(0, 0, n_x_, n_x_) = lcs_.A_.at(i);
-    LinEq.block(0, n_x_, n_x_, n_lambda_) = lcs_.D_.at(i);
-    LinEq.block(0, n_x_ + n_lambda_, n_x_, n_u_) = lcs_.B_.at(i);
+    LinEq.block(0, 0, n_x_, n_x_) = lcs_.A().at(i);
+    LinEq.block(0, n_x_, n_x_, n_lambda_) = lcs_.D().at(i);
+    LinEq.block(0, n_x_ + n_lambda_, n_x_, n_u_) = lcs_.B().at(i);
 
-    dynamics_constraints_[i]->UpdateCoefficients(LinEq, -lcs.d_.at(i));
+    dynamics_constraints_[i]->UpdateCoefficients(LinEq, -lcs.d().at(i));
   }
 }
 
@@ -247,9 +229,9 @@ void C3::Solve(const VectorXd& x0) {
     x_sol_->at(0) = x0;
     for (int i = 1; i < N_; ++i) {
       z_sol_->at(i).segment(0, n_x_) =
-          lcs_.A_.at(i - 1) * x_sol_->at(i - 1) +
-          lcs_.B_.at(i - 1) * u_sol_->at(i - 1) +
-          lcs_.D_.at(i - 1) * lambda_sol_->at(i - 1) + lcs_.d_.at(i - 1);
+          lcs_.A().at(i - 1) * x_sol_->at(i - 1) +
+          lcs_.B().at(i - 1) * u_sol_->at(i - 1) +
+          lcs_.D().at(i - 1) * lambda_sol_->at(i - 1) + lcs_.d().at(i - 1);
     }
   }
 
@@ -303,7 +285,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   if (h_is_zero_ == 1) {  // No dependence on u, so just simulate passive system
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd lambda0;
-    LCPSolver.SolveLcpLemke(lcs_.F_[0], lcs_.E_[0] * x0 + lcs_.c_[0], &lambda0);
+    LCPSolver.SolveLcpLemke(lcs_.F()[0], lcs_.E()[0] * x0 + lcs_.c()[0], &lambda0);
     constraints_.push_back(prog_.AddLinearConstraint(lambda_[0] == lambda0));
   }
 
@@ -333,8 +315,8 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
 
   //  /// initialize decision variables to warm start
   if (warm_start_) {
-    int index = solve_time_ / lcs_.dt_;
-    double weight = (solve_time_ - index * lcs_.dt_) / lcs_.dt_;
+    int index = solve_time_ / lcs_.dt();
+    double weight = (solve_time_ - index * lcs_.dt()) / lcs_.dt();
     for (int i = 0; i < N_ - 1; ++i) {
       prog_.SetInitialGuess(x_[i],
                             (1 - weight) * warm_start_x_[admm_iteration][i] +
@@ -394,17 +376,17 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
     if (warm_start_) {
       if (i == N_ - 1) {
         deltaProj[i] =
-            SolveSingleProjection(U[i], WZ[i], lcs_.E_[i], lcs_.F_[i],
-                                  lcs_.H_[i], lcs_.c_[i], admm_iteration, -1);
+            SolveSingleProjection(U[i], WZ[i], lcs_.E()[i], lcs_.F()[i],
+                                  lcs_.H()[i], lcs_.c()[i], admm_iteration, -1);
       } else {
-        deltaProj[i] = SolveSingleProjection(U[i], WZ[i], lcs_.E_[i],
-                                             lcs_.F_[i], lcs_.H_[i], lcs_.c_[i],
+        deltaProj[i] = SolveSingleProjection(U[i], WZ[i], lcs_.E()[i],
+                                             lcs_.F()[i], lcs_.H()[i], lcs_.c()[i],
                                              admm_iteration, i + 1);
       }
     } else {
       deltaProj[i] =
-          SolveSingleProjection(U[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i],
-                                lcs_.c_[i], admm_iteration, -1);
+          SolveSingleProjection(U[i], WZ[i], lcs_.E()[i], lcs_.F()[i], lcs_.H()[i],
+                                lcs_.c()[i], admm_iteration, -1);
     }
   }
 
