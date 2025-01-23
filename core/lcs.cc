@@ -49,7 +49,7 @@ bool LCS::HasSameDimensionsAs(const LCS &other) const {
 }
 
 void LCS::ScaleComplementarityDynamics(double scale) {
-  for (int i = 0; i < N_; ++i) {
+  for (size_t i = 0; i < N_; ++i) {
     D_.at(i) *= scale;
     E_.at(i) /= scale;
     c_.at(i) /= scale;
@@ -57,16 +57,13 @@ void LCS::ScaleComplementarityDynamics(double scale) {
   }
 }
 
-const VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) {
+const VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& u) {
   VectorXd x_final;
-  // calculate force
-  drake::solvers::MobyLCPSolver<double> LCPSolver;
   VectorXd force;
-
-  auto flag = LCPSolver.SolveLcpLemke(
-      F_[0], E_[0] * x_init + c_[0] + H_[0] * input, &force);
-  // update
-  x_final = A_[0] * x_init + B_[0] * input + D_[0] * force + d_[0];
+  drake::solvers::MobyLCPSolver<double> LCPSolver;
+  LCPSolver.SolveLcpLemke(
+      F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force);
+  x_final = A_[0] * x_init + B_[0] * u + D_[0] * force + d_[0];
   return x_final;
 }
 
