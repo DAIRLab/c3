@@ -11,6 +11,8 @@ using Eigen::RowVectorXd;
 using Eigen::VectorXd;
 using std::vector;
 
+using c3::C3Options;
+
 void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_,
                    vector<MatrixXd>* B_, vector<MatrixXd>* D_,
                    vector<VectorXd>* d_, vector<MatrixXd>* E_,

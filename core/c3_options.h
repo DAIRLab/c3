@@ -1,6 +1,9 @@
 #pragma once
 
 #include "drake/common/yaml/yaml_read_archive.h"
+#include "drake/common/yaml/yaml_io.h"
+
+namespace c3 {
 
 struct C3Options {
   // Hyperparameters
@@ -73,9 +76,8 @@ struct C3Options {
   std::vector<double> u_lambda;
   std::vector<double> u_u;
 
-
-  template <typename Archive>
-  void Serialize(Archive* a) {
+  template<typename Archive>
+  void Serialize(Archive *a) {
     a->Visit(DRAKE_NVP(admm_iter));
     a->Visit(DRAKE_NVP(rho));
     a->Visit(DRAKE_NVP(rho_scale));
@@ -167,3 +169,10 @@ struct C3Options {
     U = w_U * u.asDiagonal();
   }
 };
+
+inline C3Options LoadC3Options(const std::string &filename) {
+  auto options = drake::yaml::LoadYamlFile<C3Options>(filename);
+  return options;
+}
+
+} // namespace c3

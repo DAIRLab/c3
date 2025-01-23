@@ -15,9 +15,7 @@ load("@rules_python//python:packaging.bzl", "py_package")
 
 pybind_py_library(
     name = "c3_py",
-    cc_deps = [
-        "//core:c3",
-    ],
+    cc_deps = ["//core:c3"],
     cc_so_name = "c3",
     cc_srcs = ["c3_py.cc"],
     py_deps = [
