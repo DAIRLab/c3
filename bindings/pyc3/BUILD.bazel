@@ -10,8 +10,8 @@ load(
     "get_pybind_package_info",
     "pybind_py_library",
 )
-load("@rules_python//python:packaging.bzl", "py_wheel")
 load("@rules_python//python:packaging.bzl", "py_package")
+load("@rules_python//python:packaging.bzl", "py_wheel")
 
 pybind_py_library(
     name = "c3_py",
@@ -70,7 +70,6 @@ py_wheel(
     platform = "linux_x86_64",
     python_tag = "py3",
     strip_path_prefixes = ["bindings/"],
-    tags = ["manual"],
-    version = "0.0.1",
+    version = "0.0.2",
     deps = [":c3_pkg"],
 )

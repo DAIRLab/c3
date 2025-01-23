@@ -28,3 +28,7 @@ http_archive(
 load("@drake//tools/workspace:default.bzl", "add_default_workspace")
 
 add_default_workspace()
+
+load("@rules_python//python:repositories.bzl", "py_repositories")
+
+py_repositories()
