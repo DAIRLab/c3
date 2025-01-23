@@ -14,8 +14,8 @@ class LCS {
    *  s.t.  0 ≤ λₖ ⊥ Eₖxₖ +Fₖλₖ + Hₖuₖ + cₖ ≥ 0
    *
    *  N.B. : the dynamics matrices are already assumed to be in discrete form.
-   *  dt is used internally to C3 to properly shift the previous solution for
-   *  warm-starting the optimization
+   *  dt is only used internally to C3 to properly shift the previous solution
+   *  for warm-starting the optimization
    */
   LCS(const std::vector<Eigen::MatrixXd>& A,
       const std::vector<Eigen::MatrixXd>& B,
