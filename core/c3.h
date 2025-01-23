@@ -130,8 +130,8 @@ class C3 {
 
   /*!
    * Solve the projection problem for all time-steps
-   * @param U Similarity cost weights for the
-   * @param WZ A pointer to the (z + w) variables
+   * @param U Similarity cost weights for the projection optimization
+   * @param WZ A reference to the (z + w) variables
    * @param admm_iteration Index of the current ADMM iteration
    */
   std::vector<Eigen::VectorXd> SolveProjection(
@@ -155,7 +155,7 @@ class C3 {
   * Solve a single QP, without LCP constraints
   * @param x0 The initial state of the system
   * @param G Weights for the augmented lagrangian
-  * @param WD A pointer to the (w - delta) variables
+  * @param WD A reference to the (w - delta) variables
   * @param admm_iteration Index of the current ADMM iteration
   * @param is_final_solve Whether this is the final ADMM iteration
   */

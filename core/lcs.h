@@ -47,10 +47,6 @@ class LCS {
   std::vector<Eigen::MatrixXd> F_;
   std::vector<Eigen::MatrixXd> H_;
   std::vector<Eigen::VectorXd> c_;
-  Eigen::MatrixXd W_x_;
-  Eigen::MatrixXd W_l_;
-  Eigen::MatrixXd W_u_;
-  Eigen::VectorXd w_;
   bool has_tangent_linearization_ = false;
   Eigen::MatrixXd J_c_;
   int N_;
