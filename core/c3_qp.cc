@@ -39,7 +39,7 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   drake::solvers::SolverOptions solver_options;
   drake::solvers::OsqpSolver osqp_;
 
-  Set3QPDefaultOsqpOptions(&solver_options);
+  SetC3QPDefaultOsqpOptions(&solver_options);
   prog.SetSolverOptions(solver_options);
 
   auto xn_ = prog.NewContinuousVariables(n_x_, "x");

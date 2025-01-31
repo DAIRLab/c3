@@ -39,7 +39,7 @@ class C3QP final : public C3 {
   std::vector<Eigen::VectorXd> GetWarmStartBinary() const;
 
  private:
-  inline static void Set3QPDefaultOsqpOptions(
+  inline static void SetC3QPDefaultOsqpOptions(
       drake::solvers::SolverOptions* solver_options) {
     solver_options->SetOption(drake::solvers::OsqpSolver::id(), "max_iter", 500);
     solver_options->SetOption(drake::solvers::OsqpSolver::id(), "verbose", 0);
