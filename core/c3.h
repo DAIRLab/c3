@@ -33,8 +33,8 @@ class C3 {
 
   /*!
    * @param LCS system dynamics, defined as an LCS (see lcs.h)
-   * @param costs Cost function parameters
-   * @param x_desired reference trajectory
+   * @param costs Cost function parameters (see above)
+   * @param x_desired reference trajectory, where the each vector is the desired state at the corresponding knot point
    * @param options see c3_options.h
    */
   C3(const LCS& LCS, const CostMatrices& costs,

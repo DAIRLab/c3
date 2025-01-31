@@ -9,7 +9,7 @@
 
 namespace c3 {
 
-static const double kVariableBounds = 100;
+static const double kVariableBounds = 10000;
 
 class C3MIQP final : public C3 {
  public:

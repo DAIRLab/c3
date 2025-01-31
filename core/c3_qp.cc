@@ -39,6 +39,9 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   drake::solvers::SolverOptions solver_options;
   drake::solvers::OsqpSolver osqp_;
 
+  Set3QPDefaultOsqpOptions(&solver_options);
+  prog.SetSolverOptions(solver_options);
+
   auto xn_ = prog.NewContinuousVariables(n_x_, "x");
   auto ln_ = prog.NewContinuousVariables(n_lambda_, "lambda");
   auto un_ = prog.NewContinuousVariables(n_u_, "u");
@@ -69,17 +72,7 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   VectorXd cost_linear = -delta_c.transpose() * New_U;
 
   prog.AddQuadraticCost(New_U, cost_linear, {xn_, ln_, un_}, 1);
-
   prog.AddQuadraticCost((1 - alpha) * F, VectorXd::Zero(n_lambda_), ln_, 1);
-
-  solver_options.SetOption(OsqpSolver::id(), "max_iter", 500);
-  solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-  solver_options.SetOption(OsqpSolver::id(), "polish", 1);
-  solver_options.SetOption(OsqpSolver::id(), "polish_refine_iter", 1);
-  solver_options.SetOption(OsqpSolver::id(), "rho", 1e-4);
-  solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
-  solver_options.SetOption(OsqpSolver::id(), "linsys_solver", 0);
-  prog.SetSolverOptions(solver_options);
 
   MathematicalProgramResult result = osqp_.Solve(prog);
 

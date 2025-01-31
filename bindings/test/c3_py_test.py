@@ -1,151 +1,114 @@
 import numpy as np
-# import matplotlib.pyplot as plt
 from scipy import linalg
+import matplotlib.pyplot as plt
 
-from pyc3 import LCS
-from pyc3 import C3MIQP
-from pyc3 import C3Options
-
-n=4
-m=2
-k=1
-N = 10
-g = 9.81
-mp = 0.411
-mc = 0.978
-len_p = 0.6
-len_com = 0.4267
-d1 = 0.35
-d2 = -0.35
-ks= 100
-Ts = 0.01
-A = [[0, 0, 1, 0], [0, 0, 0, 1], [0, g*mp/mc, 0, 0], [0, g*(mc+mp)/(len_com*mc), 0, 0]]
-A = np.asarray(A)
-B = [[0],[0],[1/mc],[1/(len_com*mc)]]
-B = np.asarray(B)
-D = [[0,0], [0,0], [(-1/mc) + (len_p/(mc*len_com)), (1/mc) - (len_p/(mc*len_com)) ], [(-1 / (mc*len_com) ) + (len_p*(mc+mp)) / (mc*mp*len_com*len_com)  , -((-1 / (mc*len_com) ) + (len_p*(mc+mp)) / (mc*mp*len_com*len_com))    ]]
-D = np.asarray(D)
-E = [[-1, len_p, 0, 0], [1, -len_p, 0, 0 ]]
-E = np.asarray(E)
-F = 1/ks * np.eye(2)
-F = np.asarray(F)
-c = [[d1], [-d2]]
-c = np.asarray(c)
-d = np.zeros((4,1))
-H = np.zeros((2,1))
-A = np.eye(n) + Ts * A
-B = Ts*B
-D = Ts*D
-d = Ts*d
-
-Q = np.array([[10, 0, 0, 0], [0, 3, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-
-R = np.array([[1]])
-
-G = 0.1*np.identity(n+m+k)
-G[6,6] = 0
-
-px = 1000
-plam = 1
-pu = 0
-U = [[px, 0, 0, 0, 0, 0, 0], [0, px, 0, 0, 0, 0, 0 ], [0, 0, px, 0, 0, 0, 0 ], [0, 0, 0, px, 0 ,0 ,0], [0, 0, 0, 0, plam, 0, 0], [0, 0, 0, 0, 0, plam, 0  ], [0,0,0,0,0,0,0]]
-U= np.asarray(U)
-
-x_des = np.zeros(n)
+from pyc3 import(
+    LCS,
+    C3MIQP,
+    C3Options,
+    CostMatrices
+)
 
 
-Qp = []
-Rp = []
-Gp = []
-Up = []
-
-Ap = []
-Bp = []
-Dp = []
-dp = []
-Ep = []
-Fp = []
-Hp = []
-cp = []
-x_desp = []
-
-for i in range(N):
-	Qp.append(Q)
-	Rp.append(R)
-	Gp.append(G)
-	Up.append(U)
-	Ap.append(A)
-	Bp.append(B)
-	Dp.append(D)
-	dp.append(d)
-	Ep.append(E)
-	Fp.append(F)
-	Hp.append(H)
-	cp.append(c)
-	x_desp.append(x_des)
-
-#change with algebraic ricatti
-QN = linalg.solve_discrete_are(A, B, Q, R)
-Qp.append(QN)
-x_desp.append(x_des)
-
-#cartpole = LCS(A,B,D,d,E,F,H,c,N)
-cartpole = LCS(Ap, Bp, Dp, dp, Ep, Fp, Hp, cp)
-
-options = C3Options()
-
-opt = C3MIQP(cartpole, Qp, Rp, Gp, Up, x_desp, options)
-
-#print(Qp)
-
-x0 = np.zeros((4,1))
-
-x0[0] = 0.1
-x0[2] = 0.3
-
-delta_add = np.zeros((n+m+k, 1))
-w_add = np.zeros((n+m+k, 1))
-
-#input = [5]
-
-system_iter = 500
-
-x = np.zeros((n, system_iter+1))
-
-x[:, [0]]  = x0
-
-for i in range(system_iter):
-
-	delta = []
-	w = []
-
-	for j in range(N):
-		delta.append(delta_add)
-		w.append(w_add)
-
-	input = opt.Solve(x[:, [i]], delta, w)
-
-	prediction = cartpole.Simulate(x[:, [i]], input)
-	x[:, [i+1]] = np.reshape(prediction, (n,1))
-
-	if i % 50 == 0:
-		print(i)
+def make_cartpole_with_soft_walls_dynamics(N: int) -> LCS:
+    g = 9.81
+    mp = 0.411
+    mc = 0.978
+    len_p = 0.6
+    len_com = 0.4267
+    d1 = 0.35
+    d2 = -0.35
+    ks = 100
+    dt = 0.01
+    A = np.array([
+        [0, 0, 1, 0],
+        [0, 0, 0, 1],
+        [0, g*mp/mc, 0, 0],
+        [0, g*(mc+mp)/(len_com*mc), 0, 0]
+    ])
+    A = np.eye(A.shape[0]) + dt * A
+    B = dt * np.array([[0], [0], [1/mc], [1/(len_com*mc)]])
+    D = dt * np.array([
+        [0, 0],
+        [0, 0],
+        [(-1/mc) + (len_p/(mc*len_com)), (1/mc) - (len_p/(mc*len_com))],
+        [(-1 / (mc*len_com)) + (len_p*(mc+mp)) / (mc*mp*len_com*len_com), -((-1 / (mc*len_com)) + (len_p*(mc+mp)) / (mc*mp*len_com*len_com))]
+    ])
+    E = np.array([
+        [-1, len_p, 0, 0],
+        [1, -len_p, 0, 0]
+    ])
+    F = (1.0 / ks) * np.eye(2)
+    c = np.array([[d1], [-d2]])
+    d = np.zeros((4, 1))
+    H = np.zeros((2, 1))
+    
+    return LCS(A, B, D, d, E, F, H, c, N, dt)
 
 
+def make_cartpole_costs(lcs: LCS) -> CostMatrices:
+    N = lcs.N()
+    n = lcs.num_states()
+    m = lcs.num_lambdas()
+    k = lcs.num_inputs()
+    
+    R = [np.eye(k) for _ in range(N)]
+    Q = [np.array([[10, 0, 0, 0], [0, 3, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]) for _ in range(N)]
+    Q.append(linalg.solve_discrete_are(lcs.A()[0], lcs.B()[0], Q[0], R[0]))
+    G = 0.1 * np.eye(n+m+k)
+    G[6, 6] = 0
+    G = [G for _ in range(N)]
+    
+    px = 1000
+    plam = 1
+    pu = 0
+    U = np.block([
+        [px * np.eye(n), np.zeros((n, m + k))],
+        [np.zeros((m + k, n)), plam * np.eye(m + k)]
+    ])
+    U[-1, -1] = pu
+    U = [U for _ in range(N)]
+    
+    return CostMatrices(Q, R, G, U)
 
-dt = 0.01
-time_x = np.arange(0, system_iter * dt + dt, dt)
-# plt.plot(time_x, x.T)
-# plt.show()
 
+def main():
+    N = 10
+    cartpole = make_cartpole_with_soft_walls_dynamics(N)
+    costs = make_cartpole_costs(cartpole)
+    
+    n = cartpole.num_states()
+    
+    x0 = np.zeros((n, 1))
+    xd = [x0 for _ in range(N + 1)]
+    options = C3Options()
 
+    opt = C3MIQP(cartpole, costs, xd, options)
+    
+    x0[0] = 0.01
+    x0[2] = 0.03
+    
+    system_iter = 500
+    
+    x = np.zeros((n, system_iter+1))
+    
+    x[:, 0] = x0.ravel()
+    
+    for i in range(system_iter):
+        opt.Solve(x[:, i])
+        u_opt = opt.GetInputSolution()[0]
+        prediction = cartpole.Simulate(x[:, i], u_opt)
+        x[:, i+1] = prediction
+    
+        if i % 50 == 0:
+            print(i)
+    
+    dt = cartpole.dt()
+    time_x = np.arange(0, system_iter * dt + dt, dt)
+    
+    plt.plot(time_x, x.T)
+    plt.show()
+    
 
-#cartpole.Simulate(x0, input)
-#print(x1)
-#c_i = np.array([[d1, -d2]]).T
-#delta_c = np.array([[0, 0]]).T
-#U = np.identity(7)
-#ret = opt.SolveSingleProjection(U, delta_c, E, F, H, c_i)
-# At the moment, the Solve() function causes a crash, somewhere in the C++
-#(u, delta_1, w_1) = opt.Solve(x0, delta, w)
-# import pdb; pdb.set_trace()
+if __name__ == '__main__':
+    main()

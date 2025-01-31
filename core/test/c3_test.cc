@@ -295,7 +295,6 @@ void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_,
 
   C3Options optionsinit;
   optionsinit.admm_iter = 10;
-  optionsinit.rho = 0.1;
   optionsinit.rho_scale = 2;
   optionsinit.num_threads = 0;
   optionsinit.delta_option = 0;
@@ -422,7 +421,6 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_,
 
   C3Options optionsinit;
   optionsinit.admm_iter = 10;
-  optionsinit.rho = 1;
   optionsinit.rho_scale = 1.2;
   optionsinit.num_threads = 0;
   optionsinit.delta_option = 1;
@@ -593,13 +591,12 @@ void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_,
 
   C3Options optionsinit;
   optionsinit.admm_iter = 5;
-  optionsinit.rho = 0.02;
   optionsinit.rho_scale = 1.1;
   optionsinit.num_threads = 0;
   optionsinit.delta_option = 1;
 
   MatrixXd Ginit(n + m + k, n + m + k);
-  Ginit = optionsinit.rho * MatrixXd::Identity(n + m + k, n + m + k);
+  Ginit = 0.02 * MatrixXd::Identity(n + m + k, n + m + k);
   std::vector<MatrixXd> G(N, Ginit);
 
   *options = optionsinit;

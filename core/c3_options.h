@@ -7,15 +7,14 @@ namespace c3 {
 
 struct C3Options {
   // Hyperparameters
-  int admm_iter;     // total number of ADMM iterations
-  float rho;         // initial value of the rho parameter
-  float rho_scale;   // scaling of rho parameter (/rho = rho_scale * /rho)
-  int num_threads;   // 0 is dynamic, greater than 0 for a fixed count
-  int delta_option;  // different options for delta update
+  int admm_iter = 3;     // total number of ADMM iterations
+  float rho_scale = 10;   // scaling of rho parameter (/rho = rho_scale * /rho)
+  int num_threads = 10;   // 0 is dynamic, greater than 0 for a fixed count
+  int delta_option = 1;  // different options for delta update
   std::string projection_type;
   std::string contact_model;
   double M = 1000;  // big M value for MIQP
-  bool warm_start;
+  bool warm_start = true;
   bool use_predicted_x0;
   bool end_on_qp_step;
   bool use_robust_formulation;
@@ -41,7 +40,7 @@ struct C3Options {
   Eigen::MatrixXd G;
   Eigen::MatrixXd U;
 
-  // Quick scaling of the cost matrices.
+  // Uniform scaling of the cost matrices.
   // Q = w_Q * diag(q_vector)
   // R = w_R * diag(r_vector)
   // G = w_G * diag(g_vector)
@@ -79,7 +78,6 @@ struct C3Options {
   template<typename Archive>
   void Serialize(Archive *a) {
     a->Visit(DRAKE_NVP(admm_iter));
-    a->Visit(DRAKE_NVP(rho));
     a->Visit(DRAKE_NVP(rho_scale));
     a->Visit(DRAKE_NVP(num_threads));
     a->Visit(DRAKE_NVP(delta_option));

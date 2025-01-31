@@ -140,9 +140,21 @@ PYBIND11_MODULE(c3, m) {
            py::arg("F"), py::arg("H"), py::arg("c"), py::arg("N"),
            py::arg("dt"))
       .def(py::init<const LCS&>(), py::arg("other"))
-
-      .def("simulate", &LCS::Simulate, py::arg("x_init"), py::arg("input"),
-           "Simulate the system for one step");
+      .def("Simulate", &LCS::Simulate, py::arg("x_init"), py::arg("u"),
+           "Simulate the system for one step")
+      .def("A", &LCS::A, py::return_value_policy::copy)
+      .def("B", &LCS::B, py::return_value_policy::copy)
+      .def("D", &LCS::D, py::return_value_policy::copy)
+      .def("d", &LCS::d, py::return_value_policy::copy)
+      .def("E", &LCS::E, py::return_value_policy::copy)
+      .def("F", &LCS::F, py::return_value_policy::copy)
+      .def("H", &LCS::H, py::return_value_policy::copy)
+      .def("c", &LCS::c, py::return_value_policy::copy)
+      .def("dt", &LCS::dt, py::return_value_policy::copy)
+      .def("N", &LCS::N, py::return_value_policy::copy)
+      .def("num_states", &LCS::num_states, py::return_value_policy::copy)
+      .def("num_inputs", &LCS::num_inputs, py::return_value_policy::copy)
+      .def("num_lambdas", &LCS::num_lambdas, py::return_value_policy::copy);
 
   py::class_<C3Options> cls(m, "C3Options");
   cls.def(py::init<>());
