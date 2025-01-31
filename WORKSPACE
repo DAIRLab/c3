@@ -32,3 +32,19 @@ add_default_workspace()
 load("@rules_python//python:repositories.bzl", "py_repositories")
 
 py_repositories()
+
+# Apple support
+http_archive(
+    name = "build_bazel_apple_support",
+    sha256 = "02f7456e589471dcfc73f1b9ca7f2c2ea5ca4aea999674abea9aebe818700b6e",
+    url = "https://github.com/bazelbuild/apple_support/releases/download/1.17.0/apple_support.1.17.0.tar.gz",
+)
+
+load(
+    "@build_bazel_apple_support//lib:repositories.bzl",
+    "apple_support_dependencies",
+)
+
+apple_support_dependencies()
+
+load("@bazel_features//:deps.bzl", "bazel_features_deps")

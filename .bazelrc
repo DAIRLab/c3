@@ -27,11 +27,17 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+# enable platform specific build configurations
+common --enable_platform_specific_config
+
+# https://github.com/RobotLocomotion/drake/issues/22204
+build:macos --copt=-fno-assume-unique-vtables
+
 # Default to an optimized build.
 build -c opt
 
 # Default build options.
-build --force_pic
+build:linux --force_pic
 build --strip=never
 
 # Default test options.

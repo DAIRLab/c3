@@ -64,10 +64,12 @@ py_package(
 
 py_wheel(
     name = "pyc3_wheel",
-    # Package data. We're building "example_minimal_package-0.0.1-py3-none-any.whl"
     distribution = "pyc3",
     license = "MIT",
-    platform = "linux_x86_64",
+    platform = select({
+        "@platforms//os:linux": "linux_x86_64",
+        "@platforms//os:osx": "macosx-15.0-arm64",
+    }),
     python_tag = "py3",
     strip_path_prefixes = ["bindings/"],
     version = "0.0.2",

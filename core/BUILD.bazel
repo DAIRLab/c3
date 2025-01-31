@@ -3,7 +3,6 @@
 
 package(default_visibility = ["//visibility:public"])
 
-
 cc_library(
     name = "solver_options_io",
     hdrs = ["solver_options_io.h"],
@@ -31,14 +30,20 @@ cc_library(
         "c3_options.h",
         "c3_qp.h",
     ],
-    copts = ["-fopenmp"],
-    linkopts = ["-fopenmp"],
+    copts = select({
+        "@platforms//os:linux": ["-fopenmp"],
+        "@platforms//os:osx": [],
+    }),
+    linkopts = select({
+        "@platforms//os:linux": ["-fopenmp"],
+        "@platforms//os:osx": [],
+    }),
     deps = [
         ":lcs",
         "@drake//:drake_shared_library",
     ] + select({
-         "//tools:with_gurobi": ["@gurobi//:gurobi_cxx"],
-         "//conditions:default": [],
+        "//tools:with_gurobi": ["@gurobi//:gurobi_cxx"],
+        "//conditions:default": [],
     }),
 )
 
@@ -50,7 +55,6 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
-
 
 cc_binary(
     name = "c3_test",

@@ -4,7 +4,10 @@
 #include <iostream>
 
 #include <Eigen/Core>
+
+#if defined(_OPENMP)
 #include <omp.h>
+#endif
 
 #include "lcs.h"
 
@@ -365,6 +368,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
   int i;
 
+#if defined(_OPENMP)
   if (options_.num_threads > 0) {
     omp_set_dynamic(0);  // Explicitly disable dynamic teams
     omp_set_num_threads(options_.num_threads);  // Set number of threads
@@ -372,6 +376,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
   }
 
 #pragma omp parallel for num_threads(options_.num_threads)
+#endif
   for (i = 0; i < N_; ++i) {
     if (warm_start_) {
       if (i == N_ - 1) {
