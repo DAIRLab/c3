@@ -1,0 +1,9 @@
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "c3_py_test",
+    srcs = ["c3_py_test.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+    ],
+)

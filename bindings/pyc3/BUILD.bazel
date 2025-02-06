@@ -10,17 +10,14 @@ load(
     "get_pybind_package_info",
     "pybind_py_library",
 )
-
-load("@rules_python//python:packaging.bzl", "py_wheel")
 load("@rules_python//python:packaging.bzl", "py_package")
+load("@rules_python//python:packaging.bzl", "py_wheel")
 
 pybind_py_library(
     name = "c3_py",
-    cc_deps = [
-        "//src:c3",
-    ],
+    cc_deps = ["//core:c3"],
     cc_so_name = "c3",
-    cc_srcs = ["c3.cc"],
+    cc_srcs = ["c3_py.cc"],
     py_deps = [
         ":module_py",
     ],
@@ -59,18 +56,20 @@ py_package(
     name = "c3_pkg",
     # Only include these Python packages.
     packages = [],
-    deps = [":pyc3",
-            "@gurobi//:gurobi_c"],
+    deps = [
+        ":pyc3",
+        "@gurobi//:gurobi_c",
+    ],
 )
 
 py_wheel(
     name = "pyc3_wheel",
     # Package data. We're building "example_minimal_package-0.0.1-py3-none-any.whl"
     distribution = "pyc3",
-    python_tag = "py3",
-    version = "0.0.1",
-    deps = [":c3_pkg"],
     license = "MIT",
     platform = "linux_x86_64",
+    python_tag = "py3",
     strip_path_prefixes = ["bindings/"],
+    version = "0.0.2",
+    deps = [":c3_pkg"],
 )
