@@ -1,21 +1,28 @@
 # C3
 Consensus Complementarity Control
 
-This is a standalone repository for the C3 algorithm. For more in-depth examples, see dairlib.
+This is a standalone repository for the C3 algorithm. For more in-depth examples, see dairlib. 
+Currently we only officially support Ubuntu 22.04. 
 
-Currently, it is only confirmed that this process works on Ubuntu 20.04 with Python 3.8! 
-
-## Installation
-1. Install Drake via apt, following instructions https://drake.mit.edu/apt.html#stable-releases
-2. Download and extract Gurobi 9.5.0: https://packages.gurobi.com/9.5/gurobi9.5.0_linux64.tar.gz
-3. Install pyc3
-```
-pip install https://github.com/DAIRLab/c3/releases/download/v0.0.1/pyc3-0.0.1-py3-none-linux_x86_64.whl
-```
-4. Set LD_LIBRARY_PATH
-```
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/drake/lib/:<GUROBI_LOCATION>/linux64/lib
+## Build from source
+1. Clone C3 (Don't change to the c3 directory yet)
+```shell
+git clone --filter=blob:none git@github.com:DAIRLab/c3.git 
 ```
 
-## Example
-See `src/test/c3_py_ti_test.py`
+2. Install Drake's dependencies by running the commands below. This will download the specific Drake release used by C3, and install the corresponding dependencies. 
+```shell
+git clone --depth 1 --branch v1.35.0 https://github.com/RobotLocomotion/drake.git
+sudo drake/setup/ubuntu/install_prereqs.sh
+```
+3. Follow the instructions at https://drake.mit.edu/bazel.html to install Gurobi 10.0
+4. Change to the C3 Directory, and build the repo:
+```shell
+cd c3
+bazel build ...
+```
+5. Run an example program
+```shell
+bazel-bin/bindings/test/c3_py_test
+```
+6. You may delete the copy of Drake we cloned in step 3
