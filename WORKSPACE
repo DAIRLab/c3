@@ -11,6 +11,7 @@ DRAKE_CHECKSUM = "f19ee360656c87db8b0688c676c9f2ab2ae71ea08691432979b32d71c236e7
 # DRAKE_CHECKSUM = "0" * 64
 
 # Maybe download Drake.
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
@@ -32,3 +33,12 @@ add_default_workspace()
 load("@rules_python//python:repositories.bzl", "py_repositories")
 
 py_repositories()
+
+
+new_git_repository(
+    name = "googletest",
+    build_file = "gmock.BUILD",
+    remote = "https://github.com/google/googletest",
+    tag = "v1.15.2",
+)
+
