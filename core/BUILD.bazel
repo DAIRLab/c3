@@ -57,14 +57,6 @@ cc_binary(
     srcs = ["test/c3_test.cc"],
     deps = [
         ":c3",
-    ],
-)
-
-cc_test(
-    name = "hello_test",
-    size = "small",
-    srcs = ["test/hello_test.cc"],
-    deps = [
         "@googletest//:gtest",
         "@googletest//:gtest_main",
     ],
