@@ -1,6 +1,7 @@
 #include <chrono>
 #include <string>
 #include <iostream>
+#include <gtest/gtest.h>
 
 #include "core/c3_miqp.h"
 
@@ -13,6 +14,8 @@ using std::vector;
 
 using c3::C3Options;
 
+using namespace c3;
+
 /* void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_, */
 /*                    vector<MatrixXd>* B_, vector<MatrixXd>* D_, */
 /*                    vector<VectorXd>* d_, vector<MatrixXd>* E_, */
@@ -22,7 +25,7 @@ using c3::C3Options;
 /*                    vector<MatrixXd>* U_, VectorXd* x0, */
 /*                    vector<VectorXd>* xdesired_, C3Options* options); */
 /**/
-/* namespace c3 { */
+// /* namespace c3 { */
 /**/
 /* int DoMain(int argc, char* argv[]) { */
 /*   int example = 2;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting */
@@ -302,4 +305,141 @@ using c3::C3Options;
 /*   *xdesired_ = xdesired; */
 /* }; */
 
+class c3CartpoleTest : public testing::Test
+{
+protected:
+  c3CartpoleTest()
+  {
+    int n = 4;
+    int m = 2;
+    int k = 1;
+    int N = 10;
 
+    float g = 9.81;
+    float mp = 0.411;
+    float mc = 0.978;
+    float len_p = 0.6;
+    float len_com = 0.4267;
+    float d1 = 0.35;
+    float d2 = -0.35;
+    float ks = 100;
+    float Ts = 0.01;
+
+    /// initial condition(cartpole)
+    VectorXd x0init(n);
+    x0init << 0.1, 0, 0.3, 0;
+
+    MatrixXd Ainit(n, n);
+    Ainit << 0, 0, 1, 0, 0, 0, 0, 1, 0, g * mp / mc, 0, 0, 0,
+        (g * (mc + mp)) / (len_com * mc), 0, 0;
+
+    MatrixXd Binit(n, k);
+    Binit << 0, 0, 1 / mc, 1 / (len_com * mc);
+
+    MatrixXd Dinit(n, m);
+    Dinit << 0, 0, 0, 0, (-1 / mc) + (len_p / (mc * len_com)),
+        (1 / mc) - (len_p / (mc * len_com)),
+        (-1 / (mc * len_com)) +
+            (len_p * (mc + mp)) / (mc * mp * len_com * len_com),
+        -((-1 / (mc * len_com)) +
+          (len_p * (mc + mp)) / (mc * mp * len_com * len_com));
+
+    MatrixXd Einit(m, n);
+    Einit << -1, len_p, 0, 0, 1, -len_p, 0, 0;
+
+    MatrixXd Finit(m, m);
+    Finit << 1 / ks, 0, 0, 1 / ks;
+
+    VectorXd cinit(m);
+    cinit << d1, -d2;
+
+    VectorXd dinit(n);
+    dinit << 0, 0, 0, 0;
+
+    MatrixXd Hinit = MatrixXd::Zero(m, k);
+
+    MatrixXd Qinit(n, n);
+    Qinit << 10, 0, 0, 0, 0, 3, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
+
+    MatrixXd Rinit(k, k);
+    Rinit << 1;
+
+    MatrixXd Ginit(n + m + k, n + m + k);
+    Ginit = 0.1 * MatrixXd::Identity(n + m + k, n + m + k);
+    Ginit(n + m + k - 1, n + m + k - 1) = 0;
+
+    MatrixXd Uinit(n + m + k, n + m + k);
+    Uinit << 1000, 0, 0, 0, 0, 0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 1000, 0, 0, 0, 0,
+        0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+        0, 0, 0, 0;
+
+    // Use ricatti equation to estimate future cost
+    MatrixXd QNinit = drake::math::DiscreteAlgebraicRiccatiEquation(
+        Ainit * Ts + MatrixXd::Identity(n, n), Ts * Binit, Qinit, Rinit);
+
+    std::vector<MatrixXd> Qsetup(N + 1, Qinit);
+    Qsetup.at(N) = QNinit; // Switch to QNinit, solution of Algebraic Ricatti
+
+    // Initialize LCS for N timesteps
+    // Dynamics
+    A.resize(N, Ainit * Ts + MatrixXd::Identity(n, n));
+    B.resize(N, Ts * Binit);
+    D.resize(N, Ts * Dinit);
+    d.resize(N, Ts * dinit);
+
+    // Complimentary constraints
+    E.resize(N, Einit);
+    F.resize(N, Finit);
+    c.resize(N, cinit);
+    H.resize(N, Hinit);
+
+    // Cost Matrices
+    Q = Qsetup;
+    R.resize(N, Rinit);
+    G.resize(N, Ginit);
+    U.resize(N, Uinit);
+
+    // Desired state : Vertically balances
+    VectorXd xdesiredinit;
+    xdesiredinit = VectorXd::Zero(n);
+    xdesired.resize(N + 1, xdesiredinit);
+
+    // Set C# options
+    options.admm_iter = 10;
+    options.rho_scale = 2;
+    options.num_threads = 0;
+    options.delta_option = 0;
+  }
+
+  /// dimensions (n: state dimension, m: complementarity variable dimension, k: */
+  /// input dimension, N: MPC horizon)
+  int nd, md, kd, Nd;
+  /// variables (LCS)
+  vector<MatrixXd> A, B, D, E, F, H;
+  vector<VectorXd> d, c;
+  /// initial condition(x0), tracking (xdesired)
+  VectorXd x0;
+  vector<VectorXd> xdesired;
+  /// variables (cost, C3)
+  vector<MatrixXd> Q, R, G, U;
+  /// C3 options
+  C3Options options;
+};
+
+// Test constructor (maintain backward compatibility if constructor changed)
+TEST_F(c3CartpoleTest, InitializationTest)
+{
+  const double dt = 0.01;
+  LCS system(A, B, D, d, E, F, H, c, dt);
+  C3::CostMatrices cost(Q, R, G, U);
+  std::cout << "Size of A : " << A.size();
+  std::cout << "Size of B : " << B.size();
+  ASSERT_NO_THROW(
+    {C3MIQP opt(system, cost, xdesired, options);}
+  );
+}
+
+int main(int argc, char **argv) {
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
