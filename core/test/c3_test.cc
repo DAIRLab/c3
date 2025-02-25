@@ -432,11 +432,21 @@ TEST_F(c3CartpoleTest, InitializationTest)
   const double dt = 0.01;
   LCS system(A, B, D, d, E, F, H, c, dt);
   C3::CostMatrices cost(Q, R, G, U);
-  std::cout << "Size of A : " << A.size();
-  std::cout << "Size of B : " << B.size();
   ASSERT_NO_THROW(
     {C3MIQP opt(system, cost, xdesired, options);}
   );
+}
+
+TEST_F(c3CartpoleTest, LinearConstraintsTest)
+{
+  const double dt = 0.01;
+  LCS system(A, B, D, d, E, F, H, c, dt);
+  C3::CostMatrices cost(Q, R, G, U);
+  C3MIQP opt(system, cost, xdesired, options);
+
+  std::span<const LinearConstraintBinding> user_constraints = opt.GetLinearConstraints();
+  EXPECT_EQ(user_constraints.size(), 0);
+
 }
 
 int main(int argc, char **argv) {

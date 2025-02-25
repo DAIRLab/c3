@@ -450,4 +450,8 @@ void C3::RemoveConstraints() {
   user_constraints_.clear();
 }
 
+std::span<const LinearConstraintBinding> C3::GetLinearConstraints(){
+  return user_constraints_;
+}
+
 }  // namespace c3

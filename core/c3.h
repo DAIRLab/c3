@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <span>
 
 #include <Eigen/Dense>
 
@@ -11,6 +12,8 @@
 #include "drake/solvers/osqp_solver.h"
 
 namespace c3 {
+  typedef drake::solvers::Binding<drake::solvers::LinearConstraint> LinearConstraintBinding;
+
 class C3 {
 
  public:
@@ -86,6 +89,11 @@ class C3 {
 
   /*! Remove all constraints previously added by AddLinearConstraint */
   void RemoveConstraints();
+
+  /*!
+   * Get list of user constraints (Unmodifiable)
+   */
+  std::span<const LinearConstraintBinding> GetLinearConstraints();
 
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     prog_.SetSolverOptions(options);
@@ -189,10 +197,8 @@ class C3 {
   // QP step constraints
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> initial_state_constraint_;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
-  std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
-      constraints_;
-  std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
-      user_constraints_;
+  std::vector<LinearConstraintBinding> constraints_;
+  std::vector<LinearConstraintBinding> user_constraints_;
 
   /// Projection step variables are defined outside of the MathematicalProgram
   /// interface
