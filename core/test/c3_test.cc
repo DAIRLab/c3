@@ -116,7 +116,7 @@ protected:
     xdesiredinit = VectorXd::Zero(n);
     xdesired.resize(N + 1, xdesiredinit);
 
-    // Set C# options
+    // Set C3 options
     options.admm_iter = 10;
     options.rho_scale = 2;
     options.num_threads = 0;
@@ -338,7 +338,8 @@ TEST_F(c3CartpoleTest, UpdateLCSTest)
   }
 }
 
-TEST_F(c3CartpoleTest, End2EndCartpoleTest)
+// Disabled due to issues with licensing
+TEST_F(c3CartpoleTest, DISABLED_End2EndCartpoleTest)
 {
   const double dt = 0.01;
   LCS system(A, B, D, d, E, F, H, c, dt);
