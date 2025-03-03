@@ -43,7 +43,8 @@ void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_,
 namespace c3 {
 
 int DoMain(int argc, char* argv[]) {
-  int example = 2;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting
+  int example = 1;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting
+  std::cout << "Running example : " << example << std::endl;
 
   /// dimensions (n: state dimension, m: complementarity variable dimension, k:
   /// input dimension, N: MPC horizon)

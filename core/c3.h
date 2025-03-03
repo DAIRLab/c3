@@ -58,10 +58,20 @@ class C3 {
   void UpdateLCS(const LCS& lcs);
 
   /*!
+   * Get a copy of the list of the dynamic constraints
+   */
+  const std::vector<drake::solvers::LinearEqualityConstraint*>& GetDynamicConstraints();
+
+  /*!
    * Update the reference trajectory
    * @param x_des the new reference trajectory
    */
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
+
+  /*!
+   * Get the current cost associated with the target reference trajectory
+   */
+  const std::vector<drake::solvers::QuadraticCost*>& GetTargetCost();
 
   /*!
    * Allow users to add a linear constraint for all timesteps
@@ -91,9 +101,9 @@ class C3 {
   void RemoveConstraints();
 
   /*!
-   * Get list of user constraints (Unmodifiable)
+   * Get a copy of the list of user constraints
    */
-  std::span<const LinearConstraintBinding> GetLinearConstraints();
+  const std::vector<LinearConstraintBinding>& GetLinearConstraints();
 
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     prog_.SetSolverOptions(options);

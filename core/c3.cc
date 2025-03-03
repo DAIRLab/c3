@@ -176,12 +176,20 @@ void C3::UpdateLCS(const LCS& lcs) {
   }
 }
 
+const std::vector<drake::solvers::LinearEqualityConstraint*>& C3::GetDynamicConstraints(){
+  return dynamics_constraints_;
+}
+
 void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   x_desired_ = x_des;
   for (int i = 0; i < N_ + 1; ++i) {
     target_cost_[i]->UpdateCoefficients(2 * cost_matrices_.Q.at(i),
                                         -2 * cost_matrices_.Q.at(i) * x_desired_.at(i));
   }
+}
+
+const std::vector<drake::solvers::QuadraticCost*>& C3::GetTargetCost(){
+  return target_cost_;
 }
 
 void C3::Solve(const VectorXd& x0) {
@@ -450,7 +458,7 @@ void C3::RemoveConstraints() {
   user_constraints_.clear();
 }
 
-std::span<const LinearConstraintBinding> C3::GetLinearConstraints(){
+const std::vector<LinearConstraintBinding>& C3::GetLinearConstraints(){
   return user_constraints_;
 }
 
