@@ -60,4 +60,8 @@ cc_test(
         "@googletest//:gtest",
         "@googletest//:gtest_main",
     ],
+    env_inherit = [
+        "GUROBI_HOME",
+        "GRB_LICENSE_FILE"
+    ],
 )

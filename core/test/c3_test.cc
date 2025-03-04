@@ -339,7 +339,7 @@ TEST_F(c3CartpoleTest, UpdateLCSTest)
 }
 
 // Disabled due to issues with licensing
-TEST_F(c3CartpoleTest, DISABLED_End2EndCartpoleTest)
+TEST_F(c3CartpoleTest, End2EndCartpoleTest)
 {
   const double dt = 0.01;
   LCS system(A, B, D, d, E, F, H, c, dt);
@@ -362,7 +362,6 @@ TEST_F(c3CartpoleTest, DISABLED_End2EndCartpoleTest)
 
 
   x[0] = x0;
-  std::cout << x[0]<< std::endl;
 
   for (int i = 0; i < timesteps - 1; i++)
   {
@@ -371,17 +370,14 @@ TEST_F(c3CartpoleTest, DISABLED_End2EndCartpoleTest)
     delta = delta_reset;
     w = w_reset;
 
-    std::cout << "Iteration : " << i << std::endl;
-
     /// calculate the input given x[i]
     opt.Solve(x[i]);
-    std::cout << "Solve ran" << std::endl;
     input[i] = opt.GetInputSolution()[0];
-    std::cout << "Input solution recieved" << std::endl;
 
     /// simulate the LCS
     x[i + 1] = system.Simulate(x[i], input[i]);
   }
+  std::cout << x[timesteps - 1] << std::endl;
   ASSERT_EQ(x[timesteps - 1].isApprox(VectorXd::Zero(n)), true);
 }
 
