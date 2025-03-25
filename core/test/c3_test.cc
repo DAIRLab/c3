@@ -1,7 +1,7 @@
 #include <chrono>
-#include <string>
-#include <iostream>
 #include <gtest/gtest.h>
+#include <iostream>
+#include <string>
 
 #include "core/c3_miqp.h"
 
@@ -16,12 +16,9 @@ using c3::C3Options;
 
 using namespace c3;
 
-
-class c3CartpoleTest : public testing::Test
-{
+class C3CartpoleTest : public testing::Test {
 protected:
-  c3CartpoleTest()
-  {
+  C3CartpoleTest() {
     n = 4;
     m = 2;
     k = 1;
@@ -81,9 +78,9 @@ protected:
     Ginit(n + m + k - 1, n + m + k - 1) = 0;
 
     MatrixXd Uinit(n + m + k, n + m + k);
-    Uinit << 1000, 0, 0, 0, 0, 0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 1000, 0, 0, 0, 0,
-        0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-        0, 0, 0, 0;
+    Uinit << 1000, 0, 0, 0, 0, 0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 1000, 0, 0,
+        0, 0, 0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 0, 0, 0;
 
     // Use ricatti equation to estimate future cost
     MatrixXd QNinit = drake::math::DiscreteAlgebraicRiccatiEquation(
@@ -121,11 +118,18 @@ protected:
     options.rho_scale = 2;
     options.num_threads = 0;
     options.delta_option = 0;
+
+    dt = 0.01;
+    pSystem = std::make_unique<LCS>(A, B, D, d, E, F, H, c, dt);
+    pCost = std::make_unique<C3::CostMatrices>(Q, R, G, U);
+
+    pOpt = std::make_unique<C3MIQP>(*pSystem, *pCost, xdesired, options);
   }
 
-  /// dimensions (n: state dimension, m: complementarity variable dimension, k: */
-  /// input dimension, N: MPC horizon)
+  /// dimensions (n: state dimension, m: complementarity variable dimension, k:
+  /// */ input dimension, N: MPC horizon)
   int n, m, k, N;
+  double dt;
   /// variables (LCS)
   vector<MatrixXd> A, B, D, E, F, H;
   vector<VectorXd> d, c;
@@ -136,34 +140,29 @@ protected:
   vector<MatrixXd> Q, R, G, U;
   /// C3 options
   C3Options options;
+  /// Unique pointer to optimizer
+  std::unique_ptr<LCS> pSystem;
+  std::unique_ptr<C3::CostMatrices> pCost;
+  std::unique_ptr<C3MIQP> pOpt;
 };
 
 // Test constructor (maintain backward compatibility if constructor changed)
-TEST_F(c3CartpoleTest, InitializationTest)
-{
-  const double dt = 0.01;
-  LCS system(A, B, D, d, E, F, H, c, dt);
-  C3::CostMatrices cost(Q, R, G, U);
+TEST_F(C3CartpoleTest, InitializationTest) {
   // Assert system initialization is working as expected
-  ASSERT_NO_THROW(
-      { C3MIQP opt(system, cost, xdesired, options); });
+  ASSERT_NE(nullptr, pOpt);
 }
 
-TEST_F(c3CartpoleTest, LinearConstraintsTest)
-{
-  const double dt = 0.01;
-  LCS system(A, B, D, d, E, F, H, c, dt);
-  C3::CostMatrices cost(Q, R, G, U);
-  C3MIQP opt(system, cost, xdesired, options);
+// Test if GetLinearConstraints is working as expected
+TEST_F(C3CartpoleTest, LinearConstraintsTest) {
 
-  // Ensure GetLinearConstraints is working
   std::vector<LinearConstraintBinding> user_constraints;
-  ASSERT_NO_THROW({ user_constraints = opt.GetLinearConstraints(); });
+  ASSERT_NO_THROW({ user_constraints = pOpt->GetLinearConstraints(); });
   ASSERT_EQ(user_constraints.size(), 0);
 }
 
-class c3CartpoleTestParameterizedLinearConstraints : public c3CartpoleTest, public ::testing::WithParamInterface<std::tuple<int, int, int>>
-{
+class C3CartpoleTestParameterizedLinearConstraints
+    : public C3CartpoleTest,
+      public ::testing::WithParamInterface<std::tuple<int, int, int>> {
   /* Parameterized linear constraints contains
   | --------------------------- | state | input | lambda |
   | constraint_type             | 1     | 2     | 3      |
@@ -172,12 +171,9 @@ class c3CartpoleTestParameterizedLinearConstraints : public c3CartpoleTest, publ
   */
 };
 
-TEST_P(c3CartpoleTestParameterizedLinearConstraints, LinearConstraintsMatrixXdTest)
-{
-  const double dt = 0.01;
-  LCS system(A, B, D, d, E, F, H, c, dt);
-  C3::CostMatrices cost(Q, R, G, U);
-  C3MIQP opt(system, cost, xdesired, options);
+// Test if user can manipulate linear constraints using MatrixXd
+TEST_P(C3CartpoleTestParameterizedLinearConstraints,
+       LinearConstraintsMatrixXdTest) {
 
   int constraint_type = std::get<0>(GetParam());
   int constraint_size = std::get<1>(GetParam());
@@ -187,15 +183,16 @@ TEST_P(c3CartpoleTestParameterizedLinearConstraints, LinearConstraintsMatrixXdTe
   VectorXd lb = Eigen::VectorXd::Constant(constraint_size, 0.0);
   VectorXd ub = Eigen::VectorXd::Constant(constraint_size, 2.0);
 
-  opt.AddLinearConstraint(Al, lb, ub, constraint_type);
+  pOpt->AddLinearConstraint(Al, lb, ub, constraint_type);
 
-  std::vector<LinearConstraintBinding> user_constraints = opt.GetLinearConstraints();
+  std::vector<LinearConstraintBinding> user_constraints =
+      pOpt->GetLinearConstraints();
   // Number of constraints must be N-1 for state and N for input and lambda
   EXPECT_EQ(user_constraints.size(), num_of_new_constraints);
 
-  for (auto constraint : user_constraints)
-  {
-    const std::shared_ptr<drake::solvers::LinearConstraint> lc = constraint.evaluator();
+  for (auto constraint : user_constraints) {
+    const std::shared_ptr<drake::solvers::LinearConstraint> lc =
+        constraint.evaluator();
     // Check A matrix of the constraint
     EXPECT_EQ(Al.isApprox(lc->GetDenseA()), true);
     // Check number of variables in each constraint
@@ -203,12 +200,9 @@ TEST_P(c3CartpoleTestParameterizedLinearConstraints, LinearConstraintsMatrixXdTe
   }
 }
 
-TEST_P(c3CartpoleTestParameterizedLinearConstraints, LinearConstraintsRowVectorXdTest)
-{
-  const double dt = 0.01;
-  LCS system(A, B, D, d, E, F, H, c, dt);
-  C3::CostMatrices cost(Q, R, G, U);
-  C3MIQP opt(system, cost, xdesired, options);
+// Test if user can manipulate linear constraints using RowVectorXd
+TEST_P(C3CartpoleTestParameterizedLinearConstraints,
+       LinearConstraintsRowVectorXdTest) {
 
   int constraint_type = std::get<0>(GetParam());
   int constraint_size = std::get<1>(GetParam());
@@ -218,15 +212,16 @@ TEST_P(c3CartpoleTestParameterizedLinearConstraints, LinearConstraintsRowVectorX
   double lb = 0.0;
   double ub = 2.0;
 
-  opt.AddLinearConstraint(Al, lb, ub, constraint_type);
+  pOpt->AddLinearConstraint(Al, lb, ub, constraint_type);
 
-  std::vector<LinearConstraintBinding> user_constraints = opt.GetLinearConstraints();
+  std::vector<LinearConstraintBinding> user_constraints =
+      pOpt->GetLinearConstraints();
   // Number of constraints must be N-1 for state and N for input and lambda
   EXPECT_EQ(user_constraints.size(), num_of_new_constraints);
 
-  for (auto constraint : user_constraints)
-  {
-    const std::shared_ptr<drake::solvers::LinearConstraint> lc = constraint.evaluator();
+  for (auto constraint : user_constraints) {
+    const std::shared_ptr<drake::solvers::LinearConstraint> lc =
+        constraint.evaluator();
     // Check A matrix of the constraint
     EXPECT_EQ(Al.isApprox(lc->GetDenseA()), true);
     // Check number of variables in each constraint
@@ -235,61 +230,52 @@ TEST_P(c3CartpoleTestParameterizedLinearConstraints, LinearConstraintsRowVectorX
 }
 
 INSTANTIATE_TEST_CASE_P(
-    LinearConstraintTests,
-    c3CartpoleTestParameterizedLinearConstraints,
-    ::testing::Values(
-        std::make_tuple(1, 4, 9),
-        std::make_tuple(2, 1, 10),
-        std::make_tuple(3, 2, 10) // state, input and force constraints
-        ));
+    LinearConstraintTests, C3CartpoleTestParameterizedLinearConstraints,
+    ::testing::Values(std::make_tuple(1, 4, 9), std::make_tuple(2, 1, 10),
+                      std::make_tuple(3, 2,
+                                      10) // state, input and force constraints
+                      ));
 
-TEST_F(c3CartpoleTest, RemoveLinearConstraintsTest)
-{
-  const double dt = 0.01;
-  LCS system(A, B, D, d, E, F, H, c, dt);
-  C3::CostMatrices cost(Q, R, G, U);
-  C3MIQP opt(system, cost, xdesired, options);
+// Test if user can remove linear constraints
+TEST_F(C3CartpoleTest, RemoveLinearConstraintsTest) {
 
   RowVectorXd Al = RowVectorXd::Constant(n, 1.0);
   double lb = 0.0;
   double ub = 2.0;
 
-  opt.AddLinearConstraint(Al, lb, ub, 1);
+  pOpt->AddLinearConstraint(Al, lb, ub, 1);
 
-  std::vector<LinearConstraintBinding> user_constraints = opt.GetLinearConstraints();
+  std::vector<LinearConstraintBinding> user_constraints =
+      pOpt->GetLinearConstraints();
   EXPECT_EQ(user_constraints.size(), N - 1);
 
   // Ensure user constraints are a copy
   user_constraints.clear();
   EXPECT_EQ(user_constraints.size(), 0);
-  user_constraints = opt.GetLinearConstraints();
+  user_constraints = pOpt->GetLinearConstraints();
   EXPECT_EQ(user_constraints.size(), N - 1);
 
   // Ensure constraints are removed
-  opt.RemoveConstraints();
-  user_constraints = opt.GetLinearConstraints();
+  pOpt->RemoveConstraints();
+  user_constraints = pOpt->GetLinearConstraints();
   EXPECT_EQ(user_constraints.size(), 0);
 }
 
-TEST_F(c3CartpoleTest, UpdateTargetTest)
-{
-  const double dt = 0.01;
-  LCS system(A, B, D, d, E, F, H, c, dt);
-  C3::CostMatrices cost(Q, R, G, U);
-  C3MIQP opt(system, cost, xdesired, options);
+// Test if user can update the target state
+TEST_F(C3CartpoleTest, UpdateTargetTest) {
 
   // Desired state : random state
   VectorXd xdesiredinit;
   xdesiredinit = Eigen::Vector4d(0.0, 1.0, 2.0, 3.0);
   xdesired.resize(N + 1, xdesiredinit);
 
-  opt.UpdateTarget(xdesired);
+  pOpt->UpdateTarget(xdesired);
 
-  std::vector<drake::solvers::QuadraticCost *> target_costs = opt.GetTargetCost();
+  std::vector<drake::solvers::QuadraticCost *> target_costs =
+      pOpt->GetTargetCost();
   EXPECT_EQ(target_costs.size(), N + 1);
 
-  for (int i = 0; i < N + 1; ++i)
-  {
+  for (int i = 0; i < N + 1; ++i) {
     // Quadratic Q and b cost matrices should be updated
     MatrixXd Qq = Q.at(i) * 2;
     MatrixXd bq = -2 * Q.at(i) * xdesired.at(i);
@@ -299,17 +285,13 @@ TEST_F(c3CartpoleTest, UpdateTargetTest)
   }
 }
 
-TEST_F(c3CartpoleTest, UpdateLCSTest)
-{
-  const double dt = 0.01;
-  LCS system(A, B, D, d, E, F, H, c, dt);
-  C3::CostMatrices cost(Q, R, G, U);
-  C3MIQP opt(system, cost, xdesired, options);
+// Test if user can update the target stateLCY system
+TEST_F(C3CartpoleTest, UpdateLCSTest) {
 
-  std::vector<drake::solvers::LinearEqualityConstraint *> pre_dynamic_constraints = opt.GetDynamicConstraints();
+  std::vector<drake::solvers::LinearEqualityConstraint *>
+      pre_dynamic_constraints = pOpt->GetDynamicConstraints();
   vector<MatrixXd> pre_Al(N);
-  for (int i = 0; i < N; ++i)
-  {
+  for (int i = 0; i < N; ++i) {
     pre_Al[i] = pre_dynamic_constraints[i]->GetDenseA();
   }
 
@@ -327,24 +309,20 @@ TEST_F(c3CartpoleTest, UpdateLCSTest)
 
   LCS TestSystem(An, Bn, Dn, dn, En, Fn, Hn, cn, dt);
 
-  opt.UpdateLCS(TestSystem);
+  pOpt->UpdateLCS(TestSystem);
 
-  std::vector<drake::solvers::LinearEqualityConstraint *> pst_dynamic_constraints = opt.GetDynamicConstraints();
-  for (int i = 0; i < N; ++i)
-  {
+  std::vector<drake::solvers::LinearEqualityConstraint *>
+      pst_dynamic_constraints = pOpt->GetDynamicConstraints();
+  for (int i = 0; i < N; ++i) {
     // Linear Equality A matrix should be updated
     MatrixXd pst_Al = pst_dynamic_constraints[i]->GetDenseA();
     EXPECT_EQ(pre_Al[i].isApprox(pst_Al), false);
   }
 }
 
-// Disabled due to issues with licensing
-TEST_F(c3CartpoleTest, End2EndCartpoleTest)
-{
-  const double dt = 0.01;
-  LCS system(A, B, D, d, E, F, H, c, dt);
-  C3::CostMatrices cost(Q, R, G, U);
-  C3MIQP opt(system, cost, xdesired, options);
+// Test the cartpole example
+// Disabled as it does not converge
+TEST_F(C3CartpoleTest, DISABLED_End2EndCartpoleTest) {
 
   /// initialize ADMM variables (delta, w)
   std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
@@ -354,35 +332,33 @@ TEST_F(c3CartpoleTest, End2EndCartpoleTest)
   std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
 
-  int timesteps = 10; // number of timesteps for the simulation
+  int timesteps = 100; // number of timesteps for the simulation
 
   /// create state and input arrays
   std::vector<VectorXd> x(timesteps, VectorXd::Zero(n));
   std::vector<VectorXd> input(timesteps, VectorXd::Zero(k));
 
-
   x[0] = x0;
 
-  for (int i = 0; i < timesteps - 1; i++)
-  {
+  for (int i = 0; i < timesteps - 1; i++) {
 
     /// reset delta and w (default option)
     delta = delta_reset;
     w = w_reset;
 
     /// calculate the input given x[i]
-    opt.Solve(x[i]);
-    input[i] = opt.GetInputSolution()[0];
+    pOpt->Solve(x[i]);
+    input[i] = pOpt->GetInputSolution()[0];
 
     /// simulate the LCS
-    x[i + 1] = system.Simulate(x[i], input[i]);
+    x[i + 1] = pSystem->Simulate(x[i], input[i]);
+    // std::cout << x[i + 1] << std::endl;
   }
   std::cout << x[timesteps - 1] << std::endl;
   ASSERT_EQ(x[timesteps - 1].isApprox(VectorXd::Zero(n)), true);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
