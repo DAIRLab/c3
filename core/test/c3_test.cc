@@ -91,22 +91,22 @@ protected:
 
     // Initialize LCS for N timesteps
     // Dynamics
-    A.resize(N, Ainit * Ts + MatrixXd::Identity(n, n));
-    B.resize(N, Ts * Binit);
-    D.resize(N, Ts * Dinit);
-    d.resize(N, Ts * dinit);
+    vector<MatrixXd> A(N, Ainit * Ts + MatrixXd::Identity(n, n));
+    vector<MatrixXd> B(N, Ts * Binit);
+    vector<MatrixXd> D(N, Ts * Dinit);
+    vector<VectorXd> d(N, Ts * dinit);
 
     // Complimentary constraints
-    E.resize(N, Einit);
-    F.resize(N, Finit);
-    c.resize(N, cinit);
-    H.resize(N, Hinit);
+    vector<MatrixXd> E(N, Einit);
+    vector<MatrixXd> F(N, Finit);
+    vector<VectorXd> c(N, cinit);
+    vector<MatrixXd> H(N, Hinit);
 
     // Cost Matrices
     Q = Qsetup;
-    R.resize(N, Rinit);
-    G.resize(N, Ginit);
-    U.resize(N, Uinit);
+    vector<MatrixXd> R(N, Rinit);
+    vector<MatrixXd> G(N, Ginit);
+    vector<MatrixXd> U(N, Uinit);
 
     // Desired state : Vertically balances
     VectorXd xdesiredinit;
@@ -130,14 +130,11 @@ protected:
   /// */ input dimension, N: MPC horizon)
   int n, m, k, N;
   double dt;
-  /// variables (LCS)
-  vector<MatrixXd> A, B, D, E, F, H;
-  vector<VectorXd> d, c;
   /// initial condition(x0), tracking (xdesired)
   VectorXd x0;
   vector<VectorXd> xdesired;
   /// variables (cost, C3)
-  vector<MatrixXd> Q, R, G, U;
+  vector<MatrixXd> Q;
   /// C3 options
   C3Options options;
   /// Unique pointer to optimizer
@@ -303,8 +300,8 @@ TEST_F(C3CartpoleTest, UpdateLCSTest) {
 }
 
 // Test the cartpole example
-// Disabled as it does not converge
-TEST_F(C3CartpoleTest, DISABLED_End2EndCartpoleTest) {
+// This test will take some time to complete ~120s
+TEST_F(C3CartpoleTest, End2EndCartpoleTest) {
 
   /// initialize ADMM variables (delta, w)
   std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
@@ -314,7 +311,7 @@ TEST_F(C3CartpoleTest, DISABLED_End2EndCartpoleTest) {
   std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
 
-  int timesteps = 100; // number of timesteps for the simulation
+  int timesteps = 500; // number of timesteps for the simulation
 
   /// create state and input arrays
   std::vector<VectorXd> x(timesteps, VectorXd::Zero(n));
@@ -334,10 +331,9 @@ TEST_F(C3CartpoleTest, DISABLED_End2EndCartpoleTest) {
 
     /// simulate the LCS
     x[i + 1] = pSystem->Simulate(x[i], input[i]);
-    // std::cout << x[i + 1] << std::endl;
   }
-  std::cout << x[timesteps - 1] << std::endl;
-  ASSERT_EQ(x[timesteps - 1].isApprox(VectorXd::Zero(n)), true);
+  // Cartpole should be close to center and balancing the pendulum
+  ASSERT_EQ(x[timesteps - 1].isZero(0.1), true);
 }
 
 int main(int argc, char **argv) {

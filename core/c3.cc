@@ -429,26 +429,11 @@ void C3::AddLinearConstraint(const Eigen::MatrixXd& A,
 void C3::AddLinearConstraint(const Eigen::RowVectorXd& A,
                              double lower_bound,
                              double upper_bound, int constraint) {
-  if (constraint == 1) {
-    for (int i = 1; i < N_; ++i) {
-      user_constraints_.push_back(
-          prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
-    }
-  }
-
-  if (constraint == 2) {
-    for (int i = 0; i < N_; ++i) {
-      user_constraints_.push_back(
-          prog_.AddLinearConstraint(A, lower_bound, upper_bound, u_.at(i)));
-    }
-  }
-
-  if (constraint == 3) {
-    for (int i = 0; i < N_; ++i) {
-      user_constraints_.push_back(prog_.AddLinearConstraint(
-          A, lower_bound, upper_bound, lambda_.at(i)));
-    }
-  }
+  Eigen::VectorXd lb(1);
+  lb << lower_bound;
+  Eigen::VectorXd ub(1);
+  ub << upper_bound;
+  AddLinearConstraint(A, lb, ub, constraint);
 }
 
 void C3::RemoveConstraints() {
