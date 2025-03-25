@@ -162,7 +162,7 @@ TEST_F(C3CartpoleTest, LinearConstraintsTest) {
 
 class C3CartpoleTestParameterizedLinearConstraints
     : public C3CartpoleTest,
-      public ::testing::WithParamInterface<std::tuple<int, int, int>> {
+      public ::testing::WithParamInterface<std::tuple<bool, int, int, int>> {
   /* Parameterized linear constraints contains
   | --------------------------- | state | input | lambda |
   | constraint_type             | 1     | 2     | 3      |
@@ -172,47 +172,25 @@ class C3CartpoleTestParameterizedLinearConstraints
 };
 
 // Test if user can manipulate linear constraints using MatrixXd
-TEST_P(C3CartpoleTestParameterizedLinearConstraints,
-       LinearConstraintsMatrixXdTest) {
+TEST_P(C3CartpoleTestParameterizedLinearConstraints, LinearConstraintsTest) {
 
-  int constraint_type = std::get<0>(GetParam());
-  int constraint_size = std::get<1>(GetParam());
-  int num_of_new_constraints = std::get<2>(GetParam());
+  bool use_row_vector = std::get<0>(GetParam());
+  int constraint_type = std::get<1>(GetParam());
+  int constraint_size = std::get<2>(GetParam());
+  int num_of_new_constraints = std::get<3>(GetParam());
 
-  MatrixXd Al = MatrixXd::Identity(constraint_size, constraint_size);
-  VectorXd lb = Eigen::VectorXd::Constant(constraint_size, 0.0);
-  VectorXd ub = Eigen::VectorXd::Constant(constraint_size, 2.0);
-
-  pOpt->AddLinearConstraint(Al, lb, ub, constraint_type);
-
-  std::vector<LinearConstraintBinding> user_constraints =
-      pOpt->GetLinearConstraints();
-  // Number of constraints must be N-1 for state and N for input and lambda
-  EXPECT_EQ(user_constraints.size(), num_of_new_constraints);
-
-  for (auto constraint : user_constraints) {
-    const std::shared_ptr<drake::solvers::LinearConstraint> lc =
-        constraint.evaluator();
-    // Check A matrix of the constraint
-    EXPECT_EQ(Al.isApprox(lc->GetDenseA()), true);
-    // Check number of variables in each constraint
-    EXPECT_EQ(constraint.GetNumElements(), constraint_size);
+  MatrixXd Al;
+  if (use_row_vector) {
+    Al = RowVectorXd::Constant(constraint_size, 1.0);
+    double lb = 0.0;
+    double ub = 2.0;
+    pOpt->AddLinearConstraint(Al, lb, ub, constraint_type);
+  } else {
+    Al = MatrixXd::Identity(constraint_size, constraint_size);
+    VectorXd lb = Eigen::VectorXd::Constant(constraint_size, 0.0);
+    VectorXd ub = Eigen::VectorXd::Constant(constraint_size, 2.0);
+    pOpt->AddLinearConstraint(Al, lb, ub, constraint_type);
   }
-}
-
-// Test if user can manipulate linear constraints using RowVectorXd
-TEST_P(C3CartpoleTestParameterizedLinearConstraints,
-       LinearConstraintsRowVectorXdTest) {
-
-  int constraint_type = std::get<0>(GetParam());
-  int constraint_size = std::get<1>(GetParam());
-  int num_of_new_constraints = std::get<2>(GetParam());
-
-  RowVectorXd Al = RowVectorXd::Constant(constraint_size, 1.0);
-  double lb = 0.0;
-  double ub = 2.0;
-
-  pOpt->AddLinearConstraint(Al, lb, ub, constraint_type);
 
   std::vector<LinearConstraintBinding> user_constraints =
       pOpt->GetLinearConstraints();
@@ -231,10 +209,14 @@ TEST_P(C3CartpoleTestParameterizedLinearConstraints,
 
 INSTANTIATE_TEST_CASE_P(
     LinearConstraintTests, C3CartpoleTestParameterizedLinearConstraints,
-    ::testing::Values(std::make_tuple(1, 4, 9), std::make_tuple(2, 1, 10),
-                      std::make_tuple(3, 2,
-                                      10) // state, input and force constraints
-                      ));
+    ::testing::Values(
+        std::make_tuple(false, 1, 4, 9), std::make_tuple(false, 2, 1, 10),
+        std::make_tuple(false, 3, 2, 10), std::make_tuple(true, 1, 4, 9),
+        std::make_tuple(true, 2, 1, 10),
+        std::make_tuple(
+            true, 3, 2,
+            10) // (RowVectorXd/MatrixXd), state, input and force constraints
+        ));
 
 // Test if user can remove linear constraints
 TEST_F(C3CartpoleTest, RemoveLinearConstraintsTest) {
