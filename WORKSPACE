@@ -33,12 +33,3 @@ add_default_workspace()
 load("@rules_python//python:repositories.bzl", "py_repositories")
 
 py_repositories()
-
-
-new_git_repository(
-    name = "googletest",
-    build_file = "gmock.BUILD",
-    remote = "https://github.com/google/googletest",
-    tag = "v1.15.2",
-)
-

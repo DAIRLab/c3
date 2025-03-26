@@ -3,7 +3,6 @@
 
 package(default_visibility = ["//visibility:public"])
 
-
 cc_library(
     name = "solver_options_io",
     hdrs = ["solver_options_io.h"],
@@ -57,8 +56,7 @@ cc_test(
     srcs = ["test/c3_test.cc"],
     deps = [
         ":c3",
-        "@googletest//:gtest",
-        "@googletest//:gtest_main",
+        "@gtest//:main",
     ],
     env_inherit = [
         "GUROBI_HOME",
