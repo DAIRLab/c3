@@ -50,6 +50,42 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "c3_output",
+    srcs = [
+        "c3_output.cc",
+    ],
+    hdrs = [
+        "c3_output.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmtypes_c3",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "c3_controller",
+    srcs = ["controllers/c3_controller.cc"],
+    hdrs = ["controllers/c3_controller.h"],
+    deps = [
+        "//lcmtypes:lcmtypes_c3",
+        # "//multibody:utils",
+        ":c3",
+        ":c3_output",
+        ":solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_library(
+    name = "c3_systems",
+    deps = [
+        ":c3_controller",
+    ],
+)
 
 cc_test(
     name = "c3_test",
