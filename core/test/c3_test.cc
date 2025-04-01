@@ -16,7 +16,37 @@ using c3::C3Options;
 
 using namespace c3;
 
+/**
+ * @brief This file consists of unit tests for all user-facing functions. 
+ * In bazel, after compilation it can be run using the following command : 
+ * "bazel test --test_output=all //core:c3_test"
+ * 
+ * The function tested using the unit tests are as follows : 
+ * | ---------------------- | ------- |
+ * | Initialization         |   DONE  |
+ * | UpdateTarget           |   DONE  |
+ * | GetTargetCost          |   DONE  |     
+ * | AddLinearConstraint(1) |   DONE  |
+ * | AddLinearConstraint(2) |   DONE  |
+ * | RemoveConstraints      |   DONE  |
+ * | GetLinearConstraints   |   DONE  |
+ * | UpdateLCS              |   DONE  |
+ * | GetDynamicConstraints  |   DONE  |
+ * | Solve                  |    -    |
+ * | SetOsqpSolverOptions   |    -    |
+ * 
+ * It also has an E2E test for ensuring the "Solve()" function and other internal functions are working as expected. 
+ * However, the E2E takes about 120s at the moment. In order to Disable the test, change the following for the test header.
+ * TEST_F(C3CartpoleTest, End2EndCartpoleTest) => TEST_F(C3CartpoleTest, DISABLED_End2EndCartpoleTest)
+ * 
+ * @todo A coverage report for the cpp files tested.
+ */
+
 class C3CartpoleTest : public testing::Test {
+  /**
+   * This is a fixture we use for testing with GTest and setting up initial testing conditions.
+   * It sets up the Cartpole problem which consists of a cart-pole thatcan interact with soft walls on either side.
+   */
 protected:
   C3CartpoleTest() {
     n = 4;
@@ -264,7 +294,7 @@ TEST_F(C3CartpoleTest, UpdateTargetTest) {
   }
 }
 
-// Test if user can update the target stateLCY system
+// Test if user can update the LCS for the C3 problem
 TEST_F(C3CartpoleTest, UpdateLCSTest) {
 
   std::vector<drake::solvers::LinearEqualityConstraint *>
