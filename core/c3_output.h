@@ -7,7 +7,7 @@
 
 #include <Eigen/Dense>
 
-#include "c3/lcmt_c3_output.hpp"
+// #include "c3/lcmt_c3_output.hpp"
 
 namespace c3 {
 
@@ -38,11 +38,9 @@ class C3Output {
   C3Output() = default;
   C3Output(C3Solution c3_sol, C3Intermediates c3_intermediates);
 
-  explicit C3Output(const lcmt_c3_output& traj);
+  // explicit C3Output(const lcmt_c3_output& traj);
 
   virtual ~C3Output() = default;
-
-  lcmt_c3_output GenerateLcmObject(double time) const;
 
  private:
   C3Solution c3_solution_;
