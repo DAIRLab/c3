@@ -176,12 +176,20 @@ void C3::UpdateLCS(const LCS& lcs) {
   }
 }
 
+const std::vector<drake::solvers::LinearEqualityConstraint*>& C3::GetDynamicConstraints(){
+  return dynamics_constraints_;
+}
+
 void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   x_desired_ = x_des;
   for (int i = 0; i < N_ + 1; ++i) {
     target_cost_[i]->UpdateCoefficients(2 * cost_matrices_.Q.at(i),
                                         -2 * cost_matrices_.Q.at(i) * x_desired_.at(i));
   }
+}
+
+const std::vector<drake::solvers::QuadraticCost*>& C3::GetTargetCost(){
+  return target_cost_;
 }
 
 void C3::Solve(const VectorXd& x0) {
@@ -421,26 +429,11 @@ void C3::AddLinearConstraint(const Eigen::MatrixXd& A,
 void C3::AddLinearConstraint(const Eigen::RowVectorXd& A,
                              double lower_bound,
                              double upper_bound, int constraint) {
-  if (constraint == 1) {
-    for (int i = 1; i < N_; ++i) {
-      user_constraints_.push_back(
-          prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
-    }
-  }
-
-  if (constraint == 2) {
-    for (int i = 0; i < N_; ++i) {
-      user_constraints_.push_back(
-          prog_.AddLinearConstraint(A, lower_bound, upper_bound, u_.at(i)));
-    }
-  }
-
-  if (constraint == 3) {
-    for (int i = 0; i < N_; ++i) {
-      user_constraints_.push_back(prog_.AddLinearConstraint(
-          A, lower_bound, upper_bound, lambda_.at(i)));
-    }
-  }
+  Eigen::VectorXd lb(1);
+  lb << lower_bound;
+  Eigen::VectorXd ub(1);
+  ub << upper_bound;
+  AddLinearConstraint(A, lb, ub, constraint);
 }
 
 void C3::RemoveConstraints() {
@@ -448,6 +441,10 @@ void C3::RemoveConstraints() {
     prog_.RemoveConstraint(userconstraint);
   }
   user_constraints_.clear();
+}
+
+const std::vector<LinearConstraintBinding>& C3::GetLinearConstraints(){
+  return user_constraints_;
 }
 
 }  // namespace c3

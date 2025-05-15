@@ -3,7 +3,6 @@
 
 package(default_visibility = ["//visibility:public"])
 
-
 cc_library(
     name = "solver_options_io",
     hdrs = ["solver_options_io.h"],
@@ -52,10 +51,15 @@ cc_library(
 )
 
 
-cc_binary(
+cc_test(
     name = "c3_test",
     srcs = ["test/c3_test.cc"],
     deps = [
         ":c3",
+        "@gtest//:main",
+    ],
+    env_inherit = [
+        "GUROBI_HOME",
+        "GRB_LICENSE_FILE"
     ],
 )

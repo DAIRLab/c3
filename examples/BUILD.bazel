@@ -1,0 +1,7 @@
+cc_binary(
+    name = "c3_example",
+    srcs = ["c3_example.cc"],
+    deps = [
+        "//core:c3",
+    ],
+)

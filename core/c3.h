@@ -11,6 +11,8 @@
 #include "drake/solvers/osqp_solver.h"
 
 namespace c3 {
+  typedef drake::solvers::Binding<drake::solvers::LinearConstraint> LinearConstraintBinding;
+
 class C3 {
 
  public:
@@ -54,11 +56,37 @@ class C3 {
    */
   void UpdateLCS(const LCS& lcs);
 
+  /**
+   * @brief Get a vector dynamic constraints.
+   * [Aᵢ Dᵢ Bᵢ −1]| xᵢ | = -dᵢ
+   *              | λᵢ |
+   *              | uᵢ |
+   *              |xᵢ₊₁|
+   * (Aᵢ, Dᵢ, Bᵢ, dᵢ) are defined by the LCS (Linear Complimentary System). 
+   * (xᵢ, λᵢ, uᵢ) are optimization variables for state, force and input respectively
+   * Each element of the vector provides the dynamics constraint between the (i+1) and ith timesteps. 
+   * A total of (N-1) constraints. 
+   * 
+   * @return const std::vector<drake::solvers::LinearEqualityConstraint*>& 
+   */
+  const std::vector<drake::solvers::LinearEqualityConstraint*>& GetDynamicConstraints();
+
   /*!
    * Update the reference trajectory
    * @param x_des the new reference trajectory
    */
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
+
+  /**
+   * @brief Get the Quadratic Cost which to be minimized at each timestep (N total).
+   * xᵢᵀQᵢxᵢ − 2x[d]ᵢQᵢᵀxᵢ
+   * xᵢ     : State variable at the ith timestep
+   * x[d]ᵢ  : desired state at the ith timestep
+   * Qᵢ     : Cost matrix for the ith timestep
+   * 
+   * @return const std::vector<drake::solvers::QuadraticCost*>& 
+   */
+  const std::vector<drake::solvers::QuadraticCost*>& GetTargetCost();
 
   /*!
    * Allow users to add a linear constraint for all timesteps
@@ -86,6 +114,21 @@ class C3 {
 
   /*! Remove all constraints previously added by AddLinearConstraint */
   void RemoveConstraints();
+
+  /**
+   * @brief Get a vector of user defined linear constraints. 
+   * lb ≼ Axᵢ ≼ ub
+   * lb ≼ Auᵢ ≼ ub
+   * lb ≼ Aλᵢ ≼ ub
+   * xᵢ     : State variable at the ith timestep
+   * uᵢ     : Input variable at the ith timestep
+   * λᵢ     : Force variable at the ith timestep
+   * The vector will consist of m constraints (for State, Input or Force) added for N timesteps.  
+   * A total of mN elements in the vector.
+   * 
+   * @return const std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>& 
+   */
+  const std::vector<LinearConstraintBinding>& GetLinearConstraints();
 
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     prog_.SetSolverOptions(options);
@@ -189,10 +232,8 @@ class C3 {
   // QP step constraints
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> initial_state_constraint_;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
-  std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
-      constraints_;
-  std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
-      user_constraints_;
+  std::vector<LinearConstraintBinding> constraints_;
+  std::vector<LinearConstraintBinding> user_constraints_;
 
   /// Projection step variables are defined outside of the MathematicalProgram
   /// interface
