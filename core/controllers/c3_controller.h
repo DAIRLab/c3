@@ -101,4 +101,4 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 };
 
 }  // namespace systems
-}  // namespace dairlib
+}  // namespace c3

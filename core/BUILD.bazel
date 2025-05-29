@@ -66,8 +66,15 @@ cc_library(
 
 cc_library(
     name = "c3_controller",
-    srcs = ["controllers/c3_controller.cc"],
-    hdrs = ["controllers/c3_controller.h"],
+    srcs = [
+        "controllers/c3_controller.cc",
+        "controllers/lcs_simulator.cc",
+    ],
+    hdrs = [
+        "controllers/c3_controller.h",
+        "controllers/lcs_simulator.h",
+        
+        ],
     deps = [
         # "//lcmtypes:lcmtypes_c3",
         # "//multibody:utils",
@@ -98,4 +105,16 @@ cc_test(
         "GUROBI_HOME",
         "GRB_LICENSE_FILE"
     ],
+)
+
+cc_binary(
+    name = "c3_controller_test",
+    srcs = [
+        "test/c3_controller_test.cc", 
+        "test/c3_cartpole_problem.h", 
+        "test/cartpole_geometry.hpp"],
+    deps = [
+        ":c3",
+        ":c3_controller",
+    ]
 )
