@@ -24,7 +24,7 @@ namespace systems {
 class C3Controller : public drake::systems::LeafSystem<double> {
  public:
   explicit C3Controller(const drake::multibody::MultibodyPlant<double>& plant,
-                        C3Options c3_options);
+                        C3Options c3_options, LCS lcs, C3::CostMatrices cost);
 
   const drake::systems::InputPort<double>& get_input_port_target() const {
     return this->get_input_port(target_input_port_);
@@ -64,10 +64,14 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 
   void OutputC3Intermediates(const drake::systems::Context<double>& context,
                              C3Output::C3Intermediates* c3_intermediates) const;
+  
+  void CalcC3Action(const drake::systems::Context<double>& context,
+                             drake::systems::BasicVector<double> *output) const;
 
   drake::systems::InputPortIndex target_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
   drake::systems::InputPortIndex lcs_input_port_;
+  drake::systems::OutputPortIndex c3_action_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex c3_intermediates_port_;
 
@@ -76,7 +80,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   C3Options c3_options_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
-          "osqp_options_default.yaml")
+          "core/configs/solver_options_default.yaml")
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   // convenience for variable sizes
@@ -101,4 +105,4 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 };
 
 }  // namespace systems
-}  // namespace c3
+}  // namespace dairlib

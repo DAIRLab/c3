@@ -19,24 +19,16 @@ class C3CartpoleProblem {
   /**
    * This is a fixture we use for testing with GTest and setting up initial
    * testing conditions. It sets up the Cartpole problem which consists of a
-   * cart-pole thatcan interact with soft walls on either side.
+   * cart-pole that can interact with soft walls on either side.
    */
 public:
-  C3CartpoleProblem() {
+  C3CartpoleProblem(float mp = 0.411, float mc = 0.978, float len_p = 0.6,
+             float len_com = 0.4267, float d1 = 0.35, float d2 = -0.35,
+             float ks = 100, float Ts = 0.01, float g = 9.81) {
     n = 4;
     m = 2;
     k = 1;
-    N = 10;
-
-    float g = 9.81;
-    float mp = 0.411;
-    float mc = 0.978;
-    float len_p = 0.6;
-    float len_com = 0.4267;
-    float d1 = 0.35;
-    float d2 = -0.35;
-    float ks = 100;
-    float Ts = 0.01;
+    N = 5;
 
     /// initial condition(cartpole)
     x0.resize(n);
@@ -117,6 +109,8 @@ public:
     xdesiredinit = VectorXd::Zero(n);
     xdesired.resize(N + 1, xdesiredinit);
 
+    dt = 0.01;
+
     // Set C3 options
     options.N = N;
     options.dt = dt;
@@ -124,14 +118,19 @@ public:
     options.R = Rinit;
     options.G = Ginit;
     options.U = Uinit;
+    options.gamma =  1.0;
     options.projection_type = "MIQP";
     options.admm_iter = 10;
     options.rho_scale = 2;
     options.num_threads = 0;
     options.delta_option = 0;
-    options.publish_frequency = 10;
+    options.publish_frequency = 50;
+    options.solve_time_filter_alpha = 0.0;
+    options.end_on_qp_step = true;
+    options.use_predicted_x0 = false;
+    options.dt = dt;
+    options.warm_start = true;
 
-    dt = 0.01;
     pSystem = std::make_unique<LCS>(A, B, D, d, E, F, H, c, dt);
     pCost = std::make_unique<C3::CostMatrices>(Q, R, G, U);
   }

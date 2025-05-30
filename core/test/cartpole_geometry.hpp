@@ -18,7 +18,7 @@ public:
     plant = new MultibodyPlant<double>(time_step);
     Parser parser(plant, scene_graph);
 
-    const std::string file = "core/controllers/test/sdf/cartpole_softwalls.sdf";
+    const std::string file = "core/test/res/cartpole_softwalls.sdf";
     parser.AddModels(file);
     plant->Finalize();
 
@@ -44,20 +44,20 @@ public:
                SceneGraph<double> *scene_graph,
                const drake::systems::OutputPort<double> &state_port,
                double time_step = 0.0) {
-    // CartpoleGeometry *geometry =
-    //     builder->AddSystem<CartpoleGeometry>(scene_graph, time_step);
-    // builder->Connect(state_port, geometry->get_input_port_state());
-    // auto to_geometry_pose =
-    //     builder->AddSystem<MultibodyPositionToGeometryPose<double>>(
-    //         *(geometry->plant));
+    CartpoleGeometry *geometry =
+        builder->AddSystem<CartpoleGeometry>(scene_graph, time_step);
+    builder->Connect(state_port, geometry->get_input_port_state());
+    auto to_geometry_pose =
+        builder->AddSystem<MultibodyPositionToGeometryPose<double>>(
+            *(geometry->plant));
 
-    // builder->Connect(geometry->get_output_port_scene_graph_state(),
-    //                  to_geometry_pose->get_input_port());
-    // builder->Connect(to_geometry_pose->get_output_port(),
-    //                  scene_graph->get_source_pose_port(
-    //                      geometry->plant->get_source_id().value()));
+    builder->Connect(geometry->get_output_port_scene_graph_state(),
+                     to_geometry_pose->get_input_port());
+    builder->Connect(to_geometry_pose->get_output_port(),
+                     scene_graph->get_source_pose_port(
+                         geometry->plant->get_source_id().value()));
 
-    return nullptr;
+    return geometry;
   }
 
   MultibodyPlant<double> *plant;

@@ -1,6 +1,7 @@
 #include "lcs_simulator.h"
 
 #include <Eigen/Dense>
+#include <set>
 
 using Eigen::VectorXd;
 
@@ -31,6 +32,7 @@ void LCSSimulator::init(int n_x, int n_u, int n_lambda, int N, double dt) {
   action_input_port_ = this->DeclareVectorInputPort(
                                "u", drake::systems::BasicVector<double>(n_u))
                            .get_index();
+                           
   next_state_output_port_ =
       this->DeclareVectorOutputPort("x_next", n_x,
                                     &LCSSimulator::SimulateOneStep)

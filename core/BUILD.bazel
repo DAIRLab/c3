@@ -75,6 +75,9 @@ cc_library(
         "controllers/lcs_simulator.h",
         
         ],
+    data = glob([
+        "configs/**",
+    ]),
     deps = [
         # "//lcmtypes:lcmtypes_c3",
         # "//multibody:utils",
@@ -113,6 +116,9 @@ cc_binary(
         "test/c3_controller_test.cc", 
         "test/c3_cartpole_problem.h", 
         "test/cartpole_geometry.hpp"],
+    data = glob([
+        "test/res/**",
+    ]),
     deps = [
         ":c3",
         ":c3_controller",
