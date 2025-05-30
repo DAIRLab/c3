@@ -231,8 +231,8 @@ class C3 {
 
   // QP step constraints
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> initial_state_constraint_;
+  std::shared_ptr<drake::solvers::LinearEqualityConstraint> initial_force_constraint_;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
-  std::vector<LinearConstraintBinding> constraints_;
   std::vector<LinearConstraintBinding> user_constraints_;
 
   /// Projection step variables are defined outside of the MathematicalProgram
