@@ -79,8 +79,6 @@ cc_library(
         "configs/**",
     ]),
     deps = [
-        # "//lcmtypes:lcmtypes_c3",
-        # "//multibody:utils",
         ":c3",
         ":c3_output",
         ":solver_options_io",
@@ -114,7 +112,7 @@ cc_binary(
     name = "c3_controller_test",
     srcs = [
         "test/c3_controller_test.cc", 
-        "test/c3_cartpole_problem.h", 
+        "test/c3_cartpole_problem.hpp", 
         "test/cartpole_geometry.hpp"],
     data = glob([
         "test/res/**",
