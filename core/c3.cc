@@ -114,9 +114,9 @@ C3::C3(const LCS &lcs, const C3::CostMatrices &costs,
   LinEq.block(0, n_x_ + n_lambda_ + n_u_, n_x_, n_x_) =
       -1 * MatrixXd::Identity(n_x_, n_x_);
   for (int i = 0; i < N_; ++i) {
-    LinEq.block(0, 0, n_x_, n_x_) = lcs.A().at(i);
-    LinEq.block(0, n_x_, n_x_, n_lambda_) = lcs.D().at(i);
-    LinEq.block(0, n_x_ + n_lambda_, n_x_, n_u_) = lcs.B().at(i);
+    LinEq.block(0, 0, n_x_, n_x_) = lcs_.A().at(i);
+    LinEq.block(0, n_x_, n_x_, n_lambda_) = lcs_.D().at(i);
+    LinEq.block(0, n_x_ + n_lambda_, n_x_, n_u_) = lcs_.B().at(i);
 
     dynamics_constraints_[i] =
         prog_
@@ -167,7 +167,7 @@ void C3::UpdateLCS(const LCS &lcs) {
     LinEq.block(0, n_x_, n_x_, n_lambda_) = lcs_.D().at(i);
     LinEq.block(0, n_x_ + n_lambda_, n_x_, n_u_) = lcs_.B().at(i);
 
-    dynamics_constraints_[i]->UpdateCoefficients(LinEq, -lcs.d().at(i));
+    dynamics_constraints_[i]->UpdateCoefficients(LinEq, -lcs_.d().at(i));
   }
 }
 
