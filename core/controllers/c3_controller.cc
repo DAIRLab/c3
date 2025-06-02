@@ -22,7 +22,8 @@ namespace systems {
 
 C3Controller::C3Controller(
 
-    const drake::multibody::MultibodyPlant<double>& plant, C3ControllerOptions c3_options)
+    const drake::multibody::MultibodyPlant<double>& plant,
+    C3ControllerOptions c3_options)
     : plant_(plant),
       c3_options_(std::move(c3_options)),
       N_(c3_options_.N),
@@ -69,8 +70,7 @@ C3Controller::C3Controller(
   c3_->SetOsqpSolverOptions(solver_options_);
 
   lcs_state_input_port_ =
-      this->DeclareVectorInputPort("x_lcs", n_x_)
-          .get_index();
+      this->DeclareVectorInputPort("x_lcs", n_x_).get_index();
   lcs_input_port_ =
       this->DeclareAbstractInputPort("lcs", drake::Value<LCS>(lcs_placeholder))
           .get_index();
@@ -78,30 +78,23 @@ C3Controller::C3Controller(
   target_input_port_ =
       this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
 
-  auto c3_solution = C3Output::C3Solution();
-  c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
-  c3_solution.lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
-  c3_solution.u_sol_ = MatrixXf::Zero(n_u_, N_);
-  c3_solution.time_vector_ = VectorXf::Zero(N_);
-  auto c3_intermediates = C3Output::C3Intermediates();
-  c3_intermediates.z_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
-  c3_intermediates.delta_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
-  c3_intermediates.w_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
-  c3_intermediates.time_vector_ = VectorXf::Zero(N_);
   c3_solution_port_ =
-      this->DeclareAbstractOutputPort("c3_solution", c3_solution,
-                                      &C3Controller::OutputC3Solution)
+      this->DeclareAbstractOutputPort(
+              "c3_solution", C3Output::C3Solution(n_x_, n_lambda_, n_u_, N_),
+              &C3Controller::OutputC3Solution)
           .get_index();
   c3_intermediates_port_ =
-      this->DeclareAbstractOutputPort("c3_intermediates", c3_intermediates,
-                                      &C3Controller::OutputC3Intermediates)
+      this->DeclareAbstractOutputPort(
+              "c3_intermediates",
+              C3Output::C3Intermediates(n_x_, n_lambda_, n_u_, N_),
+              &C3Controller::OutputC3Intermediates)
           .get_index();
 
   plan_start_time_index_ = DeclareDiscreteState(1);
   x_pred_index_ = DeclareDiscreteState(n_x_);
   filtered_solve_time_index_ = DeclareDiscreteState(1);
 
-  if (publish_frequency_> 0) {
+  if (publish_frequency_ > 0) {
     DeclarePeriodicDiscreteUpdateEvent(1 / publish_frequency_, 0.0,
                                        &C3Controller::ComputePlan);
   } else {
@@ -116,14 +109,15 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   const BasicVector<double>& x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
   const BasicVector<double>& lcs_x =
-      *this->template EvalVectorInput<BasicVector>(context, lcs_state_input_port_);
+      *this->template EvalVectorInput<BasicVector>(context,
+                                                   lcs_state_input_port_);
   // const TimestampedVector<double>* lcs_x =
   //     (TimestampedVector<double>*)this->EvalVectorInput(context,
   //                                                       lcs_state_input_port_);
 
   auto& lcs =
       this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
-  drake::VectorX<double> x_lcs(lcs_x.value()); //= lcs_x->get_data();
+  drake::VectorX<double> x_lcs(lcs_x.value());  //= lcs_x->get_data();
   auto& x_pred = context.get_discrete_state(x_pred_index_).value();
   auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
   auto mutable_solve_time =
@@ -150,7 +144,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   // }
 
   discrete_state->get_mutable_value(plan_start_time_index_)[0] = 0;
-      // lcs_x->get_timestamp();
+  // lcs_x->get_timestamp();
 
   std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_des.value());

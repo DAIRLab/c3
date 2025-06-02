@@ -8,15 +8,24 @@
 #include <Eigen/Dense>
 
 // #include "c3/lcmt_c3_output.hpp"
+using Eigen::MatrixXf;
+using Eigen::VectorXf;
 
 namespace c3 {
 
-/// Used for outputting c3 solutions and intermediate variables for debugging purposes
+/// Used for outputting c3 solutions and intermediate variables for debugging
+/// purposes
 
 class C3Output {
  public:
   struct C3Solution {
     C3Solution() = default;
+    C3Solution(int n_x, int n_lambda, int n_u, int N) {
+      x_sol_ = MatrixXf::Zero(n_x, N);
+      lambda_sol_ = MatrixXf::Zero(n_lambda, N);
+      u_sol_ = MatrixXf::Zero(n_u, N);
+      time_vector_ = VectorXf::Zero(N);
+    };
 
     // Shape is (variable_vector_size, knot_points)
     Eigen::VectorXf time_vector_;
@@ -27,6 +36,12 @@ class C3Output {
 
   struct C3Intermediates {
     C3Intermediates() = default;
+    C3Intermediates(int n_x, int n_lambda, int n_u, int N) {
+      z_ = MatrixXf::Zero(n_x + n_lambda + n_u, N);
+      delta_ = MatrixXf::Zero(n_x + n_lambda + n_u, N);
+      w_ = MatrixXf::Zero(n_x + n_lambda + n_u, N);
+      time_vector_ = VectorXf::Zero(N);
+    };
 
     // Shape is (variable_vector_size, knot_points)
     Eigen::VectorXf time_vector_;
@@ -47,4 +62,4 @@ class C3Output {
   C3Intermediates c3_intermediates_;
 };
 
-}  // namespace dairlib
+}  // namespace c3
