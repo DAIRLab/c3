@@ -21,8 +21,12 @@ using systems::TimestampedVector;
 namespace systems {
 
 C3Controller::C3Controller(
-    const drake::multibody::MultibodyPlant<double>& plant, C3Options c3_options)
-    : plant_(plant), c3_options_(std::move(c3_options)), N_(c3_options_.N) {
+
+    const drake::multibody::MultibodyPlant<double>& plant, C3ControllerOptions c3_options)
+    : plant_(plant),
+      c3_options_(std::move(c3_options)),
+      N_(c3_options_.N),
+      publish_frequency_(c3_options.publish_frequency) {
   this->set_name("c3_controller");
 
   n_q_ = plant_.num_positions();
@@ -64,38 +68,8 @@ C3Controller::C3Controller(
 
   c3_->SetOsqpSolverOptions(solver_options_);
 
-  // Set actor bounds,
-  // TODO(yangwill): move this out of here because it is task specific
-  if (c3_options_.workspace_limits.size() > 0) {
-    Eigen::MatrixXd A =
-        MatrixXd::Zero(c3_options_.workspace_limits.size(), n_x_);
-    Eigen::VectorXd lb = VectorXd::Zero(c3_options_.workspace_limits.size());
-    Eigen::VectorXd ub = VectorXd::Zero(c3_options_.workspace_limits.size());
-    for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
-      A.block(i, 0, 1, 3) =
-          c3_options_.workspace_limits[i].segment(0, 3).transpose();
-      lb[i] = c3_options_.workspace_limits[i][3];
-      ub[i] = c3_options_.workspace_limits[i][4];
-    }
-    c3_->AddLinearConstraint(A, lb, ub, 1);
-  }
-  if (c3_options_.workspace_limits.size() > 0) {
-    Eigen::MatrixXd A = MatrixXd::Zero(3, n_u_);
-    Eigen::VectorXd lb = VectorXd::Zero(3);
-    Eigen::VectorXd ub = VectorXd::Zero(3);
-    for (int i = 0; i < 2; ++i) {
-      A(i, i) = 1.0;
-      lb[i] = c3_options_.u_horizontal_limits[0];
-      ub[i] = c3_options_.u_horizontal_limits[1];
-    }
-    A(2, 2) = 1.0;
-    lb[2] = c3_options_.u_vertical_limits[0];
-    ub[2] = c3_options_.u_vertical_limits[1];
-    c3_->AddLinearConstraint(A, lb, ub, 2);
-  }
-
   lcs_state_input_port_ =
-      this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
+      this->DeclareVectorInputPort("x_lcs", n_x_)
           .get_index();
   lcs_input_port_ =
       this->DeclareAbstractInputPort("lcs", drake::Value<LCS>(lcs_placeholder))
@@ -127,8 +101,8 @@ C3Controller::C3Controller(
   x_pred_index_ = DeclareDiscreteState(n_x_);
   filtered_solve_time_index_ = DeclareDiscreteState(1);
 
-  if (c3_options_.publish_frequency > 0) {
-    DeclarePeriodicDiscreteUpdateEvent(1 / c3_options_.publish_frequency, 0.0,
+  if (publish_frequency_> 0) {
+    DeclarePeriodicDiscreteUpdateEvent(1 / publish_frequency_, 0.0,
                                        &C3Controller::ComputePlan);
   } else {
     DeclareForcedDiscreteUpdateEvent(&C3Controller::ComputePlan);
@@ -141,51 +115,45 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   auto start = std::chrono::high_resolution_clock::now();
   const BasicVector<double>& x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
-  const TimestampedVector<double>* lcs_x =
-      (TimestampedVector<double>*)this->EvalVectorInput(context,
-                                                        lcs_state_input_port_);
+  const BasicVector<double>& lcs_x =
+      *this->template EvalVectorInput<BasicVector>(context, lcs_state_input_port_);
+  // const TimestampedVector<double>* lcs_x =
+  //     (TimestampedVector<double>*)this->EvalVectorInput(context,
+  //                                                       lcs_state_input_port_);
 
   auto& lcs =
       this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
-  drake::VectorX<double> x_lcs = lcs_x->get_data();
+  drake::VectorX<double> x_lcs(lcs_x.value()); //= lcs_x->get_data();
   auto& x_pred = context.get_discrete_state(x_pred_index_).value();
   auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
   auto mutable_solve_time =
       discrete_state->get_mutable_value(filtered_solve_time_index_);
 
-  if (x_lcs.segment(n_q_, 3).norm() > 0.01 && c3_options_.use_predicted_x0 &&
-      !x_pred.isZero()) {
-    x_lcs[0] = std::clamp(x_pred[0], x_lcs[0] - 10 * dt_ * dt_,
-                          x_lcs[0] + 10 * dt_ * dt_);
-    x_lcs[1] = std::clamp(x_pred[1], x_lcs[1] - 10 * dt_ * dt_,
-                          x_lcs[1] + 10 * dt_ * dt_);
-    x_lcs[2] = std::clamp(x_pred[2], x_lcs[2] - 10 * dt_ * dt_,
-                          x_lcs[2] + 10 * dt_ * dt_);
-    x_lcs[n_q_ + 0] = std::clamp(x_pred[n_q_ + 0], x_lcs[n_q_ + 0] - 10 * dt_,
-                                 x_lcs[n_q_ + 0] + 10 * dt_);
-    x_lcs[n_q_ + 1] = std::clamp(x_pred[n_q_ + 1], x_lcs[n_q_ + 1] - 10 * dt_,
-                                 x_lcs[n_q_ + 1] + 10 * dt_);
-    x_lcs[n_q_ + 2] = std::clamp(x_pred[n_q_ + 2], x_lcs[n_q_ + 2] - 10 * dt_,
-                                 x_lcs[n_q_ + 2] + 10 * dt_);
-  }
+  // Todo: Looks like task specific initialization, to be confirmed and removed
+  // if (x_lcs.segment(n_q_, 3).norm() > 0.01 && c3_options_.use_predicted_x0 &&
+  //     !x_pred.isZero()) {
+  //   x_lcs[0] = std::clamp(x_pred[0], x_lcs[0] - 10 * dt_ * dt_,
+  //                         x_lcs[0] + 10 * dt_ * dt_);
+  //   x_lcs[1] = std::clamp(x_pred[1], x_lcs[1] - 10 * dt_ * dt_,
+  //                         x_lcs[1] + 10 * dt_ * dt_);
+  //   x_lcs[2] = std::clamp(x_pred[2], x_lcs[2] - 10 * dt_ * dt_,
+  //                         x_lcs[2] + 10 * dt_ * dt_);
+  //   x_lcs[n_q_ + 0] = std::clamp(x_pred[n_q_ + 0], x_lcs[n_q_ + 0] - 10 *
+  //   dt_,
+  //                                x_lcs[n_q_ + 0] + 10 * dt_);
+  //   x_lcs[n_q_ + 1] = std::clamp(x_pred[n_q_ + 1], x_lcs[n_q_ + 1] - 10 *
+  //   dt_,
+  //                                x_lcs[n_q_ + 1] + 10 * dt_);
+  //   x_lcs[n_q_ + 2] = std::clamp(x_pred[n_q_ + 2], x_lcs[n_q_ + 2] - 10 *
+  //   dt_,
+  //                                x_lcs[n_q_ + 2] + 10 * dt_);
+  // }
 
-  discrete_state->get_mutable_value(plan_start_time_index_)[0] =
-      lcs_x->get_timestamp();
+  discrete_state->get_mutable_value(plan_start_time_index_)[0] = 0;
+      // lcs_x->get_timestamp();
 
   std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_des.value());
-
-  // Force Checking of Workspace Limits
-  for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
-    DRAKE_DEMAND(lcs_x->get_data().segment(0, 3).transpose() *
-                     c3_options_.workspace_limits[i].segment(0, 3) >
-                 c3_options_.workspace_limits[i][3] -
-                     c3_options_.workspace_margins);
-    DRAKE_DEMAND(lcs_x->get_data().segment(0, 3).transpose() *
-                     c3_options_.workspace_limits[i].segment(0, 3) <
-                 c3_options_.workspace_limits[i][4] +
-                     c3_options_.workspace_margins);
-  }
 
   c3_->UpdateLCS(lcs);
   c3_->UpdateTarget(x_desired);
@@ -199,8 +167,8 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   mutable_solve_time[0] = (1 - solve_time_filter_constant_) * solve_time +
                           solve_time_filter_constant_ * mutable_solve_time[0];
 
-  if (c3_options_.publish_frequency > 0) {
-    solve_time = 1.0 / c3_options_.publish_frequency;
+  if (publish_frequency_ > 0) {
+    solve_time = 1.0 / publish_frequency_;
     mutable_solve_time[0] = solve_time;
   }
 

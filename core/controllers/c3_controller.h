@@ -15,8 +15,8 @@
 #include "core/solver_options_io.h"
 #include "systems/framework/timestamped_vector.h"
 
-#include "drake/systems/framework/leaf_system.h"
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/systems/framework/leaf_system.h"
 
 namespace c3 {
 namespace systems {
@@ -25,8 +25,7 @@ namespace systems {
 class C3Controller : public drake::systems::LeafSystem<double> {
  public:
   // Constructor: Initializes the controller with the given plant and options.
-  explicit C3Controller(const drake::multibody::MultibodyPlant<double>& plant,
-                        C3Options c3_options);
+  explicit C3Controller(const drake::multibody::MultibodyPlant<double>& plant, C3ControllerOptions c3_options);
 
   // Accessors for input ports.
   const drake::systems::InputPort<double>& get_input_port_target() const {
@@ -40,10 +39,12 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   }
 
   // Accessors for output ports.
-  const drake::systems::OutputPort<double>& get_output_port_c3_solution() const {
+  const drake::systems::OutputPort<double>& get_output_port_c3_solution()
+      const {
     return this->get_output_port(c3_solution_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_c3_intermediates() const {
+  const drake::systems::OutputPort<double>& get_output_port_c3_intermediates()
+      const {
     return this->get_output_port(c3_intermediates_port_);
   }
 
@@ -54,10 +55,22 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   }
 
   // Updates the cost matrices used by the controller.
-  void UpdateCostMatrices(CostMatrices& costs){
+  void UpdateCostMatrices(C3::CostMatrices& costs) {
     c3_->UpdateCostMatrices(costs);
   }
 
+  // Adds a linear constraint to the controller.
+  void AddLinearConstraint(const Eigen::MatrixXd& A,
+                           const Eigen::VectorXd& lower_bound,
+                           const Eigen::VectorXd& upper_bound,
+                           enum ConstraintVariable constraint) {
+    c3_->AddLinearConstraint(A, lower_bound, upper_bound, constraint);
+  }
+  void AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
+                           double upper_bound,
+                           enum ConstraintVariable constraint) {
+    c3_->AddLinearConstraint(A, lower_bound, upper_bound, constraint);
+  }
 
  private:
   // Computes the C3 plan and updates discrete state.
@@ -84,7 +97,8 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_;
 
   // C3 options and solver configuration.
-  C3Options c3_options_;
+  C3ControllerOptions c3_options_;
+  double publish_frequency_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
           "core/configs/solver_options_default.yaml")

@@ -127,7 +127,7 @@
         <xyz>0.0 -1.0 0.0</xyz>
         <limit>
           <!-- This joint is not actuated. -->
-          <effort>-1.0</effort>
+          <effort>0</effort>
           <lower>-1.2</lower>
           <upper>1.2</upper>
         </limit>

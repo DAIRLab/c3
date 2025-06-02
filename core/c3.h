@@ -14,6 +14,8 @@ namespace c3 {
 typedef drake::solvers::Binding<drake::solvers::LinearConstraint>
     LinearConstraintBinding;
 
+enum ConstraintVariable : uint8_t { STATE, INPUT, FORCE };
+
 class C3 {
  public:
   /*!
@@ -22,6 +24,7 @@ class C3 {
    * costs in the ADMM Augmented lagrangian and projection solves, respectively
    */
   struct CostMatrices {
+    CostMatrices() = default;
     CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
                  const std::vector<Eigen::MatrixXd>& R,
                  const std::vector<Eigen::MatrixXd>& G,
@@ -113,6 +116,12 @@ class C3 {
   void AddLinearConstraint(const Eigen::MatrixXd& A,
                            const Eigen::VectorXd& lower_bound,
                            const Eigen::VectorXd& upper_bound, int constraint);
+  void AddLinearConstraint(const Eigen::MatrixXd& A,
+                           const Eigen::VectorXd& lower_bound,
+                           const Eigen::VectorXd& upper_bound,
+                           enum ConstraintVariable constraint) {
+    AddLinearConstraint(A, lower_bound, upper_bound, constraint + 1);
+  }
 
   /*!
    * Add a single-row linear constraint
@@ -122,6 +131,12 @@ class C3 {
    */
   void AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
                            double upper_bound, int constraint);
+
+  void AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
+                           double upper_bound,
+                           enum ConstraintVariable constraint) {
+    AddLinearConstraint(A, lower_bound, upper_bound, constraint + 1);
+  }
 
   /*! Remove all constraints previously added by AddLinearConstraint */
   void RemoveConstraints();
@@ -227,10 +242,11 @@ class C3 {
   /**
    * @brief Initializes the cost matrices used in the system.
    *
-   * This function sets up and populates the cost matrices required for 
-   * computations within the core module using the values defined in C3Options. 
+   * This function sets up and populates the cost matrices required for
+   * computations within the core module using the values defined in C3Options.
    */
   void InitializeCostMatricesFromC3Options();
+
 
   LCS lcs_;
   double AnDn_ = 1.0;  // Scaling factor for lambdas

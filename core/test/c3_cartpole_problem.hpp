@@ -127,10 +127,13 @@ class C3CartpoleProblem {
     options.publish_frequency = 100;
     options.solve_time_filter_alpha = 0.0;
     options.end_on_qp_step = true;
-    options.use_predicted_x0 = false;
+    // options.use_predicted_x0 = false;
     options.dt = dt;
     options.warm_start = false;
     options.scale_lcs = false;
+    options.contact_model = "anitescu";
+    options.num_friction_directions = 1;
+    options.num_contacts = 1;
 
     pSystem = std::make_unique<LCS>(A, B, D, d, E, F, H, c, dt);
     pCost = std::make_unique<C3::CostMatrices>(Q, R, G, U);
@@ -146,7 +149,7 @@ class C3CartpoleProblem {
   /// variables (cost, C3)
   vector<MatrixXd> Q;
   /// C3 options
-  C3Options options;
+  C3ControllerOptions options;
   /// Unique pointer to optimizer
   std::unique_ptr<LCS> pSystem;
   std::unique_ptr<C3::CostMatrices> pCost;

@@ -14,8 +14,7 @@ static const double kVariableBounds = 10000;
 class C3MIQP final : public C3 {
  public:
   /// Default constructor for time-varying LCS
-  C3MIQP(const LCS& LCS, const CostMatrices& costs,
-         const std::vector<Eigen::VectorXd>& xdesired,
+  C3MIQP(const LCS& LCS, const std::vector<Eigen::VectorXd>& xdesired,
          const C3Options& options);
 
   ~C3MIQP() override = default;

@@ -155,22 +155,22 @@ void C3::InitializeCostMatricesFromC3Options() {
   std::vector<Eigen::MatrixXd> Q;  // State cost matrices.
   std::vector<Eigen::MatrixXd> R;  // Input cost matrices.
 
-  std::vector<MatrixXd> G(c3_options_.N,
-                          c3_options_.G);  // State-input cross-term matrices.
-  std::vector<MatrixXd> U(c3_options_.N,
-                          c3_options_.U);  // Constraint matrices.
+  std::vector<MatrixXd> G(options_.N,
+                          options_.G);  // State-input cross-term matrices.
+  std::vector<MatrixXd> U(options_.N,
+                          options_.U);  // Constraint matrices.
 
   double discount_factor = 1.0;
   for (int i = 0; i < N_; ++i) {
-    Q_.push_back(discount_factor * c3_options_.Q);
-    R_.push_back(discount_factor * c3_options_.R);
-    discount_factor *= c3_options_.gamma;
+    Q.push_back(discount_factor * options_.Q);
+    R.push_back(discount_factor * options_.R);
+    discount_factor *= options_.gamma;
   }
-  Q_.push_back(discount_factor * c3_options_.Q);
-  DRAKE_DEMAND(Q_.size() == N_ + 1);
-  DRAKE_DEMAND(R_.size() == N_);
+  Q.push_back(discount_factor * options_.Q);
+  DRAKE_DEMAND(Q.size() == (size_t)N_ + 1);
+  DRAKE_DEMAND(R.size() == (size_t)N_);
 
-  cost_matrices_ = CostMatrices(Q_, R_, G, U);  // Initialize the cost matrices.
+  cost_matrices_ = CostMatrices(Q, R, G, U);  // Initialize the cost matrices.
 }
 
 void C3::ScaleLCS() {
@@ -217,7 +217,7 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   }
 }
 
-void UpdateCostMatrices(CostMatrices& costs) {
+void C3::UpdateCostMatrices(CostMatrices& costs) {
   cost_matrices_ = costs;
 
   for (int i = 0; i < N_ + 1; ++i) {

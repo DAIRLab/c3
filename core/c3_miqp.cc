@@ -8,9 +8,8 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
 
-C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
-               const vector<VectorXd>& xdesired, const C3Options& options)
-    : C3(LCS, costs, xdesired, options), M_(options.M) {}
+C3MIQP::C3MIQP(const LCS& LCS, const vector<VectorXd>& xdesired, const C3Options& options)
+    : C3(LCS,xdesired, options), M_(options.M) {}
 
 VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
                                        const VectorXd& delta_c,
