@@ -22,22 +22,8 @@ namespace systems {
 
 C3Controller::C3Controller(
     const drake::multibody::MultibodyPlant<double>& plant, C3Options c3_options)
-    : plant_(plant),
-      c3_options_(std::move(c3_options)),
-      G_(std::vector<MatrixXd>(c3_options_.N, c3_options_.G)),
-      U_(std::vector<MatrixXd>(c3_options_.N, c3_options_.U)),
-      N_(c3_options_.N) {
+    : plant_(plant), c3_options_(std::move(c3_options)), N_(c3_options_.N) {
   this->set_name("c3_controller");
-
-  double discount_factor = 1;
-  for (int i = 0; i < N_; ++i) {
-    Q_.push_back(discount_factor * c3_options_.Q);
-    R_.push_back(discount_factor * c3_options_.R);
-    discount_factor *= c3_options_.gamma;
-  }
-  Q_.push_back(discount_factor * c3_options_.Q);
-  DRAKE_DEMAND(Q_.size() == N_ + 1);
-  DRAKE_DEMAND(R_.size() == N_);
 
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
@@ -60,17 +46,16 @@ C3Controller::C3Controller(
   // Creates placeholder lcs to construct base C3 problem
   // Placeholder LCS will have correct size as it's already determined by the
   // contact model
-  auto lcs_placeholder = LCS::CreatePlaceholderLCS();
+  auto lcs_placeholder =
+      LCS::CreatePlaceholderLCS(n_x_, n_u_, n_lambda_, N_, dt_);
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   if (c3_options_.projection_type == "MIQP") {
-    c3_ = std::make_unique<C3MIQP>(lcs_placeholder,
-                                   C3::CostMatrices(Q_, R_, G_, U_),
-                                   x_desired_placeholder, c3_options_);
+    c3_ = std::make_unique<C3MIQP>(lcs_placeholder, x_desired_placeholder,
+                                   c3_options_);
   } else if (c3_options_.projection_type == "QP") {
-    c3_ = std::make_unique<C3QP>(lcs_placeholder,
-                                 C3::CostMatrices(Q_, R_, G_, U_),
-                                 x_desired_placeholder, c3_options_);
+    c3_ = std::make_unique<C3QP>(lcs_placeholder, x_desired_placeholder,
+                                 c3_options_);
 
   } else {
     std::cerr << ("Unknown projection type") << std::endl;
@@ -87,7 +72,8 @@ C3Controller::C3Controller(
     Eigen::VectorXd lb = VectorXd::Zero(c3_options_.workspace_limits.size());
     Eigen::VectorXd ub = VectorXd::Zero(c3_options_.workspace_limits.size());
     for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
-      A.block(i, 0, 1, 3) = c3_options_.workspace_limits[i].segment(0, 3).transpose();
+      A.block(i, 0, 1, 3) =
+          c3_options_.workspace_limits[i].segment(0, 3).transpose();
       lb[i] = c3_options_.workspace_limits[i][3];
       ub[i] = c3_options_.workspace_limits[i][4];
     }

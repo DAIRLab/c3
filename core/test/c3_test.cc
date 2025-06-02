@@ -171,7 +171,8 @@ class C3CartpoleTest : public testing::Test {
     pSystem = std::make_unique<LCS>(A, B, D, d, E, F, H, c, dt);
     pCost = std::make_unique<C3::CostMatrices>(Q, R, G, U);
 
-    pOpt = std::make_unique<C3MIQP>(*pSystem, *pCost, xdesired, options);
+    pOpt = std::make_unique<C3MIQP>(*pSystem,  xdesired, options);
+    pOpt->UpdateCostMatrices(*pCost);
   }
 
   /// dimensions (n: state dimension, m: complementarity variable dimension, k:

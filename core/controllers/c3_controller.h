@@ -53,6 +53,12 @@ class C3Controller : public drake::systems::LeafSystem<double> {
     c3_->SetOsqpSolverOptions(solver_options_);
   }
 
+  // Updates the cost matrices used by the controller.
+  void UpdateCostMatrices(CostMatrices& costs){
+    c3_->UpdateCostMatrices(costs);
+  }
+
+
  private:
   // Computes the C3 plan and updates discrete state.
   drake::systems::EventStatus ComputePlan(

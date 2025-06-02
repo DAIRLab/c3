@@ -38,15 +38,14 @@ C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
   this->U = U;
 }
 
-C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
-       const vector<VectorXd>& x_desired, const C3Options& options)
+C3::C3(const LCS& lcs, const vector<VectorXd>& x_desired,
+       const C3Options& options)
     : warm_start_(options.warm_start),
       N_(lcs.N()),
       n_x_(lcs.num_states()),
       n_lambda_(lcs.num_lambdas()),
       n_u_(lcs.num_inputs()),
       lcs_(lcs),
-      cost_matrices_(costs),
       x_desired_(x_desired),
       options_(options),
       h_is_zero_(lcs.H()[0].isZero(0)),
@@ -133,6 +132,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
             .evaluator()
             .get();
   }
+  InitializeCostMatricesFromC3Options();
   input_costs_.resize(N_);
   for (int i = 0; i < N_ + 1; ++i) {
     target_cost_[i] =
@@ -151,6 +151,28 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   }
 }
 
+void C3::InitializeCostMatricesFromC3Options() {
+  std::vector<Eigen::MatrixXd> Q;  // State cost matrices.
+  std::vector<Eigen::MatrixXd> R;  // Input cost matrices.
+
+  std::vector<MatrixXd> G(c3_options_.N,
+                          c3_options_.G);  // State-input cross-term matrices.
+  std::vector<MatrixXd> U(c3_options_.N,
+                          c3_options_.U);  // Constraint matrices.
+
+  double discount_factor = 1.0;
+  for (int i = 0; i < N_; ++i) {
+    Q_.push_back(discount_factor * c3_options_.Q);
+    R_.push_back(discount_factor * c3_options_.R);
+    discount_factor *= c3_options_.gamma;
+  }
+  Q_.push_back(discount_factor * c3_options_.Q);
+  DRAKE_DEMAND(Q_.size() == N_ + 1);
+  DRAKE_DEMAND(R_.size() == N_);
+
+  cost_matrices_ = CostMatrices(Q_, R_, G, U);  // Initialize the cost matrices.
+}
+
 void C3::ScaleLCS() {
   if (lcs_.IsPlaceholder() || !options_.scale_lcs) {
     // If the LCS is a placeholder or scaling is disabled, we do not scale
@@ -158,7 +180,7 @@ void C3::ScaleLCS() {
     AnDn_ = 1.0;
     return;
   }
-  
+
   AnDn_ = lcs_.ScaleComplementarityDynamics();
 }
 
@@ -192,6 +214,20 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
     target_cost_[i]->UpdateCoefficients(
         2 * cost_matrices_.Q.at(i),
         -2 * cost_matrices_.Q.at(i) * x_desired_.at(i));
+  }
+}
+
+void UpdateCostMatrices(CostMatrices& costs) {
+  cost_matrices_ = costs;
+
+  for (int i = 0; i < N_ + 1; ++i) {
+    target_cost_[i]->UpdateCoefficients(
+        2 * cost_matrices_.Q.at(i),
+        -2 * cost_matrices_.Q.at(i) * x_desired_.at(i));
+    if (i < N_) {
+      input_costs_[i]->UpdateCoefficients(2 * cost_matrices_.R.at(i),
+                                          VectorXd::Zero(n_u_));
+    }
   }
 }
 
