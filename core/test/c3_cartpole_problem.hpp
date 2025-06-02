@@ -130,6 +130,7 @@ class C3CartpoleProblem {
     options.use_predicted_x0 = false;
     options.dt = dt;
     options.warm_start = false;
+    options.scale_lcs = false;
 
     pSystem = std::make_unique<LCS>(A, B, D, d, E, F, H, c, dt);
     pCost = std::make_unique<C3::CostMatrices>(Q, R, G, U);

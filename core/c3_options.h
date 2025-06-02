@@ -20,6 +20,7 @@ struct C3Options {
   bool use_robust_formulation;
   double solve_time_filter_alpha;
   double publish_frequency;
+  bool scale_lcs = true;
 
   std::vector<double> u_horizontal_limits;
   std::vector<double> u_vertical_limits;

@@ -46,14 +46,19 @@ bool LCS::HasSameDimensionsAs(const LCS& other) const {
           N_ == other.N_);
 }
 
-void LCS::ScaleComplementarityDynamics(double scale) {
+double LCS::ScaleComplementarityDynamics() {
   DRAKE_DEMAND(!IsPlaceholder());
+  DRAKE_DEMAND(D_[0].norm() > 0);
+  double Dn = D_[0].norm();
+  double An = A_[0].norm();
+  double scale = An / Dn;
   for (size_t i = 0; i < N_; ++i) {
     D_.at(i) *= scale;
     E_.at(i) /= scale;
     c_.at(i) /= scale;
     H_.at(i) /= scale;
   }
+  return scale;
 }
 
 const VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& u) {

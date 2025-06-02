@@ -152,15 +152,14 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
 }
 
 void C3::ScaleLCS() {
-  if (lcs_.IsPlaceholder()) {
+  if (lcs_.IsPlaceholder() || !options_.scale_lcs) {
+    // If the LCS is a placeholder or scaling is disabled, we do not scale
+    // the complementarity dynamics.
     AnDn_ = 1.0;
     return;
   }
-  DRAKE_DEMAND(lcs_.D()[0].norm() > 0);
-  double Dn = lcs_.D()[0].norm();
-  double An = lcs_.A()[0].norm();
-  AnDn_ = An / Dn;
-  lcs_.ScaleComplementarityDynamics(AnDn_);
+  
+  AnDn_ = lcs_.ScaleComplementarityDynamics();
 }
 
 void C3::UpdateLCS(const LCS& lcs) {

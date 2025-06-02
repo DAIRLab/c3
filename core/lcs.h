@@ -107,11 +107,12 @@ class LCS {
   }
 
   /*!
-   * Scale the complementarity dynamics, such that
+   * Scales the complementarity dynamics by a factor, ensuring that
    * \lambda_{unscaled} = scale_factor * \lambda_{scaled}
-   * result in equivalent system behavior
+   * preserves the equivalent system behavior. This can be used to adjust
+   * the numerical properties of the system for better optimization performance.
    */
-  void ScaleComplementarityDynamics(double scale_factor);
+  double ScaleComplementarityDynamics();
 
   /*!
    * Returns true if this LCS has the same horizon and state, input, and
