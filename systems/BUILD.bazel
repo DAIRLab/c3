@@ -1,0 +1,64 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "solver_options_io",
+    hdrs = ["solver_options_io.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "vector",
+    srcs = [
+        "framework/timestamped_vector.cc",
+    ],
+    hdrs = [
+        "framework/timestamped_vector.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_library(
+    name = "systems",
+    srcs = [
+        "c3_controller.cc",
+        "lcs_simulator.cc",
+    ],
+    hdrs = [
+        "c3_controller.h",
+        "lcs_simulator.h",
+        
+        ],
+    data = glob([
+        "configs/**",
+    ]),
+    deps = [
+        "//core:c3",
+        "//core:c3_output",
+        ":solver_options_io",
+        ":vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "c3_controller_test",
+    srcs = [
+        "test/c3_controller_test.cc",
+        "test/cartpole_geometry.hpp"],
+    data = glob([
+        "test/res/**",
+    ]),
+    deps = [
+        "//core:c3",
+        ":systems",
+        "//core:c3_cartpole_problem",
+    ]
+)

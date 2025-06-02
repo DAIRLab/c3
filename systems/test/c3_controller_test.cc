@@ -1,9 +1,9 @@
 // Includes for core controllers, simulators, and test problems.
-#include "core/controllers/c3_controller.h"
+#include "systems/c3_controller.h"
 
-#include "core/controllers/lcs_simulator.h"
+#include "systems/lcs_simulator.h"
 #include "core/test/c3_cartpole_problem.hpp"
-#include "core/test/cartpole_geometry.hpp"
+#include "systems/test/cartpole_geometry.hpp"
 
 // Includes for Drake systems and primitives.
 #include <drake/systems/primitives/pass_through.h>
@@ -30,9 +30,9 @@ using drake::systems::DiagramBuilder;
 using Eigen::VectorXd;
 
 // Custom LeafSystem to process C3 solutions and output actions.
-class C3SolutionAction : public drake::systems::LeafSystem<double> {
+class C3Solution2Input : public drake::systems::LeafSystem<double> {
  public:
-  explicit C3SolutionAction() {
+  explicit C3Solution2Input() {
     // Declare input port for C3 solutions.
     c3_solution_port_index_ =
         this->DeclareAbstractInputPort("c3_solution",
@@ -40,7 +40,7 @@ class C3SolutionAction : public drake::systems::LeafSystem<double> {
             .get_index();
     // Declare output port for actions.
     c3_action_port_index_ =
-        this->DeclareVectorOutputPort("u", 1, &C3SolutionAction::GetC3Action)
+        this->DeclareVectorOutputPort("u", 1, &C3Solution2Input::GetC3Action)
             .get_index();
   }
 
@@ -67,6 +67,40 @@ class C3SolutionAction : public drake::systems::LeafSystem<double> {
     const auto& sol = input->get_value<C3Output::C3Solution>();
     // Set the action output based on the solution.
     output->SetAtIndex(0, sol.u_sol_(0));
+  }
+};
+
+class Vector2TimestampedVector : public drake::systems::LeafSystem<double> {
+ public:
+  explicit Vector2TimestampedVector() {
+    vector_port_index_ = this->DeclareVectorInputPort("state", 4).get_index();
+    timestamped_vector_port_index_ =
+        this->DeclareVectorOutputPort("timestamped_state",
+                                      c3::systems::TimestampedVector<double>(4),
+                                      &Vector2TimestampedVector::Convert)
+            .get_index();
+  }
+  // Getter for the input port.
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+    return this->get_input_port(vector_port_index_);
+  }
+
+  // Getter for the output port.
+  const drake::systems::OutputPort<double>& get_output_port_timestamped_state()
+      const {
+    return this->get_output_port(timestamped_vector_port_index_);
+  }
+
+ private:
+  drake::systems::InputPortIndex vector_port_index_;
+  drake::systems::OutputPortIndex timestamped_vector_port_index_;
+
+  void Convert(const drake::systems::Context<double>& context,
+               c3::systems::TimestampedVector<double>* output) const {
+    output->SetDataVector(
+        this->EvalVectorInput(context, vector_port_index_)->get_value());
+    // Set the timestamp to the current time.
+    output->set_timestamp(context.get_time());
   }
 };
 
@@ -136,9 +170,16 @@ int DoMain() {
       builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
           c3_cartpole_problem.xdesired.at(0));
 
-  // Connect the simulator's output to the controller's state input.
+  Vector2TimestampedVector* vector_to_timestamped_vector =
+      builder.AddSystem<Vector2TimestampedVector>();
+  // Connect the state output to the timestamped vector system.
   builder.Connect(state_zero_order_hold->get_output_port(),
-                  c3_controller->get_input_port_lcs_state());
+                  vector_to_timestamped_vector->get_input_port_state());
+
+  // Connect the simulator's output to the controller's state input.
+  builder.Connect(
+      vector_to_timestamped_vector->get_output_port_timestamped_state(),
+      c3_controller->get_input_port_lcs_state());
 
   // Connect the LCS system output to the controller's LCS input.
   builder.Connect(lcs->get_output_port(), c3_controller->get_input_port_lcs());
@@ -148,7 +189,7 @@ int DoMain() {
                   c3_controller->get_input_port_target());
 
   // Add the C3 solution action system to the builder.
-  C3SolutionAction* c3_action = builder.AddSystem<C3SolutionAction>();
+  C3Solution2Input* c3_action = builder.AddSystem<C3Solution2Input>();
   builder.Connect(c3_controller->get_output_port_c3_solution(),
                   c3_action->get_input_port_c3_solution());
 

@@ -4,14 +4,6 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "solver_options_io",
-    hdrs = ["solver_options_io.h"],
-    deps = [
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "c3",
     srcs = [
         "c3.cc",
@@ -59,40 +51,15 @@ cc_library(
         "c3_output.h",
     ],
     deps = [
-        # "//lcmtypes:lcmtypes_c3",
         "@drake//:drake_shared_library",
     ],
 )
 
 cc_library(
-    name = "c3_controller",
-    srcs = [
-        "controllers/c3_controller.cc",
-        "controllers/lcs_simulator.cc",
-    ],
+    name = "c3_cartpole_problem",
     hdrs = [
-        "controllers/c3_controller.h",
-        "controllers/lcs_simulator.h",
-        
-        ],
-    data = glob([
-        "configs/**",
-    ]),
-    deps = [
-        ":c3",
-        ":c3_output",
-        ":solver_options_io",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-
-cc_library(
-    name = "c3_systems",
-    deps = [
-        ":c3_controller",
-    ],
+        "test/c3_cartpole_problem.hpp",
+    ]
 )
 
 cc_test(
@@ -108,17 +75,4 @@ cc_test(
     ],
 )
 
-cc_binary(
-    name = "c3_controller_test",
-    srcs = [
-        "test/c3_controller_test.cc", 
-        "test/c3_cartpole_problem.hpp", 
-        "test/cartpole_geometry.hpp"],
-    data = glob([
-        "test/res/**",
-    ]),
-    deps = [
-        ":c3",
-        ":c3_controller",
-    ]
-)
+

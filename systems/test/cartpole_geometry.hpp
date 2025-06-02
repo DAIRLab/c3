@@ -25,7 +25,7 @@ class CartpoleGeometry : public drake::systems::LeafSystem<double> {
     Parser parser(plant, scene_graph);
 
     // Load the Cartpole model from an SDF file.
-    const std::string file = "core/test/res/cartpole_softwalls.sdf";
+    const std::string file = "systems/test/res/cartpole_softwalls.sdf";
     parser.AddModels(file);
     plant->Finalize();
 

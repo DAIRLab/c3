@@ -12,7 +12,7 @@
 #include "core/c3_output.h"
 #include "core/c3_qp.h"
 #include "core/lcs.h"
-#include "core/solver_options_io.h"
+#include "systems/solver_options_io.h"
 #include "systems/framework/timestamped_vector.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -101,7 +101,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   double publish_frequency_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
-          "core/configs/solver_options_default.yaml")
+          "systems/configs/solver_options_default.yaml")
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   // Convenience variables for dimensions.

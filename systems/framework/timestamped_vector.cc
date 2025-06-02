@@ -1,4 +1,4 @@
-#include "systems/framework/timestamped_vector.h"
+#include "timestamped_vector.h"
 
 #include "drake/common/default_scalars.h"
 
