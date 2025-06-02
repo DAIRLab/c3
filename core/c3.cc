@@ -152,6 +152,10 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
 }
 
 void C3::ScaleLCS() {
+  if (lcs_.IsPlaceholder()) {
+    AnDn_ = 1.0;
+    return;
+  }
   DRAKE_DEMAND(lcs_.D()[0].norm() > 0);
   double Dn = lcs_.D()[0].norm();
   double An = lcs_.A()[0].norm();

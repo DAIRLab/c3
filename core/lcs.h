@@ -25,7 +25,8 @@ class LCS {
       const std::vector<Eigen::MatrixXd>& E,
       const std::vector<Eigen::MatrixXd>& F,
       const std::vector<Eigen::MatrixXd>& H,
-      const std::vector<Eigen::VectorXd>& c, double dt);
+      const std::vector<Eigen::VectorXd>& c, double dt,
+      bool is_placeholder = false);
 
   /*!
    * Constructor for a time-invariant LCS. The same as above, but
@@ -35,7 +36,7 @@ class LCS {
       const Eigen::MatrixXd& D, const Eigen::VectorXd& d,
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const int& N,
-      double dt);
+      double dt, bool is_placeholder = false);
 
   /*! Default Copy and Assignment */
   LCS(const LCS& other) = default;
@@ -118,6 +119,8 @@ class LCS {
    */
   bool HasSameDimensionsAs(const LCS& other) const;
 
+  bool IsPlaceholder() const { return is_placeholder_; }
+
   /**
    * @brief Create a temporary placeholder LCS object with all matrix values to
    * be set to 0
@@ -146,6 +149,8 @@ class LCS {
   int n_;
   int m_;
   int k_;
+
+  bool is_placeholder_ = false;
 };
 
 }  // namespace c3

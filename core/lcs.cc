@@ -11,7 +11,8 @@ namespace c3 {
 LCS::LCS(const vector<MatrixXd>& A, const vector<MatrixXd>& B,
          const vector<MatrixXd>& D, const vector<VectorXd>& d,
          const vector<MatrixXd>& E, const vector<MatrixXd>& F,
-         const vector<MatrixXd>& H, const vector<VectorXd>& c, double dt)
+         const vector<MatrixXd>& H, const vector<VectorXd>& c, double dt,
+         bool is_placeholder)
     : A_(A),
       B_(B),
       D_(D),
@@ -24,7 +25,8 @@ LCS::LCS(const vector<MatrixXd>& A, const vector<MatrixXd>& B,
       dt_(dt),
       n_(A_[0].rows()),
       m_(D_[0].cols()),
-      k_(B_[0].cols()) {
+      k_(B_[0].cols()),
+      is_placeholder_(is_placeholder) {
   // TODO (@Brian-Acosta) validate everything is the correct size
   //  probably should use an assert to avoid checking 8N matrices in non-debug
   //  builds.
@@ -32,11 +34,12 @@ LCS::LCS(const vector<MatrixXd>& A, const vector<MatrixXd>& B,
 
 LCS::LCS(const MatrixXd& A, const MatrixXd& B, const MatrixXd& D,
          const VectorXd& d, const MatrixXd& E, const MatrixXd& F,
-         const MatrixXd& H, const VectorXd& c, const int& N, double dt)
+         const MatrixXd& H, const VectorXd& c, const int& N, double dt,
+         bool is_placeholder)
     : LCS(vector<MatrixXd>(N, A), vector<MatrixXd>(N, B),
           vector<MatrixXd>(N, D), vector<VectorXd>(N, d),
           vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
-          vector<MatrixXd>(N, H), vector<VectorXd>(N, c), dt) {}
+          vector<MatrixXd>(N, H), vector<VectorXd>(N, c), dt, is_placeholder) {}
 
 bool LCS::HasSameDimensionsAs(const LCS& other) const {
   return (n_ == other.n_ and m_ == other.m_ and k_ == other.k_ and
@@ -44,6 +47,7 @@ bool LCS::HasSameDimensionsAs(const LCS& other) const {
 }
 
 void LCS::ScaleComplementarityDynamics(double scale) {
+  DRAKE_DEMAND(!IsPlaceholder());
   for (size_t i = 0; i < N_; ++i) {
     D_.at(i) *= scale;
     E_.at(i) /= scale;
@@ -53,6 +57,7 @@ void LCS::ScaleComplementarityDynamics(double scale) {
 }
 
 const VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& u) {
+  DRAKE_DEMAND(!IsPlaceholder());
   VectorXd x_final;
   VectorXd force;
   drake::solvers::MobyLCPSolver<double> LCPSolver;
@@ -71,7 +76,7 @@ LCS LCS::CreatePlaceholderLCS(int n_x, int n_u, int n_lambda, int N,
   MatrixXd F = MatrixXd::Zero(n_lambda, n_lambda);
   MatrixXd H = MatrixXd::Zero(n_lambda, n_u);
   VectorXd c = VectorXd::Zero(n_lambda);
-  return LCS(A, B, D, d, E, F, H, c, N, dt);
+  return LCS(A, B, D, d, E, F, H, c, N, dt, true);
 }
 
 }  // namespace c3
