@@ -63,3 +63,15 @@ cc_test(
         "GRB_LICENSE_FILE"
     ],
 )
+
+cc_library(
+    name = "improved_c3",
+    srcs = ["improved_c3.cc"],
+    hdrs = ["improved_c3.h", "c3_options.h"],
+    deps = [
+        ":lcs",
+        "@drake//:drake_shared_library",
+    ],
+    copts = ["-fopenmp"],
+    linkopts = ["-fopenmp"],
+)

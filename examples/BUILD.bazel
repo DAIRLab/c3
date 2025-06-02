@@ -5,3 +5,10 @@ cc_binary(
         "//core:c3",
     ],
 )
+cc_binary(
+    name = "improved_c3_cartpole",
+    srcs = ["improved_c3_cartpole.cc"],
+    deps = [
+        "//core:improved_c3",
+    ],
+)
