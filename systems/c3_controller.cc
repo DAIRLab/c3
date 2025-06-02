@@ -91,7 +91,7 @@ C3Controller::C3Controller(
           .get_index();
 
   plan_start_time_index_ = DeclareDiscreteState(1);
-  x_pred_index_ = DeclareDiscreteState(n_x_);
+  // x_pred_index_ = DeclareDiscreteState(n_x_);
   filtered_solve_time_index_ = DeclareDiscreteState(1);
 
   if (publish_frequency_ > 0) {
@@ -115,8 +115,10 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   auto& lcs =
       this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
   drake::VectorX<double> x_lcs = lcs_x->get_data();
-  auto& x_pred = context.get_discrete_state(x_pred_index_).value();
-  auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
+
+  // Todo: Looks like task specific initialization, to be confirmed and removed
+  // auto& x_pred = context.get_discrete_state(x_pred_index_).value();
+  // auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
   auto mutable_solve_time =
       discrete_state->get_mutable_value(filtered_solve_time_index_);
 
@@ -162,15 +164,17 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     mutable_solve_time[0] = solve_time;
   }
 
-  std::vector<Eigen::VectorXd> z_sol = c3_->GetFullSolution();
-  if (mutable_solve_time[0] < (N_ - 1) * dt_) {
-    int index = mutable_solve_time[0] / dt_;
-    double weight = (mutable_solve_time[0] - index * dt_) / dt_;
-    mutable_x_pred = (1 - weight) * z_sol[index].segment(0, n_x_) +
-                     weight * z_sol[index + 1].segment(0, n_x_);
-  } else {
-    mutable_x_pred = z_sol[N_ - 1].segment(0, n_x_);
-  }
+
+  // Todo: Looks like task specific initialization, to be confirmed and removed
+  // std::vector<Eigen::VectorXd> z_sol = c3_->GetFullSolution();
+  // if (mutable_solve_time[0] < (N_ - 1) * dt_) {
+  //   int index = mutable_solve_time[0] / dt_;
+  //   double weight = (mutable_solve_time[0] - index * dt_) / dt_;
+  //   mutable_x_pred = (1 - weight) * z_sol[index].segment(0, n_x_) +
+  //                    weight * z_sol[index + 1].segment(0, n_x_);
+  // } else {
+  //   mutable_x_pred = z_sol[N_ - 1].segment(0, n_x_);
+  // }
 
   return drake::systems::EventStatus::Succeeded();
 }
@@ -196,7 +200,7 @@ void C3Controller::OutputC3Intermediates(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const {
   double solve_time = context.get_discrete_state(filtered_solve_time_index_)[0];
-  double t = context.get_discrete_state(plan_start_time_index_)[0] + solve_time;
+  double t = context.get_discrete_state(plan_start_time_index_)[0];
   std::vector<Eigen::VectorXd> z = c3_->GetFullSolution();
   std::vector<Eigen::VectorXd> delta = c3_->GetDualDeltaSolution();
   std::vector<Eigen::VectorXd> w = c3_->GetDualWSolution();
