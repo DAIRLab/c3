@@ -459,6 +459,8 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
       delta_proj(n_x_ + i) = 0;
       if (gamma_val > 0) {
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
+      } else {
+        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
       }
     }
     // Case 2: gamma < 0
@@ -466,6 +468,8 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
       delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
       if (lambda_val > 0) {
         delta_proj(n_x_ + i) = lambda_val;
+      } else {
+        delta_proj(n_x_ + i) = 0;
       }
     }
     // Case 3: Both lambda and gamma > 0
