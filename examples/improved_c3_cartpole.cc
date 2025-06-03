@@ -194,7 +194,7 @@ void init_cartpole(int *n_, int *m_, int *k_, int *N_, vector<MatrixXd> *A_,
   MatrixXd Us(n + 2 * m + k, n + 2 * m + k);
   Us = MatrixXd::Zero(n + 2 * m + k, n + 2 * m + k);
   Us.block(n, n, m, m) = MatrixXd::Identity(m, m);
-  Us.block(n + m + k, n + m + k, m, m) = 100 * MatrixXd::Identity(m, m);
+  Us.block(n + m + k, n + m + k, m, m) = 10000 * MatrixXd::Identity(m, m);
 
   vector<MatrixXd> U(N, Us);
 

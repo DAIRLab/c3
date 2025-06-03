@@ -16,7 +16,7 @@ struct C3Options {
   double M = 1000; // big M value for MIQP
   bool warm_start = false;
   bool use_predicted_x0;
-  bool end_on_qp_step;
+  bool end_on_qp_step = true;
   bool use_robust_formulation;
   double solve_time_filter_alpha;
   double publish_frequency;

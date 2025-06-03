@@ -1,21 +1,19 @@
-# -*- python -*-
-load("@drake//tools/install:install.bzl", "install")
-
-package(default_visibility = ["//visibility:public"])
-
 load(
     "@drake//tools/skylark:pybind.bzl",
-    "drake_pybind_library",
-    "get_drake_py_installs",
     "get_pybind_package_info",
     "pybind_py_library",
 )
-load("@rules_python//python:packaging.bzl", "py_package")
-load("@rules_python//python:packaging.bzl", "py_wheel")
+load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:packaging.bzl", "py_package", "py_wheel")
+
+package(default_visibility = ["//visibility:public"])
 
 pybind_py_library(
     name = "c3_py",
-    cc_deps = ["//core:c3"],
+    cc_deps = [
+        "//core:c3",
+        "//core:improved_c3",
+    ],
     cc_so_name = "c3",
     cc_srcs = ["c3_py.cc"],
     py_deps = [
