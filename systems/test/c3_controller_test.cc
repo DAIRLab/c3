@@ -155,7 +155,7 @@ int DoMain() {
   // Add the C3 controller.
   C3Controller* c3_controller = builder.AddSystem<C3Controller>(
       *(geometry->plant), c3_cartpole_problem.options);
-  c3_controller->UpdateCostMatrices(*(c3_cartpole_problem.pCost));
+  c3_controller->UpdateCostMatrices(c3_cartpole_problem.cost);
 
   // Add constant value source for the LCS system.
   auto lcs = builder.AddSystem<drake::systems::ConstantValueSource>(
@@ -206,8 +206,7 @@ int DoMain() {
   // Set initial positions for the state subsystem.
   auto& state_context = diagram_->GetMutableSubsystemContext(
       *state_zero_order_hold, diagram_context.get());
-  Eigen::Vector4d positions = {0, -0.5, 0.5, -0.4};
-  state_zero_order_hold->SetVectorState(&state_context, positions);
+  state_zero_order_hold->SetVectorState(&state_context, c3_cartpole_problem.x0);
 
   // Create and configure the simulator.
   drake::systems::Simulator<double> simulator(*diagram_,

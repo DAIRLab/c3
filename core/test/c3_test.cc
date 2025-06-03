@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "core/c3_miqp.h"
+#include "core/test/c3_cartpole_problem.hpp"
 
 #include "drake/math/discrete_algebraic_riccati_equation.h"
 
@@ -45,7 +46,7 @@ using namespace c3;
  * @todo A coverage report for the cpp files tested.
  */
 
-class C3CartpoleTest : public testing::Test {
+class C3CartpoleTest : public testing::Test, public C3CartpoleProblem {
   /**
    * This is a fixture we use for testing with GTest and setting up initial
    * testing conditions. It sets up the Cartpole problem which consists of a
@@ -53,142 +54,10 @@ class C3CartpoleTest : public testing::Test {
    */
  protected:
   C3CartpoleTest() {
-    n = 4;
-    m = 2;
-    k = 1;
-    N = 10;
-
-    float g = 9.81;
-    float mp = 0.411;
-    float mc = 0.978;
-    float len_p = 0.6;
-    float len_com = 0.4267;
-    float d1 = 0.35;
-    float d2 = -0.35;
-    float ks = 100;
-    float Ts = 0.01;
-
-    /// initial condition(cartpole)
-    x0.resize(n);
-    x0 << 0.1, 0, 0.3, 0;
-
-    MatrixXd Ainit(n, n);
-    Ainit << 0, 0, 1, 0, 0, 0, 0, 1, 0, g * mp / mc, 0, 0, 0,
-        (g * (mc + mp)) / (len_com * mc), 0, 0;
-
-    MatrixXd Binit(n, k);
-    Binit << 0, 0, 1 / mc, 1 / (len_com * mc);
-
-    MatrixXd Dinit(n, m);
-    Dinit << 0, 0, 0, 0, (-1 / mc) + (len_p / (mc * len_com)),
-        (1 / mc) - (len_p / (mc * len_com)),
-        (-1 / (mc * len_com)) +
-            (len_p * (mc + mp)) / (mc * mp * len_com * len_com),
-        -((-1 / (mc * len_com)) +
-          (len_p * (mc + mp)) / (mc * mp * len_com * len_com));
-
-    MatrixXd Einit(m, n);
-    Einit << -1, len_p, 0, 0, 1, -len_p, 0, 0;
-
-    MatrixXd Finit(m, m);
-    Finit << 1 / ks, 0, 0, 1 / ks;
-
-    VectorXd cinit(m);
-    cinit << d1, -d2;
-
-    VectorXd dinit(n);
-    dinit << 0, 0, 0, 0;
-
-    MatrixXd Hinit = MatrixXd::Zero(m, k);
-
-    MatrixXd Qinit(n, n);
-    Qinit << 10, 0, 0, 0, 0, 3, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
-
-    MatrixXd Rinit(k, k);
-    Rinit << 1;
-
-    MatrixXd Ginit(n + m + k, n + m + k);
-    Ginit = 0.1 * MatrixXd::Identity(n + m + k, n + m + k);
-    Ginit(n + m + k - 1, n + m + k - 1) = 0;
-
-    MatrixXd Uinit(n + m + k, n + m + k);
-    Uinit << 1000, 0, 0, 0, 0, 0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 1000, 0, 0,
-        0, 0, 0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0,
-        0, 0, 0, 0, 0, 0, 0;
-
-    // Use ricatti equation to estimate future cost
-    MatrixXd QNinit = drake::math::DiscreteAlgebraicRiccatiEquation(
-        Ainit * Ts + MatrixXd::Identity(n, n), Ts * Binit, Qinit, Rinit);
-
-    std::vector<MatrixXd> Qsetup(N + 1, Qinit);
-    Qsetup.at(N) = QNinit;  // Switch to QNinit, solution of Algebraic Ricatti
-
-    // Initialize LCS for N timesteps
-    // Dynamics
-    vector<MatrixXd> A(N, Ainit * Ts + MatrixXd::Identity(n, n));
-    vector<MatrixXd> B(N, Ts * Binit);
-    vector<MatrixXd> D(N, Ts * Dinit);
-    vector<VectorXd> d(N, Ts * dinit);
-
-    // Complimentary constraints
-    vector<MatrixXd> E(N, Einit);
-    vector<MatrixXd> F(N, Finit);
-    vector<VectorXd> c(N, cinit);
-    vector<MatrixXd> H(N, Hinit);
-
-    // Cost Matrices
-    Q = Qsetup;
-    vector<MatrixXd> R(N, Rinit);
-    vector<MatrixXd> G(N, Ginit);
-    vector<MatrixXd> U(N, Uinit);
-
-    // Desired state : Vertically balances
-    VectorXd xdesiredinit;
-    xdesiredinit = VectorXd::Zero(n);
-    xdesired.resize(N + 1, xdesiredinit);
-
-    // Set C3 options
-    options.N = N;
-    options.dt = dt;
-    options.Q = Qinit;
-    options.R = Rinit;
-    options.G = Ginit;
-    options.U = Uinit;
-    options.gamma = 1.0;
-    options.projection_type = "MIQP";
-    options.admm_iter = 10;
-    options.rho_scale = 2;
-    options.num_threads = 0;
-    options.delta_option = 0;
-    options.publish_frequency = 50;
-    options.solve_time_filter_alpha = 0.0;
-    options.end_on_qp_step = true;
-    options.use_predicted_x0 = false;
-    options.dt = dt;
-    options.warm_start = false;
-
-    dt = 0.01;
-    pSystem = std::make_unique<LCS>(A, B, D, d, E, F, H, c, dt);
-    pCost = std::make_unique<C3::CostMatrices>(Q, R, G, U);
-
-    pOpt = std::make_unique<C3MIQP>(*pSystem,  xdesired, options);
-    pOpt->UpdateCostMatrices(*pCost);
+    C3CartpoleProblem(0.411, 0.978, 0.6, 0.4267, 0.35, -0.35, 100, 9.81);
+    pOpt = std::make_unique<C3MIQP>(*pSystem, xdesired, options);
+    pOpt->UpdateCostMatrices(cost);
   }
-
-  /// dimensions (n: state dimension, m: complementarity variable dimension, k:
-  /// */ input dimension, N: MPC horizon)
-  int n, m, k, N;
-  double dt;
-  /// initial condition(x0), tracking (xdesired)
-  VectorXd x0;
-  vector<VectorXd> xdesired;
-  /// variables (cost, C3)
-  vector<MatrixXd> Q;
-  /// C3 options
-  C3Options options;
-  /// Unique pointer to optimizer
-  std::unique_ptr<LCS> pSystem;
-  std::unique_ptr<C3::CostMatrices> pCost;
   std::unique_ptr<C3MIQP> pOpt;
 };
 
@@ -207,7 +76,7 @@ TEST_F(C3CartpoleTest, LinearConstraintsTest) {
 
 class C3CartpoleTestParameterizedLinearConstraints
     : public C3CartpoleTest,
-      public ::testing::WithParamInterface<std::tuple<bool, int, int, int>> {
+      public ::testing::WithParamInterface<std::tuple<bool, int, int>> {
   /* Parameterized linear constraints contains
   | --------------------------- | state | input | lambda |
   | constraint_type             | 1     | 2     | 3      |
@@ -221,7 +90,8 @@ TEST_P(C3CartpoleTestParameterizedLinearConstraints, LinearConstraintsTest) {
   bool use_row_vector = std::get<0>(GetParam());
   int constraint_type = std::get<1>(GetParam());
   int constraint_size = std::get<2>(GetParam());
-  int num_of_new_constraints = std::get<3>(GetParam());
+  int num_of_new_constraints =
+      constraint_type == c3::ConstraintVariable::STATE ? N - 1 : N;
 
   MatrixXd Al;
   if (use_row_vector) {
@@ -253,14 +123,15 @@ TEST_P(C3CartpoleTestParameterizedLinearConstraints, LinearConstraintsTest) {
 
 INSTANTIATE_TEST_CASE_P(
     LinearConstraintTests, C3CartpoleTestParameterizedLinearConstraints,
-    ::testing::Values(
-        std::make_tuple(false, 1, 4, 9), std::make_tuple(false, 2, 1, 10),
-        std::make_tuple(false, 3, 2, 10), std::make_tuple(true, 1, 4, 9),
-        std::make_tuple(true, 2, 1, 10),
-        std::make_tuple(
-            true, 3, 2,
-            10)  // (RowVectorXd/MatrixXd), state, input and force constraints
-        ));
+    ::testing::Values(std::make_tuple(false, c3::ConstraintVariable::STATE, 4),
+                      std::make_tuple(false, c3::ConstraintVariable::INPUT, 1),
+                      std::make_tuple(false, c3::ConstraintVariable::FORCE, 2),
+                      std::make_tuple(true, c3::ConstraintVariable::STATE, 4),
+                      std::make_tuple(true, c3::ConstraintVariable::INPUT, 1),
+                      std::make_tuple(true, c3::ConstraintVariable::FORCE,
+                                      2)  // (RowVectorXd/MatrixXd), state,
+                                          // input and force constraints
+                      ));
 
 // Test if user can remove linear constraints
 TEST_F(C3CartpoleTest, RemoveLinearConstraintsTest) {
@@ -301,8 +172,8 @@ TEST_F(C3CartpoleTest, UpdateTargetTest) {
 
   for (int i = 0; i < N + 1; ++i) {
     // Quadratic Q and b cost matrices should be updated
-    MatrixXd Qq = Q.at(i) * 2;
-    MatrixXd bq = -2 * Q.at(i) * xdesired.at(i);
+    MatrixXd Qq = cost.Q.at(i) * 2;
+    MatrixXd bq = -2 * cost.Q.at(i) * xdesired.at(i);
 
     EXPECT_EQ(Qq.isApprox(target_costs[i]->Q()), true);
     EXPECT_EQ(bq.isApprox(target_costs[i]->b()), true);
@@ -360,7 +231,8 @@ TEST_F(C3CartpoleTest, End2EndCartpoleTest) {
   std::vector<VectorXd> x(timesteps, VectorXd::Zero(n));
   std::vector<VectorXd> input(timesteps, VectorXd::Zero(k));
 
-  x[0] = x0;
+  x[0] << 0.1, 0.0, 0.3, 0.0;  // initial state, close to center and
+                               // balancing the pendulum
 
   for (int i = 0; i < timesteps - 1; i++) {
     /// reset delta and w (default option)

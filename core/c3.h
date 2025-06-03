@@ -14,7 +14,7 @@ namespace c3 {
 typedef drake::solvers::Binding<drake::solvers::LinearConstraint>
     LinearConstraintBinding;
 
-enum ConstraintVariable : uint8_t { STATE, INPUT, FORCE };
+enum ConstraintVariable : uint8_t { STATE = 1, INPUT = 2, FORCE = 3 };
 
 class C3 {
  public:
@@ -93,7 +93,7 @@ class C3 {
 
   /**
    * @brief Get the Quadratic Cost which to be minimized at each timestep (N
-   * total). xᵢᵀQᵢxᵢ − 2x[d]ᵢQᵢᵀxᵢ 
+   * total). xᵢᵀQᵢxᵢ − 2x[d]ᵢQᵢᵀxᵢ
    * xᵢ     : State variable at the ith timestep
    * x[d]ᵢ  : desired state at the ith timestep
    * Qᵢ     : Cost matrix for the ith timestep
@@ -116,12 +116,6 @@ class C3 {
   void AddLinearConstraint(const Eigen::MatrixXd& A,
                            const Eigen::VectorXd& lower_bound,
                            const Eigen::VectorXd& upper_bound, int constraint);
-  void AddLinearConstraint(const Eigen::MatrixXd& A,
-                           const Eigen::VectorXd& lower_bound,
-                           const Eigen::VectorXd& upper_bound,
-                           enum ConstraintVariable constraint) {
-    AddLinearConstraint(A, lower_bound, upper_bound, constraint + 1);
-  }
 
   /*!
    * Add a single-row linear constraint
@@ -131,12 +125,6 @@ class C3 {
    */
   void AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
                            double upper_bound, int constraint);
-
-  void AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
-                           double upper_bound,
-                           enum ConstraintVariable constraint) {
-    AddLinearConstraint(A, lower_bound, upper_bound, constraint + 1);
-  }
 
   /*! Remove all constraints previously added by AddLinearConstraint */
   void RemoveConstraints();
@@ -246,7 +234,6 @@ class C3 {
    * computations within the core module using the values defined in C3Options.
    */
   void InitializeCostMatricesFromC3Options();
-
 
   LCS lcs_;
   double AnDn_ = 1.0;  // Scaling factor for lambdas

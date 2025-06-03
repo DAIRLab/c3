@@ -59,7 +59,10 @@ cc_library(
     name = "c3_cartpole_problem",
     hdrs = [
         "test/c3_cartpole_problem.hpp",
-    ]
+    ],
+    data = glob([
+        "test/res/**",
+    ]),
 )
 
 cc_test(
@@ -67,6 +70,7 @@ cc_test(
     srcs = ["test/c3_test.cc"],
     deps = [
         ":c3",
+        ":c3_cartpole_problem",
         "@gtest//:main",
     ],
     env_inherit = [

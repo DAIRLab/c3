@@ -7,27 +7,31 @@ namespace c3 {
 
 struct C3Options {
   // Hyperparameters
-  int admm_iter = 3;     // total number of ADMM iterations
-  float rho_scale = 10;  // scaling of rho parameter (/rho = rho_scale * /rho)
-  int num_threads = 10;  // 0 is dynamic, greater than 0 for a fixed count
-  int delta_option = 1;  // different options for delta update
-  std::string projection_type;
-  std::string contact_model;
-  double M = 1000;  // big M value for MIQP
-  bool warm_start = true;
-  bool end_on_qp_step;
-  bool use_robust_formulation;
-  bool scale_lcs = true;
+  bool warm_start =
+      true;  // Use results of current admm iteration as warm start for next
+  bool end_on_qp_step =
+      true;  // If false, Run a half step calculating the state using the LCS
+  bool scale_lcs =
+      true;  // Scale the LCS matrices by a factor of norm(A[0])/norm(D[0])
 
-  int N;
-  double gamma;
-  std::vector<double> mu;
-  double dt;
-  double solve_dt;
-  int num_friction_directions;
-  int num_contacts;
+  int num_threads = 10;  // 0 is dynamic, greater than 0 for a fixed count
+  int delta_option =
+      1;  // 1 initializes the state value of the delta value with x0
+
+  std::string contact_model;    // "stewart_and_trinkle" or "anitescu"
+  int num_friction_directions;  // Number of friction directions per contact
+  int num_contacts;             // Number of contacts in the system
+
+  std::string projection_type;  // "QP" or "MIQP"
+  double M = 1000;              // big M value for MIQP
+
+  int N;              // number of time steps in the prediction horizon
+  double dt;          // time step size
+  int admm_iter = 3;  // total number of ADMM iterations
 
   // See comments below for how we parse the .yaml into the cost matrices
+  double gamma;          // scaling factor for state and input the cost matrices
+  float rho_scale = 10;  // scaling of rho parameter (/rho = rho_scale * /rho)
   Eigen::MatrixXd Q;
   Eigen::MatrixXd R;
   Eigen::MatrixXd G;
@@ -70,35 +74,31 @@ struct C3Options {
 
   template <typename Archive>
   void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(admm_iter));
-    a->Visit(DRAKE_NVP(rho_scale));
+    a->Visit(DRAKE_NVP(warm_start));
+    a->Visit(DRAKE_NVP(end_on_qp_step));
+    a->Visit(DRAKE_NVP(scale_lcs));
+
     a->Visit(DRAKE_NVP(num_threads));
     a->Visit(DRAKE_NVP(delta_option));
+
     a->Visit(DRAKE_NVP(contact_model));
+    a->Visit(DRAKE_NVP(num_friction_directions));
+    a->Visit(DRAKE_NVP(num_contacts));
+
+
     a->Visit(DRAKE_NVP(projection_type));
     if (projection_type == "QP") {
       DRAKE_DEMAND(contact_model == "anitescu");
     }
-    a->Visit(DRAKE_NVP(warm_start));
-    // a->Visit(DRAKE_NVP(use_predicted_x0));
-    a->Visit(DRAKE_NVP(end_on_qp_step));
-    a->Visit(DRAKE_NVP(use_robust_formulation));
-    // a->Visit(DRAKE_NVP(solve_time_filter_alpha));
-    // a->Visit(DRAKE_NVP(publish_frequency));
-
-    // a->Visit(DRAKE_NVP(workspace_limits));
-    // a->Visit(DRAKE_NVP(u_horizontal_limits));
-    // a->Visit(DRAKE_NVP(u_vertical_limits));
-    // a->Visit(DRAKE_NVP(workspace_margins));
-
-    a->Visit(DRAKE_NVP(mu));
-    a->Visit(DRAKE_NVP(dt));
-    a->Visit(DRAKE_NVP(solve_dt));
-    a->Visit(DRAKE_NVP(num_friction_directions));
-    a->Visit(DRAKE_NVP(num_contacts));
+    a->Visit(DRAKE_NVP(M));
 
     a->Visit(DRAKE_NVP(N));
+    a->Visit(DRAKE_NVP(dt));
+    a->Visit(DRAKE_NVP(admm_iter));
+
+    a->Visit(DRAKE_NVP(rho_scale));
     a->Visit(DRAKE_NVP(gamma));
+
     a->Visit(DRAKE_NVP(w_Q));
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_G));
@@ -153,7 +153,6 @@ struct C3Options {
                  num_contacts * num_friction_directions * 2);
     DRAKE_DEMAND(static_cast<int>(u_lambda.size()) ==
                  num_contacts * num_friction_directions * 2);
-    DRAKE_DEMAND(static_cast<int>(mu.size()) == num_contacts);
     DRAKE_DEMAND(g.size() == u.size());
 
     Q = w_Q * q.asDiagonal();
@@ -172,6 +171,19 @@ struct C3ControllerOptions : public C3Options {
   // Additional options specific to the C3Controller
   double solve_time_filter_alpha = 0.0;
   double publish_frequency = 100.0;  // Hz
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    C3Options::Serialize(a);
+    a->Visit(DRAKE_NVP(solve_time_filter_alpha));
+    a->Visit(DRAKE_NVP(publish_frequency));
+  }
 };
+
+inline C3ControllerOptions LoadC3ControllerOptions(
+    const std::string& filename) {
+  auto options = drake::yaml::LoadYamlFile<C3ControllerOptions>(filename);
+  return options;
+}
 
 }  // namespace c3
