@@ -1,20 +1,20 @@
 #pragma once
 
-#include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/common/yaml/yaml_io.h"
+#include "drake/common/yaml/yaml_read_archive.h"
 
 namespace c3 {
 
 struct C3Options {
   // Hyperparameters
-  int admm_iter = 3;     // total number of ADMM iterations
-  float rho_scale = 10;   // scaling of rho parameter (/rho = rho_scale * /rho)
-  int num_threads = 10;   // 0 is dynamic, greater than 0 for a fixed count
-  int delta_option = 1;  // different options for delta update
+  int admm_iter = 3;    // total number of ADMM iterations
+  float rho_scale = 10; // scaling of rho parameter (/rho = rho_scale * /rho)
+  int num_threads = 10; // 0 is dynamic, greater than 0 for a fixed count
+  int delta_option = 1; // different options for delta update
   std::string projection_type;
   std::string contact_model;
-  double M = 1000;  // big M value for MIQP
-  bool warm_start = true;
+  double M = 1000; // big M value for MIQP
+  bool warm_start = false;
   bool use_predicted_x0;
   bool end_on_qp_step;
   bool use_robust_formulation;
@@ -75,8 +75,7 @@ struct C3Options {
   std::vector<double> u_lambda;
   std::vector<double> u_u;
 
-  template<typename Archive>
-  void Serialize(Archive *a) {
+  template <typename Archive> void Serialize(Archive *a) {
     a->Visit(DRAKE_NVP(admm_iter));
     a->Visit(DRAKE_NVP(rho_scale));
     a->Visit(DRAKE_NVP(num_threads));
@@ -156,8 +155,10 @@ struct C3Options {
     Eigen::VectorXd u = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->u_vector.data(), this->u_vector.size());
 
-    DRAKE_DEMAND(static_cast<int>(g_lambda.size()) == num_contacts * num_friction_directions * 2);
-    DRAKE_DEMAND(static_cast<int>(u_lambda.size()) == num_contacts * num_friction_directions * 2);
+    DRAKE_DEMAND(static_cast<int>(g_lambda.size()) ==
+                 num_contacts * num_friction_directions * 2);
+    DRAKE_DEMAND(static_cast<int>(u_lambda.size()) ==
+                 num_contacts * num_friction_directions * 2);
     DRAKE_DEMAND(static_cast<int>(mu.size()) == num_contacts);
     DRAKE_DEMAND(g.size() == u.size());
 

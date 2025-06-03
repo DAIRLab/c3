@@ -28,4 +28,6 @@
         "--compile-commands-dir=${userHome}/git/c3",
         "--header-insertion=never",
     ],
+    "bazel.buildifierExecutable": "/home/hienbui/buildifier-linux-amd64",
+    "bazel.buildifierFixOnFormat": true,
 }

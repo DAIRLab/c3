@@ -236,6 +236,8 @@ private:
   // QP step constraints
   std::shared_ptr<drake::solvers::LinearEqualityConstraint>
       initial_state_constraint_;
+  std::shared_ptr<drake::solvers::LinearEqualityConstraint>
+      initial_force_constraint_;
   std::vector<drake::solvers::LinearEqualityConstraint *> dynamics_constraints_;
   std::vector<drake::solvers::LinearEqualityConstraint *> sdf_constraints_;
   std::vector<LinearConstraintBinding> constraints_;

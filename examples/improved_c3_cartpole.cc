@@ -65,7 +65,7 @@ int DoMain(int argc, char *argv[]) {
   ImprovedC3::CostMatrices cost(Q, R, G, U);
   ImprovedC3 opt(system, cost, xdesired, options);
 
-  int timesteps = 100; // number of timesteps for the simulation
+  int timesteps = 500; // number of timesteps for the simulation
 
   /// create state and input arrays
   std::vector<VectorXd> x(timesteps, VectorXd::Zero(n));
@@ -126,7 +126,8 @@ void init_cartpole(int *n_, int *m_, int *k_, int *N_, vector<MatrixXd> *A_,
 
   /// initial condition(cartpole)
   VectorXd x0init(n);
-  x0init << 0.1, 0, 0.3, 0;
+  // x0init << 0.1, 0, 0.3, 0;
+  x0init << 0, -0.5, 0.5, -0.4;
 
   MatrixXd Ainit(n, n);
   Ainit << 0, 0, 1, 0, 0, 0, 0, 1, 0, g * mp / mc, 0, 0, 0,
@@ -164,10 +165,9 @@ void init_cartpole(int *n_, int *m_, int *k_, int *N_, vector<MatrixXd> *A_,
   Rinit << 1;
 
   MatrixXd Ginit(n + 2 * m + k, n + 2 * m + k);
-  Ginit = MatrixXd::Identity(n + 2 * m + k, n + 2 * m + k);
-  Ginit(n + m + k - 1, n + m + k - 1) = 0;
-  Ginit.block(n + m + k, n + m + k, m, m) = 0.001 * MatrixXd::Identity(m, m);
-  Ginit.block(n, n, m, m) = 0.001 * MatrixXd::Identity(m, m);
+  Ginit = MatrixXd::Zero(n + 2 * m + k, n + 2 * m + k);
+  Ginit.block(n + m + k, n + m + k, m, m) = MatrixXd::Identity(m, m);
+  Ginit.block(n, n, m, m) = MatrixXd::Identity(m, m);
 
   MatrixXd QNinit = drake::math::DiscreteAlgebraicRiccatiEquation(
       Ainit * Ts + MatrixXd::Identity(n, n), Ts * Binit, Qinit, Rinit);
@@ -200,8 +200,8 @@ void init_cartpole(int *n_, int *m_, int *k_, int *N_, vector<MatrixXd> *A_,
 
   C3Options optionsinit;
   optionsinit.admm_iter = 10;
-  optionsinit.rho_scale = 1.2;
-  optionsinit.num_threads = 0;
+  optionsinit.rho_scale = 2;
+  optionsinit.num_threads = 5;
   optionsinit.delta_option = 0;
 
   *options = optionsinit;

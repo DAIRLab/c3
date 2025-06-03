@@ -108,6 +108,7 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
 
   // initialize the constraint bindings
   initial_state_constraint_ = nullptr;
+  initial_force_constraint_ = nullptr;
   dynamics_constraints_.resize(N_);
   sdf_constraints_.resize(N_);
   target_cost_.resize(N_ + 1);
@@ -312,7 +313,16 @@ vector<VectorXd> ImprovedC3::SolveQP(const VectorXd &x0,
     VectorXd lambda0;
     LCPSolver.SolveLcpLemke(lcs_.F()[0], lcs_.E()[0] * x0 + lcs_.c()[0],
                             &lambda0);
-    constraints_.push_back(prog_.AddLinearConstraint(lambda_[0] == lambda0));
+    if (initial_force_constraint_) {
+      initial_force_constraint_->UpdateCoefficients(
+          MatrixXd::Identity(n_lambda_, n_lambda_), lambda0);
+    } else {
+      initial_force_constraint_ =
+          prog_
+              .AddLinearEqualityConstraint(
+                  MatrixXd::Identity(n_lambda_, n_lambda_), lambda0, lambda_[0])
+              .evaluator();
+    }
   }
 
   for (auto &cost : costs_) {
@@ -383,6 +393,8 @@ vector<VectorXd> ImprovedC3::SolveQP(const VectorXd &x0,
     if (warm_start_) {
       warm_start_x_[admm_iteration][N_] = result.GetSolution(x_[N_]);
     }
+  } else {
+    std::cout << "QP failed to solve" << std::endl;
   }
 
   return *z_sol_;
