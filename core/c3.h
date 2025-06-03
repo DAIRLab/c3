@@ -92,6 +92,16 @@ class C3 {
   void UpdateCostMatrices(CostMatrices& costs);
 
   /**
+   * @brief Get the current cost matrices used in the system.
+   *
+   * This function provides access to the cost matrices currently being used
+   * in the computations.
+   *
+   * @return const CostMatrices& The current cost matrices.
+   */
+  const CostMatrices& GetCostMatrices() const { return cost_matrices_; }
+
+  /**
    * @brief Get the Quadratic Cost which to be minimized at each timestep (N
    * total). xᵢᵀQᵢxᵢ − 2x[d]ᵢQᵢᵀxᵢ
    * xᵢ     : State variable at the ith timestep

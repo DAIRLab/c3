@@ -87,15 +87,15 @@ class C3CartpoleProblem {
     MatrixXd Hinit = MatrixXd::Zero(m, k);
 
     // Initialize LCS for N timesteps
-    vector<MatrixXd> A(options.N, Ainit * Ts + MatrixXd::Identity(n, n));
-    vector<MatrixXd> B(options.N, Ts * Binit);
-    vector<MatrixXd> D(options.N, Ts * Dinit);
-    vector<VectorXd> d(options.N, Ts * dinit);
+    vector<MatrixXd> A(N, Ainit * Ts + MatrixXd::Identity(n, n));
+    vector<MatrixXd> B(N, Ts * Binit);
+    vector<MatrixXd> D(N, Ts * Dinit);
+    vector<VectorXd> d(N, Ts * dinit);
 
-    vector<MatrixXd> E(options.N, Einit);
-    vector<MatrixXd> F(options.N, Finit);
-    vector<VectorXd> c(options.N, cinit);
-    vector<MatrixXd> H(options.N, Hinit);
+    vector<MatrixXd> E(N, Einit);
+    vector<MatrixXd> F(N, Finit);
+    vector<VectorXd> c(N, cinit);
+    vector<MatrixXd> H(N, Hinit);
 
     // Create LCS system
     pSystem = std::make_unique<LCS>(A, B, D, d, E, F, H, c, options.dt);
@@ -106,19 +106,19 @@ class C3CartpoleProblem {
         options.R);
 
     // Cost matrices
-    std::vector<MatrixXd> Qsetup(options.N + 1, options.Q);
-    Qsetup.at(options.N) = QNinit;  // Terminal cost matrix
+    std::vector<MatrixXd> Qsetup(N + 1, options.Q);
+    Qsetup.at(N) = QNinit;  // Terminal cost matrix
 
     vector<MatrixXd> Q = Qsetup;
-    vector<MatrixXd> R(options.N, options.R);
-    vector<MatrixXd> G(options.N, options.G);
-    vector<MatrixXd> U(options.N, options.U);
+    vector<MatrixXd> R(N, options.R);
+    vector<MatrixXd> G(N, options.G);
+    vector<MatrixXd> U(N, options.U);
 
     cost = C3::CostMatrices(Q, R, G, U);
 
     // Desired state: Vertically balanced
     VectorXd xdesiredinit = VectorXd::Zero(n);
-    xdesired.resize(options.N + 1, xdesiredinit);
+    xdesired.resize(N + 1, xdesiredinit);
   }
 
   // Dimensions (n: state, m: complementarity, k: input, N: MPC horizon)

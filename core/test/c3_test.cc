@@ -34,8 +34,10 @@ using namespace c3;
  * | GetLinearConstraints   |   DONE  |
  * | UpdateLCS              |   DONE  |
  * | GetDynamicConstraints  |   DONE  |
+ * | UpdateCostMatrix       |   DONE  |
  * | Solve                  |    -    |
  * | SetOsqpSolverOptions   |    -    |
+ * | # of regression tests  |    2    |
  *
  * It also has an E2E test for ensuring the "Solve()" function and other
  * internal functions are working as expected. However, the E2E takes about 120s
@@ -180,6 +182,42 @@ TEST_F(C3CartpoleTest, UpdateTargetTest) {
   }
 }
 
+// Test if user can update the Cost matrices
+TEST_F(C3CartpoleTest, UpdateCostMatrix) {
+  vector<MatrixXd> Q(N + 1, MatrixXd::Zero(n, n));
+  vector<MatrixXd> R(N, MatrixXd::Zero(k, k));
+  vector<MatrixXd> G(N, MatrixXd::Zero(n + m + k, n + m + k));
+  vector<MatrixXd> U(N, MatrixXd::Zero(n + m + k, n + m + k));
+
+  C3::CostMatrices new_cost(Q, R, G, U);
+  pOpt->UpdateCostMatrices(new_cost);
+
+  const C3::CostMatrices cost_matrices = pOpt->GetCostMatrices();
+
+  // Ensure matrices are updated
+  for (int i = 0; i < N + 1; ++i) {
+    EXPECT_EQ(cost.Q.at(i).isApprox(cost_matrices.Q.at(i)), false);
+    if (i < N) {
+      EXPECT_EQ(cost.R.at(i).isApprox(cost_matrices.R.at(i)), false);
+      EXPECT_EQ(cost.G.at(i).isApprox(cost_matrices.G.at(i)), false);
+      EXPECT_EQ(cost.U.at(i).isApprox(cost_matrices.U.at(i)), false);
+    }
+  }
+
+  // Ensure target state costs are updated
+  std::vector<drake::solvers::QuadraticCost*> target_costs =
+      pOpt->GetTargetCost();
+
+  for (int i = 0; i < N + 1; ++i) {
+    // Quadratic Q and b cost matrices should be updated
+    MatrixXd Qq = Q.at(i) * 2;
+    MatrixXd bq = -2 * Q.at(i) * xdesired.at(i);
+
+    EXPECT_EQ(Qq.isApprox(target_costs[i]->Q()), true);
+    EXPECT_EQ(bq.isApprox(target_costs[i]->b()), true);
+  }
+}
+
 // Test if user can update the LCS for the C3 problem
 TEST_F(C3CartpoleTest, UpdateLCSTest) {
   std::vector<drake::solvers::LinearEqualityConstraint*>
@@ -211,6 +249,85 @@ TEST_F(C3CartpoleTest, UpdateLCSTest) {
     // Linear Equality A matrix should be updated
     MatrixXd pst_Al = pst_dynamic_constraints[i]->GetDenseA();
     EXPECT_EQ(pre_Al[i].isApprox(pst_Al), false);
+  }
+}
+
+class C3CartpoleTestParameterizedScalingLCSTest
+    : public C3CartpoleTest,
+      public ::testing::WithParamInterface<std::tuple<bool, bool>> {};
+
+// [Regression Test] Ensure that LCS in correctly scaled (if required) and used
+// in dynamic constraints. This should be true if C3 initialized or LCS is
+// updated.
+TEST_P(C3CartpoleTestParameterizedScalingLCSTest, ScalingLCSTest) {
+  options.scale_lcs = std::get<0>(GetParam());
+  bool use_update_lcs = std::get<1>(GetParam());
+
+  C3MIQP optimizer(*pSystem, xdesired, options);
+  if (use_update_lcs) {
+    optimizer.UpdateLCS(*pSystem);
+  }
+
+  if (options.scale_lcs) pSystem->ScaleComplementarityDynamics();
+
+  MatrixXd LinEq = MatrixXd::Zero(n, 2 * n + m + k);
+  LinEq.block(0, n + m + k, n, n) = -1 * MatrixXd::Identity(n, n);
+  LinEq.block(0, 0, n, n) = pSystem->A().at(0);
+  LinEq.block(0, n, n, m) = pSystem->D().at(0);
+  LinEq.block(0, n + m, n, k) = pSystem->B().at(0);
+
+  std::vector<drake::solvers::LinearEqualityConstraint*> dynamic_constraints =
+      optimizer.GetDynamicConstraints();
+  for (int i = 0; i < N; ++i) {
+    // Linear Equality A matrix should be updated
+    MatrixXd Ad = dynamic_constraints[i]->GetDenseA();
+    EXPECT_EQ(LinEq.isApprox(Ad), true);
+  }
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ScalingLCSTests, C3CartpoleTestParameterizedScalingLCSTest,
+    ::testing::Values(
+        std::make_tuple(
+            true, true),  // Scale LCS and check initialized dynamic constraints
+        std::make_tuple(
+            true, false),  // Scale LCS and check updated dynamic constraints
+        std::make_tuple(
+            false,
+            true),  // Don't scale LCS and check initialized dynamic constraints
+        std::make_tuple(
+            false,
+            false)  // Don't scale LCS and check updated dynamic constraints
+        ));
+
+// [Regression Test] Related to https://github.com/DAIRLab/c3/issues/6
+// Ensure z_sol values not stale due to INFEASIBLE CONSTRAINTS which had occured
+// when initial force constraints were incorrectly updated when H is zero.
+// Note: this test only works if options.end_on_qp_step = true
+TEST_F(C3CartpoleTest, ZSolStaleTest) {
+  int timesteps = 5;  // number of timesteps for the simulation
+
+  // Create state and input arrays
+  std::vector<VectorXd> z(timesteps, VectorXd::Zero(n + m + k));
+  std::vector<VectorXd> state(timesteps, VectorXd::Zero(n));
+  std::vector<VectorXd> input(timesteps, VectorXd::Zero(k));
+
+  state[0] << 0.1, -0.5, 0.5, -0.4;  // initial state with contact to right wall
+
+  for (int i = 0; i < timesteps - 1; i++) {
+    // Calculate the input given x[i]
+    pOpt->Solve(state[i]);
+    input[i] = pOpt->GetInputSolution()[0];
+    z[i] = pOpt->GetFullSolution()[0];
+
+    // Simulate the LCS
+
+    state[i + 1] = pSystem->Simulate(state[i], input[i]);
+
+    ASSERT_EQ(state[i].segment(0, n).isApprox(z[i].segment(0, n)),
+              true);  // Current state should be equal to initial state in
+                      // full solution (The assumption is the full solution is
+                      // not updated when the QP fails)
   }
 }
 
