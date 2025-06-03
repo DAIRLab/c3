@@ -248,7 +248,9 @@ PYBIND11_MODULE(c3, m) {
       .def("GetStateSolution", &ImprovedC3::GetStateSolution)
       .def("GetForceSolution", &ImprovedC3::GetForceSolution)
       .def("GetSDFSolution", &ImprovedC3::GetSDFSolution)
-      .def("GetInputSolution", &ImprovedC3::GetInputSolution);
+      .def("GetInputSolution", &ImprovedC3::GetInputSolution)
+      .def("GetDualDeltaSolution", &ImprovedC3::GetDualDeltaSolution)
+      .def("GetDualWSolution", &ImprovedC3::GetDualWSolution);
 }
 } // namespace pyc3
 } // namespace c3

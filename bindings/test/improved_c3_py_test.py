@@ -2,6 +2,8 @@ import time
 import numpy as np
 from scipy import linalg
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from matplotlib.animation import FuncAnimation
 
 from pyc3 import (
     LCS,
@@ -81,6 +83,83 @@ def make_cartpole_costs(lcs: LCS) -> ImprovedC3CostMatrices:
     return ImprovedC3CostMatrices(Q, R, G, U)
 
 
+def animate_cartpole(x, dt, len_p, len_com):
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.set_xlim(-2, 2)
+    ax.set_ylim(-0.25, 1)
+    ax.set_aspect("equal")
+    ax.grid(True)
+
+    # Draw soft walls
+    ax.axvline(x=-0.35, color="blue", linestyle="-", alpha=0.5)
+    ax.axvline(x=0.35, color="blue", linestyle="-", alpha=0.5)
+
+    # Create lines for cart, pole, and center of mass
+    (cart_line,) = ax.plot([], [], "b-", lw=2)
+    (pole_line,) = ax.plot([], [], "r-", lw=2)
+    (com_marker,) = ax.plot([], [], "go", markersize=8)  # green circle for COM
+    time_text = fig.text(
+        0.02, 0.95, "", ha="center", fontsize=12, transform=fig.transFigure
+    )
+    cart_width = 0.2
+    cart_height = 0.1
+
+    def init():
+        cart_line.set_data([], [])
+        pole_line.set_data([], [])
+        com_marker.set_data([], [])
+        time_text.set_text("")
+        return cart_line, pole_line, com_marker, time_text
+
+    def animate(i):
+        # Get cart position and pole angle
+        cart_pos = x[0, i]
+        pole_angle = x[1, i]
+
+        # Calculate cart corners
+        cart_x = [
+            cart_pos - cart_width / 2,
+            cart_pos + cart_width / 2,
+            cart_pos + cart_width / 2,
+            cart_pos - cart_width / 2,
+            cart_pos - cart_width / 2,
+        ]
+        cart_y = [
+            -cart_height / 2,
+            -cart_height / 2,
+            cart_height / 2,
+            cart_height / 2,
+            -cart_height / 2,
+        ]
+
+        # Calculate pole endpoints
+        pole_x = [cart_pos, cart_pos + len_p * np.sin(pole_angle)]
+        pole_y = [0, len_p * np.cos(pole_angle)]
+
+        # Calculate center of mass position
+        com_x = cart_pos + len_com * np.sin(pole_angle)
+        com_y = len_com * np.cos(pole_angle)
+
+        # Update time text
+        current_time = i * dt
+        time_text.set_text(f"Time: {current_time:.2f}s")
+
+        cart_line.set_data(cart_x, cart_y)
+        pole_line.set_data(pole_x, pole_y)
+        com_marker.set_data([com_x], [com_y])
+        return cart_line, pole_line, com_marker, time_text
+
+    anim = FuncAnimation(
+        fig, animate, init_func=init, frames=x.shape[1], interval=1000 / 60, blit=True
+    )  # 60 FPS
+
+    # Save animation
+    writer = animation.PillowWriter(fps=60)
+    anim.save("/home/hienbui/git/c3/cartpole_animation.gif", writer=writer)
+
+    return anim
+
+
 def main():
     N = 10
     cartpole = make_cartpole_with_soft_walls_dynamics(N)
@@ -107,28 +186,53 @@ def main():
     x[:, 0] = x0.ravel()
     solve_times = []
     sdf_sol = []
+    delta_sol = []
 
     for i in range(system_iter):
         start_time = time.perf_counter()
         opt.Solve(x[:, i])
         solve_times.append(time.perf_counter() - start_time)
         sdf_sol.append(opt.GetSDFSolution())
+        delta_sol.append(opt.GetDualDeltaSolution())
         u_opt = opt.GetInputSolution()[0]
         prediction = cartpole.Simulate(x[:, i], u_opt)
         x[:, i + 1] = prediction
 
+    sdf_sol = np.array(sdf_sol)
+    delta_sol = np.array(delta_sol)
+
     dt = cartpole.dt()
+
+    # Create animation if necessary
+    # len_p = 0.6  # pole length
+    # len_com = 0.4267  # center of mass length
+    # anim = animate_cartpole(x, dt, len_p, len_com)
+
     time_x = np.arange(0, system_iter * dt + dt, dt)
 
     print(
         f"Average solve time: {np.mean(solve_times)}, equivalent to {1 / np.mean(solve_times)} Hz"
     )
 
-    plt.plot(time_x, x.T)
-    plt.legend(["Cart Position", "Pole Angle", "Cart Velocity", "Pole Velocity"])
-    plt.xlabel("Time (s)")
-    plt.ylabel("State")
-    plt.title("Improved C3 Controller")
+    fig, ax = plt.subplots(3, 1, figsize=(8, 10))
+
+    ax[0].plot(time_x, x.T)
+    ax[0].legend(["Cart Position", "Pole Angle", "Cart Velocity", "Pole Velocity"])
+    ax[0].set_xlabel("Time (s)")
+    ax[0].set_ylabel("State")
+    ax[0].set_title("Improved C3 Controller")
+
+    ax[1].plot(time_x[:-1], delta_sol[:, 0, 4], label=r"$\lambda_1$")
+    ax[1].plot(time_x[:-1], delta_sol[:, 0, 7], label=r"$\gamma_1$")
+    ax[1].legend()
+    ax[1].set_ylabel(r"Left Wall")
+    ax[1].set_xlabel("Time (s)")
+
+    ax[2].plot(time_x[:-1], delta_sol[:, 0, 5], label=r"$\lambda_2$")
+    ax[2].plot(time_x[:-1], delta_sol[:, 0, 8], label=r"$\gamma_2$")
+    ax[2].legend()
+    ax[2].set_ylabel(r"Right Wall")
+    ax[2].set_xlabel("Time (s)")
     plt.show()
 
 
