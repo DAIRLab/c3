@@ -333,19 +333,18 @@ vector<VectorXd> ImprovedC3::SolveQP(const VectorXd &x0,
   for (int i = 0; i < N_ + 1; ++i) {
     if (i < N_) {
       costs_.push_back(prog_.AddQuadraticCost(
-          2 * G.at(i).block(0, 0, n_x_, n_x_),
-          -2 * G.at(i).block(0, 0, n_x_, n_x_) * WD.at(i).segment(0, n_x_),
-          x_.at(i), 1));
-      costs_.push_back(prog_.AddQuadraticCost(
           2 * G.at(i).block(n_x_, n_x_, n_lambda_, n_lambda_),
           -2 * G.at(i).block(n_x_, n_x_, n_lambda_, n_lambda_) *
               WD.at(i).segment(n_x_, n_lambda_),
           lambda_.at(i), 1));
       costs_.push_back(prog_.AddQuadraticCost(
-          2 * G.at(i).block(n_x_ + n_lambda_, n_x_ + n_lambda_, n_u_, n_u_),
-          -2 * G.at(i).block(n_x_ + n_lambda_, n_x_ + n_lambda_, n_u_, n_u_) *
-              WD.at(i).segment(n_x_ + n_lambda_, n_u_),
-          u_.at(i), 1));
+          2 * G.at(i).block(n_x_ + n_lambda_ + n_u_, n_x_ + n_lambda_ + n_u_,
+                            n_lambda_, n_lambda_),
+          -2 *
+              G.at(i).block(n_x_ + n_lambda_ + n_u_, n_x_ + n_lambda_ + n_u_,
+                            n_lambda_, n_lambda_) *
+              WD.at(i).segment(n_x_ + n_lambda_ + n_u_, n_lambda_),
+          gamma_.at(i), 1));
     }
   }
 
@@ -457,20 +456,12 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
     // Case 1: lambda < 0
     if (lambda_val < 0) {
       delta_proj(n_x_ + i) = 0;
-      if (gamma_val > 0) {
-        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
-      } else {
-        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-      }
+      delta_proj(n_x_ + n_lambda_ + n_u_ + i) = std::max(0.0, gamma_val);
     }
     // Case 2: gamma < 0
     else if (gamma_val < 0) {
       delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-      if (lambda_val > 0) {
-        delta_proj(n_x_ + i) = lambda_val;
-      } else {
-        delta_proj(n_x_ + i) = 0;
-      }
+      delta_proj(n_x_ + i) = std::max(0.0, lambda_val);
     }
     // Case 3: Both lambda and gamma > 0
     else if (lambda_val > 0 && gamma_val > 0) {

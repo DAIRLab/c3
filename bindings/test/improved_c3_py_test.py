@@ -71,13 +71,13 @@ def make_cartpole_costs(lcs: LCS) -> ImprovedC3CostMatrices:
     Q.append(linalg.solve_discrete_are(lcs.A()[0], lcs.B()[0], Q[0], R[0]))
 
     Ginit = np.zeros((n + 2 * m + k, n + 2 * m + k))
-    Ginit[n + m + k : n + m + k + m, n + m + k : n + m + k + m] = np.eye(m)
+    Ginit[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.eye(m)
     Ginit[n : n + m, n : n + m] = np.eye(m)
     G = [Ginit for _ in range(N)]
 
     U = np.zeros((n + 2 * m + k, n + 2 * m + k))
     U[n : n + m, n : n + m] = np.eye(m)
-    U[n + m + k : n + m + k + m, n + m + k : n + m + k + m] = 10000 * np.eye(m)
+    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = 10000 * np.eye(m)
     U = [U for _ in range(N)]
 
     return ImprovedC3CostMatrices(Q, R, G, U)
@@ -179,7 +179,7 @@ def main():
 
     x0 = np.array([0, -0.5, 0.5, -0.4])
 
-    system_iter = 600
+    system_iter = 1000
 
     x = np.zeros((n, system_iter + 1))
 
