@@ -133,11 +133,11 @@ def animate_cartpole(x, dt, len_p, len_com):
         ]
 
         # Calculate pole endpoints
-        pole_x = [cart_pos, cart_pos + len_p * np.sin(pole_angle)]
+        pole_x = [cart_pos, cart_pos - len_p * np.sin(pole_angle)]
         pole_y = [0, len_p * np.cos(pole_angle)]
 
         # Calculate center of mass position
-        com_x = cart_pos + len_com * np.sin(pole_angle)
+        com_x = cart_pos - len_com * np.sin(pole_angle)
         com_y = len_com * np.cos(pole_angle)
 
         # Update time text
@@ -186,18 +186,20 @@ def main():
     x[:, 0] = x0.ravel()
     solve_times = []
     delta_sol = []
+    z_sol = []
 
     for i in range(system_iter):
         start_time = time.perf_counter()
         opt.Solve(x[:, i])
         solve_times.append(time.perf_counter() - start_time)
         delta_sol.append(opt.GetDualDeltaSolution())
+        z_sol.append(opt.GetFullSolution())
         u_opt = opt.GetInputSolution()[0]
         prediction = cartpole.Simulate(x[:, i], u_opt)
         x[:, i + 1] = prediction
 
     delta_sol = np.array(delta_sol)
-
+    z_sol = np.array(z_sol)
     dt = cartpole.dt()
 
     # Create animation if necessary
@@ -219,14 +221,14 @@ def main():
     ax[0].set_ylabel("State")
     ax[0].set_title("Improved C3 Controller")
 
-    ax[1].plot(time_x[:-1], delta_sol[:, 0, 4], label=r"$\lambda_1$")
-    ax[1].plot(time_x[:-1], delta_sol[:, 0, 7], label=r"$\gamma_1$")
+    ax[1].plot(time_x[:-1], z_sol[:, 0, 4], label=r"$\lambda_1$")
+    ax[1].plot(time_x[:-1], z_sol[:, 0, 7], label=r"$\gamma_1$")
     ax[1].legend()
     ax[1].set_ylabel(r"Left Wall")
     ax[1].set_xlabel("Time (s)")
 
-    ax[2].plot(time_x[:-1], delta_sol[:, 0, 5], label=r"$\lambda_2$")
-    ax[2].plot(time_x[:-1], delta_sol[:, 0, 8], label=r"$\gamma_2$")
+    ax[2].plot(time_x[:-1], z_sol[:, 0, 5], label=r"$\lambda_2$")
+    ax[2].plot(time_x[:-1], z_sol[:, 0, 8], label=r"$\gamma_2$")
     ax[2].legend()
     ax[2].set_ylabel(r"Right Wall")
     ax[2].set_xlabel("Time (s)")

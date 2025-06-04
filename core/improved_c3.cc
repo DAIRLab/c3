@@ -73,7 +73,7 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
     }
   }
 
-  ScaleLCS();
+  // ScaleLCS();
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
@@ -176,7 +176,7 @@ void ImprovedC3::UpdateLCS(const LCS &lcs) {
 
   lcs_ = lcs;
   h_is_zero_ = lcs_.H()[0].isZero(0);
-  ScaleLCS();
+  // ScaleLCS();
 
   MatrixXd LinEq = MatrixXd::Zero(n_x_, 2 * n_x_ + n_lambda_ + n_u_);
   LinEq.block(0, n_x_ + n_u_ + n_lambda_, n_x_, n_x_) =
