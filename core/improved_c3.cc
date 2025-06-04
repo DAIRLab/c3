@@ -85,6 +85,10 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
   gamma_sol_ = std::make_unique<std::vector<VectorXd>>();
   w_sol_ = std::make_unique<std::vector<VectorXd>>();
   delta_sol_ = std::make_unique<std::vector<VectorXd>>();
+
+  // debug vars
+  debug_z = std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
+  //
   for (int i = 0; i < N_; ++i) {
     z_sol_->push_back(Eigen::VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
     x_sol_->push_back(Eigen::VectorXd::Zero(n_x_));
@@ -220,12 +224,13 @@ void ImprovedC3::Solve(const VectorXd &x0) {
                                          x_[0])
             .evaluator();
   }
-  VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
+  VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_*2 + n_u_);
   if (options_.delta_option == 1) {
     delta_init.head(n_x_) = x0;
   }
   std::vector<VectorXd> delta(N_, delta_init);
-  std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+
+  std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_*2 + n_u_));
   vector<MatrixXd> G = cost_matrices_.G;
 
   for (int i = 0; i < N_; ++i) {
@@ -233,7 +238,6 @@ void ImprovedC3::Solve(const VectorXd &x0) {
                                         -2 * cost_matrices_.R.at(i) *
                                             u_sol_->at(i));
   }
-
   for (int iter = 0; iter < options_.admm_iter; iter++) {
     ADMMStep(x0, &delta, &w, &G, iter);
   }
@@ -282,8 +286,9 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
   for (int i = 0; i < N_; ++i) {
     WD.at(i) = delta->at(i) - w->at(i);
   }
+  vector<VectorXd> z = SolveQP(x0, *G, WD, admm_iteration, true); // z is 10 by 9
+  // debug_z->push_back(z);
 
-  vector<VectorXd> z = SolveQP(x0, *G, WD, admm_iteration, true);
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
   for (int i = 0; i < N_; ++i) {
@@ -296,7 +301,7 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
   } else {
     *delta = SolveProjection(cost_matrices_.U, ZW, admm_iteration);
   }
-
+  debug_z->push_back(*delta);
   for (int i = 0; i < N_; ++i) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);
     w->at(i) = w->at(i) / options_.rho_scale;
@@ -395,6 +400,17 @@ vector<VectorXd> ImprovedC3::SolveQP(const VectorXd &x0,
   } else {
     std::cout << "QP failed to solve" << std::endl;
   }
+  // // print z_sol_ for debugging
+  // std::cout << "z_sol_: ";
+  // for (int i = 0; i < z_sol_->size(); ++i) {
+  //   std::cout << "z_sol_[" << i << "]: ";
+  //   const auto &v = z_sol_->at(i);
+  //   for (int jp = 0; jp < v.size(); ++jp) {
+  //     std::cout << v(jp);
+  //     if (jp < v.size() - 1) std::cout << ", ";
+  //   }
+  //   std::cout << "\n";
+  // }
 
   return *z_sol_;
 }
@@ -408,9 +424,10 @@ vector<VectorXd> ImprovedC3::SolveProjection(const vector<MatrixXd> &U,
   if (options_.num_threads > 0) {
     omp_set_dynamic(0); // Explicitly disable dynamic teams
     omp_set_num_threads(options_.num_threads); // Set number of threads
-    omp_set_nested(1);
+    // omp_set_nested(1);
+    omp_set_nested(0);
+    omp_set_schedule(omp_sched_static, 0);  
   }
-
 #pragma omp parallel for num_threads(options_.num_threads)
   for (i = 0; i < N_; ++i) {
     if (warm_start_) {

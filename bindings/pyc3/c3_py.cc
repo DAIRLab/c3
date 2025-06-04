@@ -250,6 +250,7 @@ PYBIND11_MODULE(c3, m) {
       .def("GetSDFSolution", &ImprovedC3::GetSDFSolution)
       .def("GetInputSolution", &ImprovedC3::GetInputSolution)
       .def("GetDualDeltaSolution", &ImprovedC3::GetDualDeltaSolution)
+      .def("GetDebugInfo", &ImprovedC3::GetDebugInfo)
       .def("GetDualWSolution", &ImprovedC3::GetDualWSolution);
 }
 } // namespace pyc3
