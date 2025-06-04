@@ -29,6 +29,17 @@ class C3 {
                  const std::vector<Eigen::MatrixXd>& R,
                  const std::vector<Eigen::MatrixXd>& G,
                  const std::vector<Eigen::MatrixXd>& U);
+    bool HasSameDimensionsAs(const CostMatrices& other) const {
+      // Check vector and matrix dimensions
+      return (Q.size() == other.Q.size() &&
+              Q.at(0).size() == other.Q.at(0).size() &&
+              R.size() == other.R.size() &&
+              R.at(0).size() == other.R.at(0).size() &&
+              G.size() == other.G.size() &&
+              G.at(0).size() == other.G.at(0).size() &&
+              U.size() == other.U.size() &&
+              U.at(0).size() == other.U.at(0).size());
+    }
     std::vector<Eigen::MatrixXd> Q;
     std::vector<Eigen::MatrixXd> R;
     std::vector<Eigen::MatrixXd> G;

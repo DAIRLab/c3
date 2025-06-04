@@ -152,6 +152,14 @@ C3::C3(const LCS& lcs, const vector<VectorXd>& x_desired,
 }
 
 void C3::InitializeCostMatricesFromC3Options() {
+  // Check dimensions of cost matrices
+  DRAKE_DEMAND(options_.Q.rows() == n_x_ && options_.Q.cols() == n_x_);
+  DRAKE_DEMAND(options_.R.rows() == n_u_ && options_.R.cols() == n_u_);
+  DRAKE_DEMAND(options_.G.rows() == n_x_ + n_lambda_ + n_u_ &&
+               options_.G.cols() == n_x_ + n_lambda_ + n_u_);
+  DRAKE_DEMAND(options_.U.rows() == n_x_ + n_lambda_ + n_u_ &&
+               options_.U.cols() == n_x_ + n_lambda_ + n_u_);
+
   std::vector<Eigen::MatrixXd> Q;  // State cost matrices.
   std::vector<Eigen::MatrixXd> R;  // Input cost matrices.
 
@@ -167,8 +175,6 @@ void C3::InitializeCostMatricesFromC3Options() {
     discount_factor *= options_.gamma;
   }
   Q.push_back(discount_factor * options_.Q);
-  DRAKE_DEMAND(Q.size() == (size_t)N_ + 1);
-  DRAKE_DEMAND(R.size() == (size_t)N_);
 
   cost_matrices_ = CostMatrices(Q, R, G, U);  // Initialize the cost matrices.
 }
@@ -218,6 +224,7 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
 }
 
 void C3::UpdateCostMatrices(CostMatrices& costs) {
+  DRAKE_DEMAND(cost_matrices_.HasSameDimensionsAs(costs));
   cost_matrices_ = costs;
 
   for (int i = 0; i < N_ + 1; ++i) {
@@ -396,6 +403,8 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
 
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
+  // can be disabled with DRAKE_ASSERT_IS_DISARMED is defined
+  DRAKE_ASSERT(result.is_success());
   if (result.is_success()) {
     for (int i = 0; i < N_; ++i) {
       if (is_final_solve) {
