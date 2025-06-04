@@ -1,5 +1,6 @@
 #include "improved_c3.h"
 
+#include <cfenv> // for fesetround
 #include <chrono>
 #include <iostream>
 
@@ -220,12 +221,12 @@ void ImprovedC3::Solve(const VectorXd &x0) {
                                          x_[0])
             .evaluator();
   }
-  VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
+  VectorXd delta_init = VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_);
   if (options_.delta_option == 1) {
     delta_init.head(n_x_) = x0;
   }
   std::vector<VectorXd> delta(N_, delta_init);
-  std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+  std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
   vector<MatrixXd> G = cost_matrices_.G;
 
   for (int i = 0; i < N_; ++i) {
@@ -408,7 +409,8 @@ vector<VectorXd> ImprovedC3::SolveProjection(const vector<MatrixXd> &U,
   if (options_.num_threads > 0) {
     omp_set_dynamic(0); // Explicitly disable dynamic teams
     omp_set_num_threads(options_.num_threads); // Set number of threads
-    omp_set_nested(1);
+    omp_set_nested(0);
+    omp_set_schedule(omp_sched_static, 0);
   }
 
 #pragma omp parallel for num_threads(options_.num_threads)
@@ -442,37 +444,74 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
   // Initialize result vector with input values
   VectorXd delta_proj = delta_c;
 
+  // Set epsilon for floating point comparisons
+  const double EPSILON = 1e-8;
+
+  // Set rounding mode to nearest
+  std::fesetround(FE_TONEAREST);
+
   // Handle complementarity constraints for each lambda-gamma pair
   for (int i = 0; i < n_lambda_; ++i) {
-    // Calculate ratio of U matrix elements for scaling
-    double u_ratio =
-        std::sqrt(U(n_x_ + n_lambda_ + n_u_ + i, n_x_ + n_lambda_ + n_u_ + i) /
-                  U(n_x_ + i, n_x_ + i));
+    // Calculate ratio of U matrix elements for scaling with more stable
+    // computation
+    double u_ratio = 0.0;
+    double u1 =
+        std::abs(U(n_x_ + n_lambda_ + n_u_ + i, n_x_ + n_lambda_ + n_u_ + i));
+    double u2 = std::abs(U(n_x_ + i, n_x_ + i));
+
+    if (u2 < EPSILON) {
+      throw std::runtime_error("Numerical instability detected: u2 is very "
+                               "close to zero in SolveSingleProjection");
+    }
+    u_ratio = std::sqrt(u1 / u2);
 
     // Get current lambda and gamma values
     double lambda_val = delta_c(n_x_ + i);
     double gamma_val = delta_c(n_x_ + n_lambda_ + n_u_ + i);
 
-    // Case 1: lambda < 0
-    if (lambda_val < 0) {
+    // Case 1: lambda < -EPSILON
+    // In this case, we always set lambda to 0 and keep gamma if it's positive
+    if (lambda_val < -EPSILON) {
       delta_proj(n_x_ + i) = 0;
-      delta_proj(n_x_ + n_lambda_ + n_u_ + i) = std::max(0.0, gamma_val);
+      delta_proj(n_x_ + n_lambda_ + n_u_ + i) = std::max(EPSILON, gamma_val);
     }
-    // Case 2: gamma < 0
-    else if (gamma_val < 0) {
-      delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-      delta_proj(n_x_ + i) = std::max(0.0, lambda_val);
+    // Case 2: -EPSILON ≤ lambda ≤ EPSILON (lambda is very close to zero)
+    else if (std::abs(lambda_val) <= EPSILON) {
+      if (gamma_val < -EPSILON) {
+        // If gamma is negative, set lambda to EPSILON and gamma to 0
+        delta_proj(n_x_ + i) = EPSILON;
+        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
+      } else if (std::abs(gamma_val) <= EPSILON) {
+        // If both are close to zero, set both to 0
+        delta_proj(n_x_ + i) = 0;
+        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
+      } else {
+        // If gamma is positive, set lambda to 0 and keep gamma
+        delta_proj(n_x_ + i) = 0;
+        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
+      }
     }
-    // Case 3: Both lambda and gamma > 0
-    else if (lambda_val > 0 && gamma_val > 0) {
-      if (gamma_val > u_ratio * lambda_val) {
-        // Keep lambda, zero out gamma
+    // Case 3: lambda > EPSILON
+    else {
+      if (gamma_val < -EPSILON) {
+        // If gamma is negative, keep lambda and set gamma to 0
+        delta_proj(n_x_ + i) = lambda_val;
+        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
+      } else if (std::abs(gamma_val) <= EPSILON) {
+        // If gamma is close to zero, keep lambda and set gamma to 0
         delta_proj(n_x_ + i) = lambda_val;
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
       } else {
-        // Keep gamma, zero out lambda
-        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
-        delta_proj(n_x_ + i) = 0;
+        // If gamma is positive, compare with u_ratio * lambda
+        if (gamma_val > u_ratio * lambda_val + EPSILON) {
+          // If gamma is significantly larger, keep lambda and set gamma to 0
+          delta_proj(n_x_ + i) = lambda_val;
+          delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
+        } else {
+          // Otherwise, set lambda to 0 and keep gamma
+          delta_proj(n_x_ + i) = 0;
+          delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
+        }
       }
     }
   }

@@ -185,20 +185,17 @@ def main():
 
     x[:, 0] = x0.ravel()
     solve_times = []
-    sdf_sol = []
     delta_sol = []
 
     for i in range(system_iter):
         start_time = time.perf_counter()
         opt.Solve(x[:, i])
         solve_times.append(time.perf_counter() - start_time)
-        sdf_sol.append(opt.GetSDFSolution())
         delta_sol.append(opt.GetDualDeltaSolution())
         u_opt = opt.GetInputSolution()[0]
         prediction = cartpole.Simulate(x[:, i], u_opt)
         x[:, i + 1] = prediction
 
-    sdf_sol = np.array(sdf_sol)
     delta_sol = np.array(delta_sol)
 
     dt = cartpole.dt()
