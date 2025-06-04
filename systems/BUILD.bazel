@@ -22,15 +22,19 @@ cc_library(
         "c3_controller.cc",
         "lcs_simulator.cc",
         "framework/c3_output.cc",
+        "lcs_factory_system.cc",
     ],
     hdrs = [
         "c3_controller.h",
         "lcs_simulator.h",
         "framework/c3_output.h",
+        "lcs_factory_system.h",
         
         ],
     deps = [
         "//core:c3",
+        "//multibody:lcs_factory",
+        ":solver_options_io",
         ":vector",
         "@drake//:drake_shared_library",
     ],
