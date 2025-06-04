@@ -21,6 +21,7 @@ struct C3Options {
   std::string contact_model;    // "stewart_and_trinkle" or "anitescu"
   int num_friction_directions;  // Number of friction directions per contact
   int num_contacts;             // Number of contacts in the system
+  std::vector<double> mu;       // Friction coefficient for each contact
 
   std::string projection_type;  // "QP" or "MIQP"
   double M = 1000;              // big M value for MIQP
@@ -84,6 +85,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(contact_model));
     a->Visit(DRAKE_NVP(num_friction_directions));
     a->Visit(DRAKE_NVP(num_contacts));
+    a->Visit(DRAKE_NVP(mu));
 
     a->Visit(DRAKE_NVP(projection_type));
     if (projection_type == "QP") {
@@ -152,6 +154,7 @@ struct C3Options {
                  num_contacts * num_friction_directions * 2);
     DRAKE_DEMAND(static_cast<int>(u_lambda.size()) ==
                  num_contacts * num_friction_directions * 2);
+    DRAKE_DEMAND(mu.size() == (size_t)num_contacts);
     DRAKE_DEMAND(g.size() == u.size());
 
     Q = w_Q * q.asDiagonal();

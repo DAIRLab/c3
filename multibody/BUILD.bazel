@@ -1,0 +1,22 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "lcs_factory",
+    srcs = ["lcs_factory.cc",
+            "geom_geom_collider.cc",
+            "multibody_utils.cc"],
+    hdrs = [
+        "lcs_factory.h",
+        "geom_geom_collider.h",
+        "multibody_utils.h",
+    ],
+    deps = [
+        '//core:lcs',
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
