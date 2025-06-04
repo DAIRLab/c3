@@ -9,10 +9,10 @@
 #include "core/c3.h"
 #include "core/c3_miqp.h"
 #include "core/c3_options.h"
-#include "core/c3_output.h"
 #include "core/c3_qp.h"
 #include "core/lcs.h"
 #include "systems/framework/timestamped_vector.h"
+#include "systems/framework/c3_output.h"
 #include "systems/solver_options_io.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -86,7 +86,9 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   void AddLinearConstraint(const Eigen::MatrixXd& A,
                            const Eigen::VectorXd& lower_bound,
                            const Eigen::VectorXd& upper_bound,
-                           enum ConstraintVariable constraint);
+                           enum ConstraintVariable constraint) {
+    c3_->AddLinearConstraint(A, lower_bound, upper_bound, constraint);
+  }
 
   /**
    * @brief Adds a linear constraint to the controller (row vector version).
@@ -97,7 +99,9 @@ class C3Controller : public drake::systems::LeafSystem<double> {
    */
   void AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
                            double upper_bound,
-                           enum ConstraintVariable constraint);
+                           enum ConstraintVariable constraint) {
+    c3_->AddLinearConstraint(A, lower_bound, upper_bound, constraint);
+  }
 
  private:
   /**

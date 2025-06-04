@@ -9,6 +9,7 @@
 namespace c3 {
 class LCS {
  public:
+ LCS() = default;
   /*!
    * Constructor for the time-varying LCS
    *        xₖ₊₁ = Aₖxₖ + Bₖuₖ + Dₖλₖ + dₖ

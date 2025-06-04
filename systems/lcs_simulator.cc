@@ -15,10 +15,9 @@ LCSSimulator::LCSSimulator(int n_x, int n_u, int n_lambda, int N, double dt) {
 }
 
 // Constructor using an existing LCS object
-LCSSimulator::LCSSimulator(LCS* lcs) {
-  DRAKE_DEMAND(lcs != nullptr);  // Ensure the LCS pointer is not null
-  init(lcs->num_states(), lcs->num_inputs(), lcs->num_lambdas(), lcs->N(),
-       lcs->dt());
+LCSSimulator::LCSSimulator(LCS lcs) {
+  init(lcs.num_states(), lcs.num_inputs(), lcs.num_lambdas(), lcs.N(),
+       lcs.dt());
 }
 
 // Initialization function for setting up ports and placeholder LCS

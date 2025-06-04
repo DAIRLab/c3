@@ -7,11 +7,11 @@
 
 #include <Eigen/Dense>
 
-// #include "c3/lcmt_c3_output.hpp"
 using Eigen::MatrixXf;
 using Eigen::VectorXf;
 
 namespace c3 {
+namespace systems {
 
 /// Used for outputting c3 solutions and intermediate variables for debugging
 /// purposes
@@ -61,5 +61,5 @@ class C3Output {
   C3Solution c3_solution_;
   C3Intermediates c3_intermediates_;
 };
-
+}  // namespace systems
 }  // namespace c3

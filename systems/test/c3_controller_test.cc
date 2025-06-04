@@ -24,6 +24,7 @@
 
 using c3::systems::C3Controller;
 using c3::systems::LCSSimulator;
+using c3::systems::C3Output;
 using c3::test::CartpoleGeometry;
 using drake::geometry::SceneGraph;
 using drake::systems::DiagramBuilder;
@@ -135,7 +136,7 @@ int DoMain() {
 
   // Add the LCS simulator.
   LCSSimulator* lcs_simulator =
-      builder.AddSystem<LCSSimulator>(c3_cartpole_problem.pSystem.get());
+      builder.AddSystem<LCSSimulator>(*(c3_cartpole_problem.pSystem));
 
   // Add a ZeroOrderHold system for state updates.
   drake::systems::ZeroOrderHold<double>* state_zero_order_hold =

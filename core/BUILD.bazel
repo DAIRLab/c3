@@ -42,17 +42,9 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "c3_output",
-    srcs = [
-        "c3_output.cc",
-    ],
-    hdrs = [
-        "c3_output.h",
-    ],
-    deps = [
-        "@drake//:drake_shared_library",
-    ],
+filegroup(
+        name = 'test_data',
+        srcs = glob(['test/res/**'])
 )
 
 cc_library(
@@ -60,9 +52,9 @@ cc_library(
     hdrs = [
         "test/c3_cartpole_problem.hpp",
     ],
-    data = glob([
-        "test/res/**",
-    ]),
+    data = [
+        ":test_data",
+    ]
 )
 
 cc_test(

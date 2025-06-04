@@ -3,17 +3,16 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "core/lcs.h"
 #include "core/c3.h"
-#include "core/c3_qp.h"
 #include "core/c3_miqp.h"
 #include "core/c3_options.h"
+#include "core/c3_qp.h"
+#include "core/lcs.h"
 
 namespace py = pybind11;
 
 namespace c3 {
 namespace pyc3 {
-
 
 /*!
  * Trampoline class to support binding C3's vitrual functions
@@ -41,6 +40,7 @@ class PyC3 : public C3 {
 
 PYBIND11_MODULE(c3, m) {
   py::class_<C3::CostMatrices>(m, "CostMatrices")
+      .def(py::init<>())
       .def(py::init<const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&,
@@ -68,10 +68,9 @@ PYBIND11_MODULE(c3, m) {
           });
 
   py::class_<C3, PyC3>(m, "C3")
-      .def(py::init<const LCS&, const C3::CostMatrices&,
-                    const std::vector<Eigen::VectorXd>&, const C3Options&>(),
-           py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
-           py::arg("options"))
+      .def(py::init<const LCS&, const std::vector<Eigen::VectorXd>&,
+                    const C3Options&>(),
+           py::arg("LCS"), py::arg("x_desired"), py::arg("options"))
 
       .def("Solve",
            [](C3& self, const Eigen::VectorXd& x0) {
@@ -80,42 +79,47 @@ PYBIND11_MODULE(c3, m) {
              return self.Solve(x0);
            })
       .def("UpdateLCS", &C3::UpdateLCS, py::arg("lcs"))
+      .def("GetDynamicConstraints", &C3::GetDynamicConstraints,
+           py::return_value_policy::copy)
       .def("UpdateTarget", &C3::UpdateTarget, py::arg("x_des"))
+      .def("UpdateCostMatrices", &C3::UpdateCostMatrices, py::arg("costs"))
+      .def("GetCostMatrices", &C3::GetCostMatrices,
+           py::return_value_policy::copy)
+      .def("GetTargetCost", &C3::GetTargetCost, py::return_value_policy::copy)
       .def("AddLinearConstraint",
            static_cast<void (C3::*)(
-               const Eigen::MatrixXd&,
-               const Eigen::VectorXd&,
+               const Eigen::MatrixXd&, const Eigen::VectorXd&,
                const Eigen::VectorXd&, int)>(&C3::AddLinearConstraint),
            py::arg("A"), py::arg("lower_bound"), py::arg("upper_bound"),
            py::arg("constraint"))
       .def("AddLinearConstraint",
-      static_cast<void (C3::*)(
-          const Eigen::RowVectorXd&, double, double, int)>(
-              &C3::AddLinearConstraint),
-          py::arg("A"), py::arg("lower_bound"), py::arg("upper_bound"),
-          py::arg("constraint"))
+           static_cast<void (C3::*)(const Eigen::RowVectorXd&, double, double,
+                                    int)>(&C3::AddLinearConstraint),
+           py::arg("A"), py::arg("lower_bound"), py::arg("upper_bound"),
+           py::arg("constraint"))
       .def("RemoveConstraints", &C3::RemoveConstraints)
+      .def("GetLinearConstraints", &C3::GetLinearConstraints,
+           py::return_value_policy::copy)
       .def("SetOsqpSolverOptions", &C3::SetOsqpSolverOptions,
            py::arg("options"))
       .def("GetFullSolution", &C3::GetFullSolution)
       .def("GetStateSolution", &C3::GetStateSolution)
       .def("GetForceSolution", &C3::GetForceSolution)
-      .def("GetInputSolution", &C3::GetInputSolution);
-
+      .def("GetInputSolution", &C3::GetInputSolution)
+      .def("GetDualDeltaSolution", &C3::GetDualDeltaSolution)
+      .def("GetDualWSolution", &C3::GetDualWSolution);
 
   py::class_<C3MIQP, C3>(m, "C3MIQP")
-      .def(py::init<const LCS&, const C3::CostMatrices&,
-                    const std::vector<Eigen::VectorXd>&, const C3Options&>(),
-           py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
-           py::arg("options"))
+      .def(py::init<const LCS&, const std::vector<Eigen::VectorXd>&,
+                    const C3Options&>(),
+           py::arg("LCS"), py::arg("x_desired"), py::arg("options"))
       .def("GetWarmStartDelta", &C3MIQP::GetWarmStartDelta)
       .def("GetWarmStartBinary", &C3MIQP::GetWarmStartBinary);
 
   py::class_<C3QP, C3>(m, "C3QP")
-      .def(py::init<const LCS&, const C3::CostMatrices&,
-                    const std::vector<Eigen::VectorXd>&, const C3Options&>(),
-           py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
-           py::arg("options"))
+      .def(py::init<const LCS&, const std::vector<Eigen::VectorXd>&,
+                    const C3Options&>(),
+           py::arg("LCS"), py::arg("x_desired"), py::arg("options"))
       .def("GetWarmStartDelta", &C3QP::GetWarmStartDelta)
       .def("GetWarmStartBinary", &C3QP::GetWarmStartBinary);
 
@@ -127,18 +131,19 @@ PYBIND11_MODULE(c3, m) {
                     const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&,
-                    const std::vector<Eigen::VectorXd>&, double>(),
+                    const std::vector<Eigen::VectorXd>&, double, bool>(),
            py::arg("A"), py::arg("B"), py::arg("D"), py::arg("d"), py::arg("E"),
-           py::arg("F"), py::arg("H"), py::arg("c"), py::arg("dt"))
+           py::arg("F"), py::arg("H"), py::arg("c"), py::arg("dt"),
+           py::arg("is_placeholder"))
 
       .def(py::init<const Eigen::MatrixXd&, const Eigen::MatrixXd&,
                     const Eigen::MatrixXd&, const Eigen::VectorXd&,
                     const Eigen::MatrixXd&, const Eigen::MatrixXd&,
                     const Eigen::MatrixXd&, const Eigen::VectorXd&, const int&,
-                    double>(),
+                    double, bool>(),
            py::arg("A"), py::arg("B"), py::arg("D"), py::arg("d"), py::arg("E"),
            py::arg("F"), py::arg("H"), py::arg("c"), py::arg("N"),
-           py::arg("dt"))
+           py::arg("dt"), py::arg("is_placeholder"))
       .def(py::init<const LCS&>(), py::arg("other"))
       .def("Simulate", &LCS::Simulate, py::arg("x_init"), py::arg("u"),
            "Simulate the system for one step")
@@ -154,7 +159,9 @@ PYBIND11_MODULE(c3, m) {
       .def("N", &LCS::N, py::return_value_policy::copy)
       .def("num_states", &LCS::num_states, py::return_value_policy::copy)
       .def("num_inputs", &LCS::num_inputs, py::return_value_policy::copy)
-      .def("num_lambdas", &LCS::num_lambdas, py::return_value_policy::copy);
+      .def("num_lambdas", &LCS::num_lambdas, py::return_value_policy::copy)
+      .def("__copy__", [](const LCS& self) { return LCS(self); })
+      .def("__deepcopy__", [](const LCS& self, py::dict) { return LCS(self); });
 
   py::class_<C3Options> cls(m, "C3Options");
   cls.def(py::init<>());
@@ -180,9 +187,33 @@ PYBIND11_MODULE(c3, m) {
           "u_vector", [](C3Options const& self) { return self.u_vector; },
           [](C3Options& self, const std::vector<double>& val) {
             self.u_vector = val;
-          });
+          })
+      .def_readwrite("warm_start", &C3Options::warm_start)
+      .def_readwrite("scale_lcs", &C3Options::scale_lcs)
+      .def_readwrite("end_on_qp_step", &C3Options::end_on_qp_step)
+      .def_readwrite("num_threads", &C3Options::num_threads)
+      .def_readwrite("delta_option", &C3Options::delta_option)
+      .def_readwrite("contact_model", &C3Options::contact_model)
+      .def_readwrite("num_friction_directions",
+                     &C3Options::num_friction_directions)
+      .def_readwrite("num_contacts", &C3Options::num_contacts)
+      .def_readwrite("projection_type", &C3Options::projection_type)
+      .def_readwrite("M", &C3Options::M)
+      .def_readwrite("N", &C3Options::N)
+      .def_readwrite("dt", &C3Options::dt)
+      .def_readwrite("admm_iter", &C3Options::admm_iter)
+      .def_readwrite("gamma", &C3Options::gamma)
+      .def_readwrite("rho_scale", &C3Options::rho_scale);
 
   m.def("LoadC3Options", &LoadC3Options);
+
+  py::class_<C3ControllerOptions, C3Options>(m, "C3ControllerOptions")
+      .def(py::init<>())
+      .def_readwrite("solve_time_filter_alpha",
+                     &C3ControllerOptions::solve_time_filter_alpha)
+      .def_readwrite("publish_frequency",
+                     &C3ControllerOptions::publish_frequency);
+  m.def("LoadC3ControllerOptions", &LoadC3ControllerOptions);
 }
-}  // namespace pydairlib
-}  // namespace dairlib
+}  // namespace pyc3
+}  // namespace c3

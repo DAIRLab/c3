@@ -16,7 +16,7 @@ class LCSSimulator : public drake::systems::LeafSystem<double> {
   LCSSimulator(int n_x, int n_u, int n_lambda, int N, double dt);
 
   // Constructor with an existing LCS object.
-  explicit LCSSimulator(LCS* lcs);
+  explicit LCSSimulator(LCS lcs);
 
   // Accessor for the LCS input port.
   const drake::systems::InputPort<double>& get_input_port_lcs() const {
