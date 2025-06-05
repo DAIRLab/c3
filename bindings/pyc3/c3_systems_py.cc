@@ -33,8 +33,9 @@ namespace pyc3 {
 PYBIND11_MODULE(systems, m) {
   py::module::import("pydrake.systems.framework");
   py::class_<C3Controller, LeafSystem<double>>(m, "C3Controller")
-      .def(py::init<const MultibodyPlant<double>&, C3ControllerOptions>(),
-           py::arg("plant"), py::arg("c3_options"))
+      .def(py::init<const MultibodyPlant<double>&, const C3::CostMatrices,
+                    C3ControllerOptions>(),
+           py::arg("plant"), py::arg("costs"), py::arg("options"))
       .def("get_input_port_target", &C3Controller::get_input_port_target,
            py::return_value_policy::reference)
       .def("get_input_port_lcs_state", &C3Controller::get_input_port_lcs_state,

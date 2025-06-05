@@ -74,9 +74,8 @@ def main():
     x0 = np.zeros((n, 1))
     xd = [x0 for _ in range(options.N + 1)]
 
-    opt = C3MIQP(cartpole, xd, options)
-    opt.UpdateCostMatrices(costs)
-
+    opt = C3MIQP(cartpole, costs, xd, options)
+    
     x0[0] = 0.01
     x0[2] = 0.03
 

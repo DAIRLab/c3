@@ -68,9 +68,10 @@ PYBIND11_MODULE(c3, m) {
           });
 
   py::class_<C3, PyC3>(m, "C3")
-      .def(py::init<const LCS&, const std::vector<Eigen::VectorXd>&,
-                    const C3Options&>(),
-           py::arg("LCS"), py::arg("x_desired"), py::arg("options"))
+      .def(py::init<const LCS&, const C3::CostMatrices&,
+                    const std::vector<Eigen::VectorXd>&, const C3Options&>(),
+           py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
+           py::arg("options"))
 
       .def("Solve",
            [](C3& self, const Eigen::VectorXd& x0) {
@@ -110,16 +111,18 @@ PYBIND11_MODULE(c3, m) {
       .def("GetDualWSolution", &C3::GetDualWSolution);
 
   py::class_<C3MIQP, C3>(m, "C3MIQP")
-      .def(py::init<const LCS&, const std::vector<Eigen::VectorXd>&,
-                    const C3Options&>(),
-           py::arg("LCS"), py::arg("x_desired"), py::arg("options"))
+      .def(py::init<const LCS&, const C3::CostMatrices&,
+                    const std::vector<Eigen::VectorXd>&, const C3Options&>(),
+           py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
+           py::arg("options"))
       .def("GetWarmStartDelta", &C3MIQP::GetWarmStartDelta)
       .def("GetWarmStartBinary", &C3MIQP::GetWarmStartBinary);
 
   py::class_<C3QP, C3>(m, "C3QP")
-      .def(py::init<const LCS&, const std::vector<Eigen::VectorXd>&,
-                    const C3Options&>(),
-           py::arg("LCS"), py::arg("x_desired"), py::arg("options"))
+      .def(py::init<const LCS&, const C3::CostMatrices &,
+                    const std::vector<Eigen::VectorXd>&, const C3Options&>(),
+           py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
+           py::arg("options"))
       .def("GetWarmStartDelta", &C3QP::GetWarmStartDelta)
       .def("GetWarmStartBinary", &C3QP::GetWarmStartBinary);
 

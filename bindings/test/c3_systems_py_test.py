@@ -131,8 +131,7 @@ def DoMain():
     )
 
     # Add the C3 controller.
-    c3_controller = builder.AddSystem(C3Controller(geometry.plant, options))
-    c3_controller.UpdateCostMatrices(costs)
+    c3_controller = builder.AddSystem(C3Controller(geometry.plant, costs, options))
 
     # Add constant value source for the LCS system.
     lcs = builder.AddSystem(ConstantValueSource(Value(cartpole)))

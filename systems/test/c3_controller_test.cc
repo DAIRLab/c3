@@ -155,8 +155,7 @@ int DoMain() {
 
   // Add the C3 controller.
   C3Controller* c3_controller = builder.AddSystem<C3Controller>(
-      *(geometry->plant), c3_cartpole_problem.options);
-  c3_controller->UpdateCostMatrices(c3_cartpole_problem.cost);
+      *(geometry->plant), c3_cartpole_problem.cost, c3_cartpole_problem.options);
 
   // Add constant value source for the LCS system.
   auto lcs = builder.AddSystem<drake::systems::ConstantValueSource>(

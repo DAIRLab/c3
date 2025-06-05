@@ -53,8 +53,8 @@ class C3 {
    * state at the corresponding knot point
    * @param options see c3_options.h
    */
-  C3(const LCS& LCS, const std::vector<Eigen::VectorXd>& x_desired,
-     const C3Options& options);
+  C3(const LCS& LCS, const CostMatrices& costs,
+     const std::vector<Eigen::VectorXd>& x_desired, const C3Options& options);
 
   virtual ~C3() = default;
 
@@ -149,6 +149,17 @@ class C3 {
 
   /*! Remove all constraints previously added by AddLinearConstraint */
   void RemoveConstraints();
+
+  /**
+   * @brief Creates cost matrices from the provided C3Options.
+   *
+   * This function initializes and populates the cost matrices required for
+   * computations within the core module using the values defined in C3Options.
+   *
+   * @param options The C3Options object containing configuration values.
+   * @return CostMatrices The initialized cost matrices.
+   */
+  static CostMatrices CreateCostMatricesFromC3Options(const C3Options& options);
 
   /**
    * @brief Get a vector of user defined linear constraints.
@@ -247,14 +258,6 @@ class C3 {
                                        const std::vector<Eigen::VectorXd>& WD,
                                        int admm_iteration,
                                        bool is_final_solve = false);
-
-  /**
-   * @brief Initializes the cost matrices used in the system.
-   *
-   * This function sets up and populates the cost matrices required for
-   * computations within the core module using the values defined in C3Options.
-   */
-  void InitializeCostMatricesFromC3Options();
 
   LCS lcs_;
   double AnDn_ = 1.0;  // Scaling factor for lambdas

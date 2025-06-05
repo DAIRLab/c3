@@ -22,11 +22,11 @@ namespace systems {
 
 C3Controller::C3Controller(
     const drake::multibody::MultibodyPlant<double>& plant,
-    C3ControllerOptions c3_options)
+    const C3::CostMatrices& costs, C3ControllerOptions c3_options)
     : plant_(plant),
       c3_options_(std::move(c3_options)),
-      N_(c3_options_.N),
-      publish_frequency_(c3_options.publish_frequency) {
+      publish_frequency_(c3_options.publish_frequency),
+      N_(c3_options_.N) {
   this->set_name("c3_controller");
 
   // Initialize dimensions
@@ -58,10 +58,10 @@ C3Controller::C3Controller(
 
   // Initialize the C3 problem based on the projection type
   if (c3_options_.projection_type == "MIQP") {
-    c3_ = std::make_unique<C3MIQP>(lcs_placeholder, x_desired_placeholder,
-                                   c3_options_);
+    c3_ = std::make_unique<C3MIQP>(lcs_placeholder, costs,
+                                   x_desired_placeholder, c3_options_);
   } else if (c3_options_.projection_type == "QP") {
-    c3_ = std::make_unique<C3QP>(lcs_placeholder, x_desired_placeholder,
+    c3_ = std::make_unique<C3QP>(lcs_placeholder, costs, x_desired_placeholder,
                                  c3_options_);
   } else {
     std::cerr << ("Unknown projection type") << std::endl;

@@ -11,8 +11,8 @@
 #include "core/c3_options.h"
 #include "core/c3_qp.h"
 #include "core/lcs.h"
-#include "systems/framework/timestamped_vector.h"
 #include "systems/framework/c3_output.h"
+#include "systems/framework/timestamped_vector.h"
 #include "systems/solver_options_io.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -39,6 +39,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
    * solver.
    */
   explicit C3Controller(const drake::multibody::MultibodyPlant<double>& plant,
+                        const C3::CostMatrices& costs,
                         C3ControllerOptions options);
 
   // Accessors for input ports.
