@@ -250,7 +250,14 @@ PYBIND11_MODULE(c3, m) {
       .def("GetSDFSolution", &ImprovedC3::GetSDFSolution)
       .def("GetInputSolution", &ImprovedC3::GetInputSolution)
       .def("GetDualDeltaSolution", &ImprovedC3::GetDualDeltaSolution)
-      .def("GetDualWSolution", &ImprovedC3::GetDualWSolution);
+      .def("GetDualWSolution", &ImprovedC3::GetDualWSolution)
+      .def("GetPrimalZAfterQP", &ImprovedC3::GetPrimalZAfterQP)
+      .def("GetDualDeltaAfterQP", &ImprovedC3::GetDualDeltaAfterQP)
+      .def("GetDualWAfterQP", &ImprovedC3::GetDualWAfterQP)
+      .def("GetPrimalZAfterProjection", &ImprovedC3::GetPrimalZAfterProjection)
+      .def("GetDualDeltaAfterProjection",
+           &ImprovedC3::GetDualDeltaAfterProjection)
+      .def("GetDualWAfterProjection", &ImprovedC3::GetDualWAfterProjection);
 }
 } // namespace pyc3
 } // namespace c3

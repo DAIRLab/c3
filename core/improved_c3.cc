@@ -95,6 +95,33 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
     w_sol_->push_back(Eigen::VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
     delta_sol_->push_back(Eigen::VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
   }
+  // initialize debugging outputs
+  z_qp_debug_ = std::make_unique<std::vector<std::vector<VectorXd>>>();
+  delta_qp_debug_ = std::make_unique<std::vector<std::vector<VectorXd>>>();
+  w_qp_debug_ = std::make_unique<std::vector<std::vector<VectorXd>>>();
+  z_proj_debug_ = std::make_unique<std::vector<std::vector<VectorXd>>>();
+  delta_proj_debug_ = std::make_unique<std::vector<std::vector<VectorXd>>>();
+  w_proj_debug_ = std::make_unique<std::vector<std::vector<VectorXd>>>();
+
+  for (int i = 0; i < options_.admm_iter; i++) {
+    std::vector<VectorXd> z_sol_debug_iter_i;
+    std::vector<VectorXd> delta_sol_debug_iter_i;
+    std::vector<VectorXd> w_sol_debug_iter_i;
+    for (int j = 0; j < N_; j++) {
+      z_sol_debug_iter_i.emplace_back(
+          Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+      delta_sol_debug_iter_i.emplace_back(
+          Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+      w_sol_debug_iter_i.emplace_back(
+          Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+    }
+    z_qp_debug_->push_back(z_sol_debug_iter_i);
+    delta_qp_debug_->push_back(delta_sol_debug_iter_i);
+    w_qp_debug_->push_back(w_sol_debug_iter_i);
+    z_proj_debug_->push_back(z_sol_debug_iter_i);
+    delta_proj_debug_->push_back(delta_sol_debug_iter_i);
+    w_proj_debug_->push_back(w_sol_debug_iter_i);
+  }
 
   for (int i = 0; i < N_ + 1; ++i) {
     x_.push_back(prog_.NewContinuousVariables(n_x_, "x" + std::to_string(i)));
@@ -286,6 +313,14 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
 
   vector<VectorXd> z = SolveQP(x0, *G, WD, admm_iteration, true);
 
+  for (auto i = 0; i < N_; i++) {
+    z_qp_debug_->at(admm_iteration).at(i) = z_sol_->at(i);
+    z_qp_debug_->at(admm_iteration).at(i).segment(n_x_, n_lambda_) *= AnDn_;
+    delta_qp_debug_->at(admm_iteration).at(i) = delta->at(i);
+    delta_qp_debug_->at(admm_iteration).at(i).segment(n_x_, n_lambda_) *= AnDn_;
+    w_qp_debug_->at(admm_iteration).at(i) = w->at(i);
+  }
+
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
   for (int i = 0; i < N_; ++i) {
     ZW[i] = w->at(i) + z[i];
@@ -296,6 +331,15 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
 
   } else {
     *delta = SolveProjection(cost_matrices_.U, ZW, admm_iteration);
+  }
+
+  for (auto i = 0; i < N_; i++) {
+    z_proj_debug_->at(admm_iteration).at(i) = z_sol_->at(i);
+    z_proj_debug_->at(admm_iteration).at(i).segment(n_x_, n_lambda_) *= AnDn_;
+    delta_proj_debug_->at(admm_iteration).at(i) = delta->at(i);
+    delta_proj_debug_->at(admm_iteration).at(i).segment(n_x_, n_lambda_) *=
+        AnDn_;
+    w_proj_debug_->at(admm_iteration).at(i) = w->at(i);
   }
 
   for (int i = 0; i < N_; ++i) {

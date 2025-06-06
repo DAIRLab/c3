@@ -98,9 +98,7 @@ def animate_cartpole(x, dt, len_p, len_com):
     (cart_line,) = ax.plot([], [], "b-", lw=2)
     (pole_line,) = ax.plot([], [], "r-", lw=2)
     (com_marker,) = ax.plot([], [], "go", markersize=8)  # green circle for COM
-    time_text = fig.text(
-        0.02, 0.95, "", ha="center", fontsize=12, transform=fig.transFigure
-    )
+    time_text = fig.text(0.5, 0.8, "", ha="center", va="top", fontsize=12)
     cart_width = 0.2
     cart_height = 0.1
 
@@ -150,7 +148,7 @@ def animate_cartpole(x, dt, len_p, len_com):
         return cart_line, pole_line, com_marker, time_text
 
     anim = FuncAnimation(
-        fig, animate, init_func=init, frames=x.shape[1], interval=1000 / 60, blit=True
+        fig, animate, init_func=init, frames=x.shape[1], interval=1000 / 60
     )  # 60 FPS
 
     # Save animation
@@ -198,6 +196,10 @@ def main():
         prediction = cartpole.Simulate(x[:, i], u_opt)
         x[:, i + 1] = prediction
 
+        if i == 10:
+            z_qp = np.array(opt.GetPrimalZAfterQP())
+            delta_proj = np.array(opt.GetDualDeltaAfterProjection())
+
     delta_sol = np.array(delta_sol)
     z_sol = np.array(z_sol)
     dt = cartpole.dt()
@@ -213,25 +215,100 @@ def main():
         f"Average solve time: {np.mean(solve_times)}, equivalent to {1 / np.mean(solve_times)} Hz"
     )
 
-    fig, ax = plt.subplots(3, 1, figsize=(8, 10))
+    # fig, ax = plt.subplots(1, 1, figsize=(8, 10))
+    # ax.plot(z_sol[2, :, 4], label=r"$\lambda_1$ (Right wall)", marker="o")
+    # ax.plot(z_sol[2, :, 5], label=r"$\lambda_2$ (Left wall)", marker="x")
+    # ax.legend()
+    # ax.set_xlabel("Horizon")
+    # ax.set_ylabel(r"Forces predicted by the new C3 controller")
+    # ax.set_title("Planning forces at the moment before the contact event")
+    # plt.show()
 
-    ax[0].plot(time_x, x.T)
-    ax[0].legend(["Cart Position", "Pole Angle", "Cart Velocity", "Pole Velocity"])
-    ax[0].set_xlabel("Time (s)")
-    ax[0].set_ylabel("State")
-    ax[0].set_title("Improved C3 Controller")
+    # fig, ax = plt.subplots(3, 1, figsize=(8, 10))
 
-    ax[1].plot(time_x[:-1], z_sol[:, 0, 4], label=r"$\lambda_1$")
-    ax[1].plot(time_x[:-1], z_sol[:, 0, 7], label=r"$\gamma_1$")
-    ax[1].legend()
-    ax[1].set_ylabel(r"Left Wall")
-    ax[1].set_xlabel("Time (s)")
+    # ax[0].plot(time_x, x.T)
+    # ax[0].legend(["Cart Position", "Pole Angle", "Cart Velocity", "Pole Velocity"])
+    # ax[0].set_xlabel("Time (s)")
+    # ax[0].set_ylabel("State")
+    # ax[0].set_title("Improved C3 Controller")
 
-    ax[2].plot(time_x[:-1], z_sol[:, 0, 5], label=r"$\lambda_2$")
-    ax[2].plot(time_x[:-1], z_sol[:, 0, 8], label=r"$\gamma_2$")
-    ax[2].legend()
-    ax[2].set_ylabel(r"Right Wall")
-    ax[2].set_xlabel("Time (s)")
+    # # Right wall plot with dual axis
+    # ax1 = ax[1]
+    # ax1_twin = ax1.twinx()
+    # line1 = ax1.plot(time_x[:-1], z_sol[:, 0, 4], "b-", label=r"$\lambda_1$")
+    # line2 = ax1_twin.plot(time_x[:-1], z_sol[:, 0, 7], "r--", label=r"$\gamma_1$")
+    # lines = line1 + line2
+    # labels = [l.get_label() for l in lines]
+    # ax1.legend(lines, labels, loc="upper right")
+    # ax1.set_ylabel(r"$\lambda_1$ (N) (Right Wall)", color="b")
+    # ax1_twin.set_ylabel(r"$\gamma_1$ (m) (Right Wall)", color="r")
+    # ax1.set_xlabel("Time (s)")
+
+    # # Left wall plot with dual axis
+    # ax2 = ax[2]
+    # ax2_twin = ax2.twinx()
+    # line1 = ax2.plot(time_x[:-1], z_sol[:, 0, 5], "b-", label=r"$\lambda_2$")
+    # line2 = ax2_twin.plot(time_x[:-1], z_sol[:, 0, 8], "r--", label=r"$\gamma_2$")
+    # lines = line1 + line2
+    # labels = [l.get_label() for l in lines]
+    # ax2.legend(lines, labels, loc="upper right")
+    # ax2.set_ylim(-0.05, 1)
+    # ax2.set_ylabel(r"$\lambda_2$ (N) (Left Wall)", color="b")
+    # ax2_twin.set_ylabel(r"$\gamma_2$ (m) Left Wall)", color="r")
+    # ax2.set_xlabel("Time (s)")
+
+    # plt.tight_layout()
+    # plt.show()
+
+    # fig, ax = plt.subplots(2, 1, figsize=(8, 10))
+    # # Right wall plot with dual axis
+    # ax1 = ax[0]
+    # ax1_twin = ax1.twinx()
+    # line1 = ax1.plot(time_x[:-1], z_sol[:, 0, 4], "b-", label=r"$\lambda_1$ (z)")
+    # line2 = ax1_twin.plot(time_x[:-1], z_sol[:, 0, 7], "r--", label=r"$\gamma_1$ (z)")
+    # line3 = ax1.plot(
+    #     time_x[:-1], delta_sol[:, 0, 4], "g-", label=r"$\lambda_1$ (delta)"
+    # )
+    # line4 = ax1_twin.plot(
+    #     time_x[:-1], delta_sol[:, 0, 7], "m--", label=r"$\gamma_1$ (delta)"
+    # )
+    # lines = line1 + line2 + line3 + line4
+    # labels = [l.get_label() for l in lines]
+    # ax1.legend(lines, labels, loc="upper right")
+    # ax1.set_ylabel(r"$\lambda_1$ (N) (Right Wall)", color="b")
+    # ax1_twin.set_ylabel(r"$\gamma_1$ (m) (Right Wall)", color="r")
+    # ax1.set_xlabel("Time (s)")
+
+    # # Left wall plot with dual axis
+    # ax2 = ax[1]
+    # ax2_twin = ax2.twinx()
+    # line1 = ax2.plot(time_x[:-1], z_sol[:, 0, 5], "b-", label=r"$\lambda_2$ (z)")
+    # line2 = ax2_twin.plot(time_x[:-1], z_sol[:, 0, 8], "r--", label=r"$\gamma_2$ (z)")
+    # line3 = ax2.plot(
+    #     time_x[:-1], delta_sol[:, 0, 5], "g-", label=r"$\lambda_2$ (delta)"
+    # )
+    # line4 = ax2_twin.plot(
+    #     time_x[:-1], delta_sol[:, 0, 8], "m--", label=r"$\gamma_2$ (delta)"
+    # )
+    # lines = line1 + line2 + line3 + line4
+    # labels = [l.get_label() for l in lines]
+    # ax2.legend(lines, labels, loc="upper right")
+    # ax2.set_ylim(-0.05, 1)
+    # ax2.set_ylabel(r"$\lambda_2$ (N) (Left Wall)", color="b")
+    # ax2_twin.set_ylabel(r"$\gamma_2$ (m) Left Wall)", color="r")
+    # ax2.set_xlabel("Time (s)")
+
+    # plt.tight_layout()
+    # plt.show()
+
+    ##### Plot the lambda_1 in all planning steps #####
+    fig, ax = plt.subplots(1, 1, figsize=(8, 10))
+    for i in range(N):
+        ax.plot(z_qp[:, i, 4], marker="o", label=f"$\lambda_1$ planning step {i}")
+    ax.legend()
+    ax.set_xlabel("ADMM iteration")
+    ax.set_ylabel(r"$\lambda_1$ in all planning steps")
+    ax.set_title("Evaluate at t = 0.1s")
     plt.show()
 
 
