@@ -1,36 +1,37 @@
 // Includes for core controllers, simulators, and test problems.
 #include "systems/c3_controller.h"
 
+#include "common/system_util.hpp"
 #include "core/test/c3_cartpole_problem.hpp"
 #include "systems/lcs_simulator.h"
-#include "systems/test/cartpole_geometry.hpp"
 
 // Includes for Drake systems and primitives.
+#include <drake/geometry/drake_visualizer.h>
+#include <drake/geometry/meshcat_visualizer.h>
+#include <drake/geometry/meshcat_visualizer_params.h>
+#include <drake/multibody/parsing/parser.h>
+#include <drake/multibody/tree/multibody_element.h>
+#include <drake/systems/analysis/simulator.h>
+#include <drake/systems/primitives/constant_value_source.h>
+#include <drake/systems/primitives/constant_vector_source.h>
+#include <drake/systems/primitives/demultiplexer.h>
 #include <drake/systems/primitives/pass_through.h>
 #include <drake/systems/primitives/vector_log_sink.h>
 #include <drake/systems/primitives/zero_order_hold.h>
 
-#include "drake/geometry/drake_visualizer.h"
-#include "drake/geometry/meshcat_visualizer.h"
-#include "drake/geometry/meshcat_visualizer_params.h"
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/primitives/constant_value_source.h"
-#include "drake/systems/primitives/constant_vector_source.h"
-
-// Standard library includes.
-#include <fstream>
-#include <regex>
-#include <string>
+#include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 
 using c3::systems::C3Controller;
-using c3::systems::LCSSimulator;
 using c3::systems::C3Output;
-using c3::test::CartpoleGeometry;
+using c3::systems::LCSSimulator;
 using drake::geometry::SceneGraph;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
+using drake::systems::rendering::MultibodyPositionToGeometryPose;
 using Eigen::VectorXd;
 
-// Custom LeafSystem to process C3 solutions and output actions.
+// Custom LeafSystem to process C3 solutions and to get input values.
 class C3Solution2Input : public drake::systems::LeafSystem<double> {
  public:
   explicit C3Solution2Input() {
@@ -39,9 +40,9 @@ class C3Solution2Input : public drake::systems::LeafSystem<double> {
         this->DeclareAbstractInputPort("c3_solution",
                                        drake::Value<C3Output::C3Solution>())
             .get_index();
-    // Declare output port for actions.
-    c3_action_port_index_ =
-        this->DeclareVectorOutputPort("u", 1, &C3Solution2Input::GetC3Action)
+    // Declare output port for inputs.
+    c3_input_port_index_ =
+        this->DeclareVectorOutputPort("u", 1, &C3Solution2Input::GetC3Input)
             .get_index();
   }
 
@@ -51,21 +52,21 @@ class C3Solution2Input : public drake::systems::LeafSystem<double> {
   }
 
   // Getter for the output port.
-  const drake::systems::OutputPort<double>& get_output_port_c3_action() const {
-    return this->get_output_port(c3_action_port_index_);
+  const drake::systems::OutputPort<double>& get_output_port_c3_input() const {
+    return this->get_output_port(c3_input_port_index_);
   }
 
  private:
   drake::systems::InputPortIndex c3_solution_port_index_;
-  drake::systems::OutputPortIndex c3_action_port_index_;
+  drake::systems::OutputPortIndex c3_input_port_index_;
 
-  // Compute the action from the C3 solution.
-  void GetC3Action(const drake::systems::Context<double>& context,
-                   drake::systems::BasicVector<double>* output) const {
+  // Compute the input from the C3 solution.
+  void GetC3Input(const drake::systems::Context<double>& context,
+                  drake::systems::BasicVector<double>* output) const {
     const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
     DRAKE_ASSERT(input != nullptr);
     const auto& sol = input->get_value<C3Output::C3Solution>();
-    output->SetAtIndex(0, sol.u_sol_(0));  // Set action output.
+    output->SetAtIndex(0, sol.u_sol_(0));  // Set input output.
   }
 };
 
@@ -105,25 +106,40 @@ class Vector2TimestampedVector : public drake::systems::LeafSystem<double> {
   }
 };
 
-// Utility function to save and visualize the system diagram.
-void DrawAndSaveDiagramGraph(const drake::systems::Diagram<double>& diagram,
-                             std::string path) {
-  if (path.empty()) path = "../" + diagram.get_name();  // Default path.
+// Adds the Visualizer for the cartpole with softwalls system to a
+// DiagramBuilder and connects it to the SceneGraph.
+std::unique_ptr<MultibodyPlant<double>> AddVisualizer(
+    drake::systems::DiagramBuilder<double>* builder,
+    SceneGraph<double>* scene_graph,
+    const drake::systems::OutputPort<double>& state_port,
+    double time_step = 0.0) {
+  DRAKE_DEMAND(builder != nullptr && scene_graph != nullptr);
+  auto plant = std::make_unique<MultibodyPlant<double>>(0.0);
+  Parser parser(plant.get(), scene_graph);
 
-  // Save Graphviz string to a file.
-  std::ofstream out(path);
-  out << diagram.GetGraphvizString();
-  out.close();
+  // Load the Cartpole model from an SDF file.
+  const std::string file = "systems/test/res/cartpole_softwalls.sdf";
+  parser.AddModels(file);
+  plant->Finalize();
 
-  // Convert Graphviz string to an image file.
-  std::regex r(" ");
-  path = std::regex_replace(path, r, "\\ ");
-  std::string cmd = "dot -Tps " + path + " -o " + path + ".ps";
-  (void)std::system(cmd.c_str());
+  // Connect the state port to the demultiplexer and then to the input port of
+  // the CartpoleWithSoftWallsVisualizer system.
+  auto demux = builder->AddSystem<drake::systems::Demultiplexer<double>>(4, 2);
+  builder->Connect(state_port, demux->get_input_port());
 
-  // Remove the temporary Graphviz string file.
-  cmd = "rm " + path;
-  (void)std::system(cmd.c_str());
+  // Add a MultibodyPositionToGeometryPose system to convert state to
+  // geometry pose.
+  auto to_geometry_pose =
+      builder->AddSystem<MultibodyPositionToGeometryPose<double>>(*plant);
+
+  // Connect the output ports to the SceneGraph.
+  builder->Connect(demux->get_output_port(0),
+                   to_geometry_pose->get_input_port());
+  builder->Connect(
+      to_geometry_pose->get_output_port(),
+      scene_graph->get_source_pose_port(plant->get_source_id().value()));
+
+  return plant;
 }
 
 // Main function to build and run the simulation.
@@ -132,16 +148,17 @@ int DoMain() {
   SceneGraph<double>* scene_graph = builder.AddSystem<SceneGraph>();
 
   // Initialize the C3 cartpole problem.
-  C3CartpoleProblem c3_cartpole_problem = C3CartpoleProblem();
+  auto c3_cartpole_problem = C3CartpoleProblem();
 
   // Add the LCS simulator.
-  LCSSimulator* lcs_simulator =
+  auto lcs_simulator =
       builder.AddSystem<LCSSimulator>(*(c3_cartpole_problem.pSystem));
 
   // Add a ZeroOrderHold system for state updates.
-  drake::systems::ZeroOrderHold<double>* state_zero_order_hold =
+  auto state_zero_order_hold =
       builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
-          1 / c3_cartpole_problem.options.publish_frequency, 4);
+          1 / c3_cartpole_problem.options.publish_frequency,
+          c3_cartpole_problem.n);
 
   // Connect simulator and ZeroOrderHold.
   builder.Connect(lcs_simulator->get_output_port_next_state(),
@@ -150,24 +167,23 @@ int DoMain() {
                   lcs_simulator->get_input_port_state());
 
   // Add cartpole geometry.
-  CartpoleGeometry* geometry = CartpoleGeometry::AddToBuilder(
-      &builder, scene_graph, state_zero_order_hold->get_output_port(), 0.0);
+  auto plant = AddVisualizer(&builder, scene_graph,
+                             state_zero_order_hold->get_output_port());
 
   // Add the C3 controller.
-  C3Controller* c3_controller = builder.AddSystem<C3Controller>(
-      *(geometry->plant), c3_cartpole_problem.cost, c3_cartpole_problem.options);
+  auto c3_controller = builder.AddSystem<C3Controller>(
+      *plant, c3_cartpole_problem.cost, c3_cartpole_problem.options);
 
   // Add constant value source for the LCS system.
   auto lcs = builder.AddSystem<drake::systems::ConstantValueSource>(
       drake::Value<c3::LCS>(*(c3_cartpole_problem.pSystem)));
 
   // Add constant vector source for the desired state.
-  drake::systems::ConstantVectorSource<double>* xdes =
-      builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
-          c3_cartpole_problem.xdesired.at(0));
+  auto xdes = builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
+      c3_cartpole_problem.xdesired.at(0));
 
   // Add vector-to-timestamped-vector converter.
-  Vector2TimestampedVector* vector_to_timestamped_vector =
+  auto vector_to_timestamped_vector =
       builder.AddSystem<Vector2TimestampedVector>();
   builder.Connect(state_zero_order_hold->get_output_port(),
                   vector_to_timestamped_vector->get_input_port_state());
@@ -180,11 +196,11 @@ int DoMain() {
   builder.Connect(xdes->get_output_port(),
                   c3_controller->get_input_port_target());
 
-  // Add and connect C3 solution action system.
-  C3Solution2Input* c3_action = builder.AddSystem<C3Solution2Input>();
+  // Add and connect C3 solution input system.
+  auto c3_input = builder.AddSystem<C3Solution2Input>();
   builder.Connect(c3_controller->get_output_port_c3_solution(),
-                  c3_action->get_input_port_c3_solution());
-  builder.Connect(c3_action->get_output_port_c3_action(),
+                  c3_input->get_input_port_c3_solution());
+  builder.Connect(c3_input->get_output_port_c3_input(),
                   lcs_simulator->get_input_port_action());
   builder.Connect(lcs->get_output_port(), lcs_simulator->get_input_port_lcs());
 
@@ -196,9 +212,6 @@ int DoMain() {
 
   // Build the system diagram.
   auto diagram_ = builder.Build();
-
-  // DrawAndSaveDiagramGraph(*diagram_,
-  // "/home/stephen/Workspace/DAIR/c3/systems/test/res/c3_controller_test_diagram.ps");
 
   // Create a default context for the diagram.
   auto diagram_context = diagram_->CreateDefaultContext();

@@ -2,7 +2,7 @@ warm_start: false
 end_on_qp_step: true
 scale_lcs: false
 
-num_threads: 0
+num_threads: 5
 delta_option: 0
 
 #options are 'stewart_and_trinkle' or 'anitescu'

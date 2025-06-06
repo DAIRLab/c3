@@ -2,8 +2,8 @@ package(default_visibility = ["//visibility:public"])
 
 
 py_binary(
-    name = "c3_py_test",
-    srcs = ["c3_py_test.py"],
+    name = "c3_core_py_test",
+    srcs = ["c3_core_py_test.py"],
     deps = [
         "//bindings/pyc3:pyc3",
     ],
@@ -13,10 +13,11 @@ py_binary(
 )
 
 py_binary(
-    name = "c3_systems_py_test",
-    srcs = ["c3_systems_py_test.py"],
+    name = "c3_controller_py_test",
+    srcs = ["c3_controller_py_test.py"],
     deps = [
         "//bindings/pyc3:pyc3",
+        ":c3_core_py_test",
     ],
     data = [
         "//core:test_data",

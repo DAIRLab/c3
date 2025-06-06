@@ -1,7 +1,13 @@
 import numpy as np
 from pydrake.geometry import Meshcat
-from pyc3 import C3Controller, LCSSimulator, TimestampedVector, C3Solution,LoadC3ControllerOptions
-from c3_py_test import make_cartpole_with_soft_walls_dynamics, make_cartpole_costs
+from pyc3 import (
+    C3Controller,
+    LCSSimulator,
+    TimestampedVector,
+    C3Solution,
+    LoadC3ControllerOptions,
+)
+from bindings.test.c3_core_py_test import make_cartpole_with_soft_walls_dynamics, make_cartpole_costs
 
 from pydrake.all import (
     AbstractValue,
@@ -18,54 +24,37 @@ from pydrake.all import (
     Value,
     MultibodyPlant,
     Parser,
-    MultibodyPositionToGeometryPose
+    MultibodyPositionToGeometryPose,
+    Demultiplexer,
 )
 
-class CartpoleGeometry(LeafSystem):
-    def __init__(self, scene_graph, time_step=0.0):
-        super().__init__()
-        self.plant = MultibodyPlant(time_step)
-        parser = Parser(self.plant, scene_graph)
 
-        # Load the Cartpole model from an SDF file.
-        file = "systems/test/res/cartpole_softwalls.sdf"
-        parser.AddModels(file)
-        self.plant.Finalize()
+def AddVisualizer(builder, scene_graph, state_port, time_step=0.0):
+    assert builder is not None and scene_graph is not None
+    plant = MultibodyPlant(time_step)
+    parser = Parser(plant, scene_graph)
 
-        # Declare input and output ports.
-        self.state_input_port = self.DeclareVectorInputPort("state", BasicVector(4)).get_index()
-        self.scene_graph_state_output_port = self.DeclareVectorOutputPort(
-            "scene_graph_state", BasicVector(2), self.OutputGeometryPose
-        ).get_index()
+    # Load the Cartpole model from an SDF file.
+    file = "systems/test/res/cartpole_softwalls.sdf"
+    parser.AddModels(file)
+    plant.Finalize()
 
-    def get_input_port_state(self):
-        return self.get_input_port(self.state_input_port)
+    # Add a Demultiplexer to split the state vector.
+    demux = builder.AddSystem(Demultiplexer(4, 2))
+    builder.Connect(state_port, demux.get_input_port())
 
-    def get_output_port_scene_graph_state(self):
-        return self.get_output_port(self.scene_graph_state_output_port)
+    # Add a MultibodyPositionToGeometryPose system to convert state to geometry pose.
+    to_geometry_pose = builder.AddSystem(MultibodyPositionToGeometryPose(plant))
 
-    @staticmethod
-    def AddToBuilder(builder, scene_graph, state_port, time_step=0.0):
-        geometry = builder.AddSystem(CartpoleGeometry(scene_graph, time_step))
+    # Connect the output ports to the SceneGraph.
+    builder.Connect(demux.get_output_port(0), to_geometry_pose.get_input_port())
+    builder.Connect(
+        to_geometry_pose.get_output_port(),
+        scene_graph.get_source_pose_port(plant.get_source_id()),
+    )
 
-        # Connect the state port to the input port of the CartpoleGeometry system.
-        builder.Connect(state_port, geometry.get_input_port_state())
+    return plant
 
-        # Add a MultibodyPositionToGeometryPose system to convert state to geometry pose.
-        to_geometry_pose = builder.AddSystem(MultibodyPositionToGeometryPose(geometry.plant))
-
-        # Connect the output ports to the SceneGraph.
-        builder.Connect(geometry.get_output_port_scene_graph_state(), to_geometry_pose.get_input_port())
-        builder.Connect(
-            to_geometry_pose.get_output_port(),
-            scene_graph.get_source_pose_port(geometry.plant.get_source_id())
-        )
-
-        return geometry
-
-    def OutputGeometryPose(self, context, output):
-        state = self.EvalVectorInput(context, self.state_input_port).get_value()
-        output.SetFromVector(state[:2])  # Map state to 2D vector for SceneGraph.
 
 class C3Solution2Input(LeafSystem):
     def __init__(self):
@@ -89,7 +78,9 @@ class C3Solution2Input(LeafSystem):
 class Vector2TimestampedVector(LeafSystem):
     def __init__(self):
         super().__init__()
-        self.vector_port_index = self.DeclareVectorInputPort("state", BasicVector(4)).get_index()
+        self.vector_port_index = self.DeclareVectorInputPort(
+            "state", BasicVector(4)
+        ).get_index()
         self.timestamped_vector_port_index = self.DeclareVectorOutputPort(
             "timestamped_state",
             TimestampedVector(4),
@@ -118,20 +109,23 @@ def DoMain():
 
     # Add a ZeroOrderHold system for state updates.
     state_zero_order_hold = builder.AddSystem(
-        ZeroOrderHold(1 / options.publish_frequency, 4)
+        ZeroOrderHold(1 / options.publish_frequency, cartpole.num_states())
     )
 
     # Connect simulator and ZeroOrderHold.
-    builder.Connect(lcs_simulator.get_output_port_next_state(), state_zero_order_hold.get_input_port())
-    builder.Connect(state_zero_order_hold.get_output_port(), lcs_simulator.get_input_port_state())
-
-    # Add cartpole geometry.
-    geometry = CartpoleGeometry.AddToBuilder(
-        builder, scene_graph, state_zero_order_hold.get_output_port(), 0.0
+    builder.Connect(
+        lcs_simulator.get_output_port_next_state(),
+        state_zero_order_hold.get_input_port(),
+    )
+    builder.Connect(
+        state_zero_order_hold.get_output_port(), lcs_simulator.get_input_port_state()
     )
 
+    # Add cartpole geometry.
+    plant = AddVisualizer(builder, scene_graph, state_zero_order_hold.get_output_port())
+
     # Add the C3 controller.
-    c3_controller = builder.AddSystem(C3Controller(geometry.plant, costs, options))
+    c3_controller = builder.AddSystem(C3Controller(plant, costs, options))
 
     # Add constant value source for the LCS system.
     lcs = builder.AddSystem(ConstantValueSource(Value(cartpole)))
@@ -142,18 +136,24 @@ def DoMain():
 
     # Add vector-to-timestamped-vector converter.
     vector_to_timestamped_vector = builder.AddSystem(Vector2TimestampedVector())
-    builder.Connect(state_zero_order_hold.get_output_port(), vector_to_timestamped_vector.get_input_port(0))
+    builder.Connect(
+        state_zero_order_hold.get_output_port(),
+        vector_to_timestamped_vector.get_input_port(0),
+    )
 
     # Connect controller inputs.
     builder.Connect(
-        vector_to_timestamped_vector.get_output_port(0), c3_controller.get_input_port_lcs_state()
+        vector_to_timestamped_vector.get_output_port(0),
+        c3_controller.get_input_port_lcs_state(),
     )
     builder.Connect(lcs.get_output_port(0), c3_controller.get_input_port_lcs())
     builder.Connect(xdes.get_output_port(), c3_controller.get_input_port_target())
 
     # Add and connect C3 solution action system.
     c3_action = builder.AddSystem(C3Solution2Input())
-    builder.Connect(c3_controller.get_output_port_c3_solution(), c3_action.get_input_port(0))
+    builder.Connect(
+        c3_controller.get_output_port_c3_solution(), c3_action.get_input_port(0)
+    )
     builder.Connect(c3_action.get_output_port(0), lcs_simulator.get_input_port_action())
     builder.Connect(lcs.get_output_port(), lcs_simulator.get_input_port_lcs())
 
@@ -169,7 +169,9 @@ def DoMain():
     diagram_context = diagram.CreateDefaultContext()
 
     # Set initial positions for the state subsystem.
-    state_context = diagram.GetMutableSubsystemContext(state_zero_order_hold, diagram_context)
+    state_context = diagram.GetMutableSubsystemContext(
+        state_zero_order_hold, diagram_context
+    )
     x0 = np.array([0, -0.5, 0.5, -0.4])
     state_zero_order_hold.SetVectorState(state_context, x0)
 

@@ -4,6 +4,14 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "solver_options_io",
+    hdrs = ["solver_options_io.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "c3",
     srcs = [
         "c3.cc",
@@ -24,8 +32,12 @@ cc_library(
     ],
     copts = ["-fopenmp"],
     linkopts = ["-fopenmp"],
+    data = glob([
+        "configs/**",
+    ]),
     deps = [
         ":lcs",
+        ":solver_options_io",
         "@drake//:drake_shared_library",
     ] + select({
          "//tools:with_gurobi": ["@gurobi//:gurobi_cxx"],

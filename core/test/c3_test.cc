@@ -331,7 +331,7 @@ TEST_F(C3CartpoleTest, ZSolStaleTest) {
 }
 
 // Test the cartpole example
-// This test will take some time to complete ~120s
+// This test will take some time to complete ~30s
 TEST_F(C3CartpoleTest, End2EndCartpoleTest) {
   /// initialize ADMM variables (delta, w)
   std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
@@ -347,9 +347,9 @@ TEST_F(C3CartpoleTest, End2EndCartpoleTest) {
   std::vector<VectorXd> x(timesteps, VectorXd::Zero(n));
   std::vector<VectorXd> input(timesteps, VectorXd::Zero(k));
 
-  x[0] << 0.1, 0.0, 0.3, 0.0;  // initial state, close to center and
-                               // balancing the pendulum
+  x[0] = x0;
 
+  int close_to_zero_counter = 0;
   for (int i = 0; i < timesteps - 1; i++) {
     /// reset delta and w (default option)
     delta = delta_reset;
@@ -361,6 +361,12 @@ TEST_F(C3CartpoleTest, End2EndCartpoleTest) {
 
     /// simulate the LCS
     x[i + 1] = pSystem->Simulate(x[i], input[i]);
+    if (x[i+1].isZero(0.1)) {
+      close_to_zero_counter++;
+      if (close_to_zero_counter == 30) break;
+    } else {
+      close_to_zero_counter = 0;
+    }
   }
   // Cartpole should be close to center and balancing the pendulum
   ASSERT_EQ(x[timesteps - 1].isZero(0.1), true);

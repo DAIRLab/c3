@@ -13,7 +13,6 @@
 #include "core/lcs.h"
 #include "systems/framework/c3_output.h"
 #include "systems/framework/timestamped_vector.h"
-#include "systems/solver_options_io.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
@@ -40,7 +39,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
    */
   explicit C3Controller(const drake::multibody::MultibodyPlant<double>& plant,
                         const C3::CostMatrices& costs,
-                        C3ControllerOptions options);
+                        C3ControllerOptions controller_options);
 
   // Accessors for input ports.
   const drake::systems::InputPort<double>& get_input_port_target() const {
@@ -62,12 +61,6 @@ class C3Controller : public drake::systems::LeafSystem<double> {
       const {
     return this->get_output_port(c3_intermediates_port_);
   }
-
-  /**
-   * @brief Sets OSQP solver options.
-   * @param options The solver options to configure.
-   */
-  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options);
 
   /**
    * @brief Updates the cost matrices used by the controller.
@@ -143,12 +136,8 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_;
 
   // C3 options and solver configuration.
-  C3ControllerOptions c3_options_;
+  C3ControllerOptions controller_options_;
   double publish_frequency_;
-  drake::solvers::SolverOptions solver_options_ =
-      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
-          "systems/configs/solver_options_default.yaml")
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   // Convenience variables for dimensions.
   int n_q_;       ///< Number of generalized positions.

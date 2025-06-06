@@ -7,7 +7,9 @@
 #include <omp.h>
 
 #include "lcs.h"
+#include "solver_options_io.h"
 
+#include "drake/common/text_logging.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/moby_lcp_solver.h"
 #include "drake/solvers/osqp_solver.h"
@@ -149,10 +151,16 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
                             .evaluator();
     }
   }
+
+  // Set default solver options
+  drake::solvers::SolverOptions solver_options =
+      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
+          "core/configs/solver_options_default.yaml")
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+  SetSolverOptions(solver_options);
 }
 
-C3::CostMatrices C3::CreateCostMatricesFromC3Options(
-    const C3Options& options) {
+C3::CostMatrices C3::CreateCostMatricesFromC3Options(const C3Options& options) {
   std::vector<Eigen::MatrixXd> Q;  // State cost matrices.
   std::vector<Eigen::MatrixXd> R;  // Input cost matrices.
 
@@ -173,7 +181,7 @@ C3::CostMatrices C3::CreateCostMatricesFromC3Options(
 }
 
 void C3::ScaleLCS() {
-  if (lcs_.IsPlaceholder() || !options_.scale_lcs) {
+  if (!options_.scale_lcs) {
     // If the LCS is a placeholder or scaling is disabled, we do not scale
     // the complementarity dynamics.
     AnDn_ = 1.0;
@@ -396,8 +404,6 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
 
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
-  // can be disabled with DRAKE_ASSERT_IS_DISARMED is defined
-  DRAKE_ASSERT(result.is_success());
   if (result.is_success()) {
     for (int i = 0; i < N_; ++i) {
       if (is_final_solve) {
@@ -419,6 +425,9 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
     if (warm_start_) {
       warm_start_x_[admm_iteration][N_] = result.GetSolution(x_[N_]);
     }
+  } else {
+    drake::log()->warn("C3::SolveQP failed to solve the QP with status: {}",
+                       result.get_solution_result());
   }
 
   return *z_sol_;
@@ -432,7 +441,8 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
   if (options_.num_threads > 0) {
     omp_set_dynamic(0);  // Explicitly disable dynamic teams
     omp_set_num_threads(options_.num_threads);  // Set number of threads
-    omp_set_nested(1);
+    omp_set_nested(0);
+    omp_set_schedule(omp_sched_static, 0);
   }
 
 #pragma omp parallel for num_threads(options_.num_threads)

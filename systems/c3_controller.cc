@@ -22,11 +22,11 @@ namespace systems {
 
 C3Controller::C3Controller(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const C3::CostMatrices& costs, C3ControllerOptions c3_options)
+    const C3::CostMatrices& costs, C3ControllerOptions controller_options)
     : plant_(plant),
-      c3_options_(std::move(c3_options)),
-      publish_frequency_(c3_options.publish_frequency),
-      N_(c3_options_.N) {
+      controller_options_(controller_options),
+      publish_frequency_(controller_options.publish_frequency),
+      N_(controller_options_.N) {
   this->set_name("c3_controller");
 
   // Initialize dimensions
@@ -34,17 +34,17 @@ C3Controller::C3Controller(
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
-  dt_ = c3_options_.dt;
-  solve_time_filter_constant_ = c3_options_.solve_time_filter_alpha;
+  dt_ = controller_options_.dt;
+  solve_time_filter_constant_ = controller_options_.solve_time_filter_alpha;
 
   // Determine the size of lambda based on the contact model
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
+  if (controller_options_.contact_model == "stewart_and_trinkle") {
     n_lambda_ =
-        2 * c3_options_.num_contacts +
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
-  } else if (c3_options_.contact_model == "anitescu") {
+        2 * controller_options_.num_contacts +
+        2 * controller_options_.num_friction_directions * controller_options_.num_contacts;
+  } else if (controller_options_.contact_model == "anitescu") {
     n_lambda_ =
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+        2 * controller_options_.num_friction_directions * controller_options_.num_contacts;
   }
 
   // Placeholder vector for initialization
@@ -57,19 +57,17 @@ C3Controller::C3Controller(
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
 
   // Initialize the C3 problem based on the projection type
-  if (c3_options_.projection_type == "MIQP") {
+  if (controller_options_.projection_type == "MIQP") {
     c3_ = std::make_unique<C3MIQP>(lcs_placeholder, costs,
-                                   x_desired_placeholder, c3_options_);
-  } else if (c3_options_.projection_type == "QP") {
+                                   x_desired_placeholder, controller_options_);
+  } else if (controller_options_.projection_type == "QP") {
     c3_ = std::make_unique<C3QP>(lcs_placeholder, costs, x_desired_placeholder,
-                                 c3_options_);
+                                 controller_options_);
   } else {
     std::cerr << ("Unknown projection type") << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
 
-  // Set solver options
-  c3_->SetOsqpSolverOptions(solver_options_);
 
   // Declare input ports
   lcs_state_input_port_ =
@@ -128,7 +126,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   // auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
 
   // TODO: Looks like task specific initialization, to be confirmed and removed
-  // if (x_lcs.segment(n_q_, 3).norm() > 0.01 && c3_options_.use_predicted_x0 &&
+  // if (x_lcs.segment(n_q_, 3).norm() > 0.01 && controller_options_.use_predicted_x0 &&
   //     !x_pred.isZero()) {
   //   x_lcs[0] = std::clamp(x_pred[0], x_lcs[0] - 10 * dt_ * dt_,
   //                         x_lcs[0] + 10 * dt_ * dt_);

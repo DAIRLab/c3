@@ -4,14 +4,6 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "solver_options_io",
-    hdrs = ["solver_options_io.h"],
-    deps = [
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "vector",
     srcs = [
         "framework/timestamped_vector.cc",
@@ -37,12 +29,8 @@ cc_library(
         "framework/c3_output.h",
         
         ],
-    data = glob([
-        "configs/**",
-    ]),
     deps = [
         "//core:c3",
-        ":solver_options_io",
         ":vector",
         "@drake//:drake_shared_library",
     ],
@@ -56,14 +44,14 @@ filegroup(
 cc_binary(
     name = "c3_controller_test",
     srcs = [
-        "test/c3_controller_test.cc",
-        "test/cartpole_geometry.hpp"],
+        "test/c3_controller_test.cc"],
     data = [
         ":test_data"
     ],
     deps = [
         "//core:c3",
         ":systems",
+        "//common:utilities",
         "//core:c3_cartpole_problem",
     ]
 )

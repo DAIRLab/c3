@@ -177,7 +177,7 @@ class C3 {
    */
   const std::vector<LinearConstraintBinding>& GetLinearConstraints();
 
-  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
+  void SetSolverOptions(const drake::solvers::SolverOptions& options) {
     prog_.SetSolverOptions(options);
   }
 
