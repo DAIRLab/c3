@@ -21,7 +21,7 @@ from pydrake.all import (
     MultibodyPositionToGeometryPose
 )
 
-class CartpoleGeometry(LeafSystem):
+class CartpoleWithSoftWallsVisualizer(LeafSystem):
     def __init__(self, scene_graph, time_step=0.0):
         super().__init__()
         self.plant = MultibodyPlant(time_step)
@@ -46,9 +46,9 @@ class CartpoleGeometry(LeafSystem):
 
     @staticmethod
     def AddToBuilder(builder, scene_graph, state_port, time_step=0.0):
-        geometry = builder.AddSystem(CartpoleGeometry(scene_graph, time_step))
+        geometry = builder.AddSystem(CartpoleWithSoftWallsVisualizer(scene_graph, time_step))
 
-        # Connect the state port to the input port of the CartpoleGeometry system.
+        # Connect the state port to the input port of the CartpoleWithSoftWallsVisualizer system.
         builder.Connect(state_port, geometry.get_input_port_state())
 
         # Add a MultibodyPositionToGeometryPose system to convert state to geometry pose.
@@ -126,7 +126,7 @@ def DoMain():
     builder.Connect(state_zero_order_hold.get_output_port(), lcs_simulator.get_input_port_state())
 
     # Add cartpole geometry.
-    geometry = CartpoleGeometry.AddToBuilder(
+    geometry = CartpoleWithSoftWallsVisualizer.AddToBuilder(
         builder, scene_graph, state_zero_order_hold.get_output_port(), 0.0
     )
 

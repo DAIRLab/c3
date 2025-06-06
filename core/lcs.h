@@ -26,8 +26,7 @@ class LCS {
       const std::vector<Eigen::MatrixXd>& E,
       const std::vector<Eigen::MatrixXd>& F,
       const std::vector<Eigen::MatrixXd>& H,
-      const std::vector<Eigen::VectorXd>& c, double dt,
-      bool is_placeholder = false);
+      const std::vector<Eigen::VectorXd>& c, double dt);
 
   /*!
    * Constructor for a time-invariant LCS. The same as above, but
@@ -37,7 +36,7 @@ class LCS {
       const Eigen::MatrixXd& D, const Eigen::VectorXd& d,
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const int& N,
-      double dt, bool is_placeholder = false);
+      double dt);
 
   /*! Default Copy and Assignment */
   LCS(const LCS& other) = default;

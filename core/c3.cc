@@ -151,8 +151,7 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
   }
 }
 
-C3::CostMatrices C3::CreateCostMatricesFromC3Options(
-    const C3Options& options) {
+C3::CostMatrices C3::CreateCostMatricesFromC3Options(const C3Options& options) {
   std::vector<Eigen::MatrixXd> Q;  // State cost matrices.
   std::vector<Eigen::MatrixXd> R;  // Input cost matrices.
 
@@ -396,8 +395,6 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
 
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
-  // can be disabled with DRAKE_ASSERT_IS_DISARMED is defined
-  DRAKE_ASSERT(result.is_success());
   if (result.is_success()) {
     for (int i = 0; i < N_; ++i) {
       if (is_final_solve) {

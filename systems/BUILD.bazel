@@ -64,6 +64,7 @@ cc_binary(
     deps = [
         "//core:c3",
         ":systems",
+        "//common:utilities",
         "//core:c3_cartpole_problem",
     ]
 )

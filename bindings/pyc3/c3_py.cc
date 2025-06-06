@@ -119,7 +119,7 @@ PYBIND11_MODULE(c3, m) {
       .def("GetWarmStartBinary", &C3MIQP::GetWarmStartBinary);
 
   py::class_<C3QP, C3>(m, "C3QP")
-      .def(py::init<const LCS&, const C3::CostMatrices &,
+      .def(py::init<const LCS&, const C3::CostMatrices&,
                     const std::vector<Eigen::VectorXd>&, const C3Options&>(),
            py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
            py::arg("options"))
@@ -134,19 +134,18 @@ PYBIND11_MODULE(c3, m) {
                     const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&,
-                    const std::vector<Eigen::VectorXd>&, double, bool>(),
+                    const std::vector<Eigen::VectorXd>&, double>(),
            py::arg("A"), py::arg("B"), py::arg("D"), py::arg("d"), py::arg("E"),
-           py::arg("F"), py::arg("H"), py::arg("c"), py::arg("dt"),
-           py::arg("is_placeholder"))
+           py::arg("F"), py::arg("H"), py::arg("c"), py::arg("dt"))
 
       .def(py::init<const Eigen::MatrixXd&, const Eigen::MatrixXd&,
                     const Eigen::MatrixXd&, const Eigen::VectorXd&,
                     const Eigen::MatrixXd&, const Eigen::MatrixXd&,
                     const Eigen::MatrixXd&, const Eigen::VectorXd&, const int&,
-                    double, bool>(),
+                    double>(),
            py::arg("A"), py::arg("B"), py::arg("D"), py::arg("d"), py::arg("E"),
            py::arg("F"), py::arg("H"), py::arg("c"), py::arg("N"),
-           py::arg("dt"), py::arg("is_placeholder"))
+           py::arg("dt"))
       .def(py::init<const LCS&>(), py::arg("other"))
       .def("Simulate", &LCS::Simulate, py::arg("x_init"), py::arg("u"),
            "Simulate the system for one step")

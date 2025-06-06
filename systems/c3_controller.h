@@ -40,7 +40,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
    */
   explicit C3Controller(const drake::multibody::MultibodyPlant<double>& plant,
                         const C3::CostMatrices& costs,
-                        C3ControllerOptions options);
+                        C3ControllerOptions controller_options);
 
   // Accessors for input ports.
   const drake::systems::InputPort<double>& get_input_port_target() const {
@@ -143,7 +143,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_;
 
   // C3 options and solver configuration.
-  C3ControllerOptions c3_options_;
+  C3ControllerOptions controller_options_;
   double publish_frequency_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(

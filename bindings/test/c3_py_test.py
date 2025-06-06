@@ -48,7 +48,7 @@ def make_cartpole_with_soft_walls_dynamics(N: int) -> LCS:
     d = np.zeros((4, 1))
     H = np.zeros((2, 1))
 
-    return LCS(A, B, D, d, E, F, H, c, N, dt, False)
+    return LCS(A, B, D, d, E, F, H, c, N, dt,)
 
 
 def make_cartpole_costs(lcs:LCS, options: C3ControllerOptions) -> CostMatrices:
