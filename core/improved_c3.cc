@@ -1,6 +1,7 @@
 #include "improved_c3.h"
 
 #include <chrono>
+#include <cfenv>
 #include <iostream>
 
 #include <Eigen/Core>
@@ -72,7 +73,7 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
     }
   }
 
-  ScaleLCS();
+  // ScaleLCS();
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
@@ -88,6 +89,7 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
 
   // debug vars
   debug_z = std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
+  debug_qp = std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
   //
   for (int i = 0; i < N_; ++i) {
     z_sol_->push_back(Eigen::VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
@@ -240,6 +242,7 @@ void ImprovedC3::Solve(const VectorXd &x0) {
   }
   for (int iter = 0; iter < options_.admm_iter; iter++) {
     ADMMStep(x0, &delta, &w, &G, iter);
+    debug_z->push_back(delta);
   }
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
@@ -248,7 +251,7 @@ void ImprovedC3::Solve(const VectorXd &x0) {
   }
 
   vector<VectorXd> zfin = SolveQP(x0, G, WD, options_.admm_iter, true);
-
+  debug_qp->push_back(zfin);
   *w_sol_ = w;
   *delta_sol_ = delta;
 
@@ -287,7 +290,7 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
     WD.at(i) = delta->at(i) - w->at(i);
   }
   vector<VectorXd> z = SolveQP(x0, *G, WD, admm_iteration, true); // z is 10 by 9
-  // debug_z->push_back(z);
+  debug_z->push_back(z);
 
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
@@ -301,7 +304,7 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
   } else {
     *delta = SolveProjection(cost_matrices_.U, ZW, admm_iteration);
   }
-  debug_z->push_back(*delta);
+  
   for (int i = 0; i < N_; ++i) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);
     w->at(i) = w->at(i) / options_.rho_scale;
@@ -459,37 +462,74 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
   // Initialize result vector with input values
   VectorXd delta_proj = delta_c;
 
+  // Set epsilon for floating point comparisons
+  const double EPSILON = 1e-8;
+
+  // Set rounding mode to nearest
+  std::fesetround(FE_TONEAREST);
+
   // Handle complementarity constraints for each lambda-gamma pair
   for (int i = 0; i < n_lambda_; ++i) {
-    // Calculate ratio of U matrix elements for scaling
-    double u_ratio =
-        std::sqrt(U(n_x_ + n_lambda_ + n_u_ + i, n_x_ + n_lambda_ + n_u_ + i) /
-                  U(n_x_ + i, n_x_ + i));
+    // Calculate ratio of U matrix elements for scaling with more stable
+    // computation
+    double u_ratio = 0.0;
+    double u1 =
+        std::abs(U(n_x_ + n_lambda_ + n_u_ + i, n_x_ + n_lambda_ + n_u_ + i));
+    double u2 = std::abs(U(n_x_ + i, n_x_ + i));
+
+    if (u2 < EPSILON) {
+      throw std::runtime_error("Numerical instability detected: u2 is very "
+                               "close to zero in SolveSingleProjection");
+    }
+    u_ratio = std::sqrt(u1 / u2);
 
     // Get current lambda and gamma values
     double lambda_val = delta_c(n_x_ + i);
     double gamma_val = delta_c(n_x_ + n_lambda_ + n_u_ + i);
 
-    // Case 1: lambda < 0
-    if (lambda_val < 0) {
+    // Case 1: lambda < -EPSILON
+    // In this case, we always set lambda to 0 and keep gamma if it's positive
+    if (lambda_val < -EPSILON) {
       delta_proj(n_x_ + i) = 0;
-      delta_proj(n_x_ + n_lambda_ + n_u_ + i) = std::max(0.0, gamma_val);
+      delta_proj(n_x_ + n_lambda_ + n_u_ + i) = std::max(EPSILON, gamma_val);
     }
-    // Case 2: gamma < 0
-    else if (gamma_val < 0) {
-      delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-      delta_proj(n_x_ + i) = std::max(0.0, lambda_val);
+    // Case 2: -EPSILON ≤ lambda ≤ EPSILON (lambda is very close to zero)
+    else if (std::abs(lambda_val) <= EPSILON) {
+      if (gamma_val < -EPSILON) {
+        // If gamma is negative, set lambda to EPSILON and gamma to 0
+        delta_proj(n_x_ + i) = EPSILON;
+        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
+      } else if (std::abs(gamma_val) <= EPSILON) {
+        // If both are close to zero, set both to 0
+        delta_proj(n_x_ + i) = 0;
+        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
+      } else {
+        // If gamma is positive, set lambda to 0 and keep gamma
+        delta_proj(n_x_ + i) = 0;
+        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
+      }
     }
-    // Case 3: Both lambda and gamma > 0
-    else if (lambda_val > 0 && gamma_val > 0) {
-      if (gamma_val > u_ratio * lambda_val) {
-        // Keep lambda, zero out gamma
+    // Case 3: lambda > EPSILON
+    else {
+      if (gamma_val < -EPSILON) {
+        // If gamma is negative, keep lambda and set gamma to 0
+        delta_proj(n_x_ + i) = lambda_val;
+        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
+      } else if (std::abs(gamma_val) <= EPSILON) {
+        // If gamma is close to zero, keep lambda and set gamma to 0
         delta_proj(n_x_ + i) = lambda_val;
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
       } else {
-        // Keep gamma, zero out lambda
-        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
-        delta_proj(n_x_ + i) = 0;
+        // If gamma is positive, compare with u_ratio * lambda
+        if (gamma_val > u_ratio * lambda_val + EPSILON) {
+          // If gamma is significantly larger, keep lambda and set gamma to 0
+          delta_proj(n_x_ + i) = lambda_val;
+          delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
+        } else {
+          // Otherwise, set lambda to 0 and keep gamma
+          delta_proj(n_x_ + i) = 0;
+          delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
+        }
       }
     }
   }
@@ -502,7 +542,7 @@ void ImprovedC3::AddLinearConstraint(const Eigen::MatrixXd &A,
                                      const VectorXd &upper_bound,
                                      int constraint) {
   if (constraint == 1) {
-    for (int i = 1; i < N_; ++i) {
+    for (int i = 1; i < N_ + 1; ++i) {
       user_constraints_.push_back(
           prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
     }

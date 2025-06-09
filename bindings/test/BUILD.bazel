@@ -17,3 +17,19 @@ py_binary(
         "//bindings/pyc3:c3_py",
     ],
 )
+
+py_binary(
+    name = "improved_c3_finger",
+    srcs = ["improved_c3_finger.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+    ],
+)
+
+py_binary(
+    name = "improved_c3_pivot",
+    srcs = ["improved_c3_pivot.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+    ],
+)

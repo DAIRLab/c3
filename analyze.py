@@ -1,33 +1,91 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+def make_plot(arr, name):
+    fig = plt.figure(figsize=(10, 6))
+    plt.plot(arr, label=f"${name}$", marker='o')
+    plt.xlabel("QP result")
+    plt.ylabel("Value")
+    plt.title(f"Time step vs {name}$")
+    plt.legend()
+    plt.grid()
+    plt.tight_layout()
 
-def plot_data(system_iter, x):
-    # system_iter = 1000
-    dt = 0.01
-    time_x = np.arange(0, system_iter * dt + dt, dt)
-    fig, ax = plt.subplots(3, 1, figsize=(8, 10))
+delta = np.load('/home/yufeiyang/Documents/c3/debug_output/debug.npy')
+ #This contains the delta value after 10 ADMM in the first timestep
 
-    ax[0].plot(time_x, x.T)
-    ax[0].legend(["Cart Position", "Pole Angle", "Cart Velocity", "Pole Velocity"])
-    ax[0].set_xlabel("Time (s)")
-    ax[0].set_ylabel("State")
-    ax[0].set_title("Improved C3 Controller")
+print(delta.shape)
+# ADMM iter by N by (n_x + 2*n_lambda + n_u)
+# choose one time step
+curr_delta = delta[-20:,0, :]
+
+# plot the curr_delta
+x_1 = curr_delta[:, 0]
+x_2 = curr_delta[:, 1]
+x_3 = curr_delta[:, 2]
+x_4 = curr_delta[:, 3]
+x_5 = curr_delta[:, 4]
+x_6 = curr_delta[:, 5]
+lambda_11 = curr_delta[:, 6]
+lambda_12 = curr_delta[:, 7]
+lambda_13 = curr_delta[:, 8]
+
+gamma_11 = curr_delta[:, 9]
+gamma_12 = curr_delta[:, 10]
+gamma_13 = curr_delta[:, 11]
+
+lambda_21 = curr_delta[:, 12]
+lambda_22 = curr_delta[:, 13]
+lambda_23 = curr_delta[:, 14]
+
+gamma_21 = curr_delta[:, 15]
+gamma_22 = curr_delta[:, 16]
+gamma_23 = curr_delta[:, 17]
+
+u1 = curr_delta[:, 18]
+u2 = curr_delta[:, 19]
+u3 = curr_delta[:, 20]
+u4 = curr_delta[:, 21]
+
+# make_plot(x_1, "x_1")
+# make_plot(x_2, "x_2")
+# make_plot(x_3, "x_3")
+# make_plot(x_4, "x_4")
+# make_plot(x_5, "x_5")
+# make_plot(x_6, "x_6")
+# make_plot(lambda_11, "lambda_11")
+# make_plot(lambda_12, "lambda_12")
+# make_plot(lambda_13, "lambda_13")
+# make_plot(gamma_11, "gamma_11")
+# make_plot(gamma_12, "gamma_12")  
+# make_plot(gamma_13, "gamma_13")
+# make_plot(lambda_21, "lambda_21")
+# make_plot(lambda_22, "lambda_22")
+# make_plot(lambda_23, "lambda_23")
+# make_plot(gamma_21, "gamma_21")
+# make_plot(gamma_22, "gamma_22")
+# make_plot(gamma_23, "gamma_23")
+# make_plot(u1, "u1")
+# make_plot(u2, "u2")
+# make_plot(u3, "u3")
+# make_plot(u4, "u4")
+# # plt.show()       
+
+qp_data = delta = np.load('/home/yufeiyang/Documents/c3/debug_output/debug_qp.npy')
+qp_data = qp_data[0, :, :]
+qp_x1 = qp_data[:, 0]
+qp_x2 = qp_data[:, 1]
+qp_x3 = qp_data[:, 2]
+qp_x4 = qp_data[:, 3]
+qp_x5 = qp_data[:, 4]
+
+make_plot(qp_x1, "qp_x1")
+make_plot(qp_x2, "qp_x2")
+make_plot(qp_x3, "qp_x3")
+make_plot(qp_x4, "qp_x4")
+make_plot(qp_x5, "qp_x5")
 
 
-    plt.show()
 
-# load the file
-# file_path = "/home/yufeiyang/Documents/c3/debug_output/z_sol.npy"
-# z_sol = np.load(file_path) #N_ by (n_x+2*n_lambda+n_u_) 10 by 9
-# delta_sol = np.load('/home/yufeiyang/Documents/c3/debug_output/delta_sol.npy')
-x_sol = np.load('/home/yufeiyang/Documents/c3/debug_output/x_.npy')
-system_iter = x_sol.shape[0] 
-n_x = 4
-n_lambda = 2
-n_u = 1
-print(x_sol.shape)
 
-for i in range(x_sol.shape[0]):
-    sol = x_sol[i] # 10 by 4
-    plot_data(system_iter, sol)
+plt.show()

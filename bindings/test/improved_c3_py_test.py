@@ -74,6 +74,7 @@ def make_cartpole_costs(lcs: LCS) -> ImprovedC3CostMatrices:
     Ginit = np.zeros((n + 2 * m + k, n + 2 * m + k))
     Ginit[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.eye(m)
     Ginit[n : n + m, n : n + m] = np.eye(m)
+    # Ginit = np.eye(n + 2 * m + k)
     G = [Ginit for _ in range(N)]
 
     U = np.zeros((n + 2 * m + k, n + 2 * m + k))
@@ -134,11 +135,11 @@ def animate_cartpole(x, dt, len_p, len_com):
         ]
 
         # Calculate pole endpoints
-        pole_x = [cart_pos, cart_pos + len_p * np.sin(pole_angle)]
+        pole_x = [cart_pos, cart_pos - len_p * np.sin(pole_angle)]
         pole_y = [0, len_p * np.cos(pole_angle)]
 
         # Calculate center of mass position
-        com_x = cart_pos + len_com * np.sin(pole_angle)
+        com_x = cart_pos - len_com * np.sin(pole_angle)
         com_y = len_com * np.cos(pole_angle)
 
         # Update time text
@@ -195,7 +196,7 @@ def main():
         # whe i = 0; get result from SolveQP
         start_time = time.perf_counter()
         opt.Solve(x[:, i])
-        if i == 0:
+        if i == 100:
             debug_info = opt.GetDebugInfo()
         solve_times.append(time.perf_counter() - start_time)
         sdf_sol.append(opt.GetSDFSolution())
@@ -214,7 +215,7 @@ def main():
     dt = cartpole.dt()
 
     debug_info = np.array(debug_info)
-    print(dt)
+    print(debug_info.shape)
     # save debug info to file
     with open('/home/yufeiyang/Documents/c3/debug_output/debug_info.txt', 'a') as f:
         f.write('\n')
@@ -223,6 +224,7 @@ def main():
     z_sol = np.array(z_sol)
     print(z_sol.shape)
     # Save the results to a file
+    np.save('/home/yufeiyang/Documents/c3/debug_output/debug.npy', debug_info)
     np.save('/home/yufeiyang/Documents/c3/debug_output/z_sol.npy', z_sol)
     np.save('/home/yufeiyang/Documents/c3/debug_output/delta_sol.npy', delta_sol)
     np.save('/home/yufeiyang/Documents/c3/debug_output/x_.npy', x_)
@@ -249,13 +251,13 @@ def main():
     ax[1].plot(time_x[:-1], delta_sol[:, 0, 4], label=r"$\lambda_1$")
     ax[1].plot(time_x[:-1], delta_sol[:, 0, 7], label=r"$\gamma_1$")
     ax[1].legend()
-    ax[1].set_ylabel(r"Left Wall")
+    ax[1].set_ylabel(r"Right Wall")
     ax[1].set_xlabel("Time (s)")
 
     ax[2].plot(time_x[:-1], delta_sol[:, 0, 5], label=r"$\lambda_2$")
     ax[2].plot(time_x[:-1], delta_sol[:, 0, 8], label=r"$\gamma_2$")
     ax[2].legend()
-    ax[2].set_ylabel(r"Right Wall")
+    ax[2].set_ylabel(r"Left Wall")
     ax[2].set_xlabel("Time (s)")
     plt.show()
 

@@ -43,7 +43,7 @@ void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_,
 namespace c3 {
 
 int DoMain(int argc, char* argv[]) {
-  int example = 1;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting
+  int example = 2;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting
   std::cout << "Running example : " << example << std::endl;
 
   /// dimensions (n: state dimension, m: complementarity variable dimension, k:
@@ -138,7 +138,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
 
-  int timesteps = 10;  // number of timesteps for the simulation
+  int timesteps = 200;  // number of timesteps for the simulation
 
   /// create state and input arrays
   std::vector<VectorXd> x(timesteps, VectorXd::Zero(n));
@@ -187,7 +187,7 @@ int DoMain(int argc, char* argv[]) {
     x[i + 1] = system.Simulate(x[i], input[i]);
 
     /// print the state
-    //std::cout << "state: " << x[i + 1] << std::endl;
+    std::cout << "state: " << x[i + 1] << std::endl;
   }
   std::cout << "Average time: " << total_time / (timesteps - 1) << std::endl;
   return 0;
@@ -542,7 +542,7 @@ void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_,
 
   VectorXd cinit(m);
   cinit << 0, -h * g, h * g, 0, -h * g, h * g;
-
+  // print cinit
   VectorXd dinit(n);
   dinit << 0, 0, -dt * dt * mm * g, -dt * mm * g, 0, 0, 0, 0, 0, 0;
 

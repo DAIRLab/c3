@@ -145,6 +145,7 @@ public:
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
   std::vector<std::vector<Eigen::VectorXd>> GetDebugInfo() { return *debug_z; }
+  std::vector<std::vector<Eigen::VectorXd>> GetQPInfo() { return *debug_qp; }
 
 
 protected:
@@ -237,6 +238,7 @@ private:
 
   // debug vars
   std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> debug_z;
+  std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> debug_qp;
   // 
 
   // QP step constraints
