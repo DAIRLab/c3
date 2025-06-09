@@ -39,12 +39,12 @@ C3Controller::C3Controller(
 
   // Determine the size of lambda based on the contact model
   if (controller_options_.contact_model == "stewart_and_trinkle") {
-    n_lambda_ =
-        2 * controller_options_.num_contacts +
-        2 * controller_options_.num_friction_directions * controller_options_.num_contacts;
+    n_lambda_ = 2 * controller_options_.num_contacts +
+                2 * controller_options_.num_friction_directions *
+                    controller_options_.num_contacts;
   } else if (controller_options_.contact_model == "anitescu") {
-    n_lambda_ =
-        2 * controller_options_.num_friction_directions * controller_options_.num_contacts;
+    n_lambda_ = 2 * controller_options_.num_friction_directions *
+                controller_options_.num_contacts;
   }
 
   // Placeholder vector for initialization
@@ -67,7 +67,6 @@ C3Controller::C3Controller(
     std::cerr << ("Unknown projection type") << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
-
 
   // Declare input ports
   lcs_state_input_port_ =
@@ -117,6 +116,9 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
+  if (!get_input_port_lcs().HasValue(context)) {
+    throw std::runtime_error("Input port LCS [C3Controller] not connected");
+  }
   auto& lcs =
       this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
   drake::VectorX<double> x_lcs = lcs_x->get_data();
@@ -126,7 +128,8 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   // auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
 
   // TODO: Looks like task specific initialization, to be confirmed and removed
-  // if (x_lcs.segment(n_q_, 3).norm() > 0.01 && controller_options_.use_predicted_x0 &&
+  // if (x_lcs.segment(n_q_, 3).norm() > 0.01 &&
+  // controller_options_.use_predicted_x0 &&
   //     !x_pred.isZero()) {
   //   x_lcs[0] = std::clamp(x_pred[0], x_lcs[0] - 10 * dt_ * dt_,
   //                         x_lcs[0] + 10 * dt_ * dt_);

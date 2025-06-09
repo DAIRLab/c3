@@ -46,6 +46,9 @@ void LCSSimulator::SimulateOneStep(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* next_state) const {
   // Retrieve the LCS object from the input port
+  if (!get_input_port_lcs().HasValue(context)) {
+    throw std::runtime_error("Input port LCS [LCSSimulator] not connected");
+  }
   LCS lcs = this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
 
   // Retrieve the current state and action from the input ports
