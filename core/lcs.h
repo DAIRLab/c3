@@ -9,7 +9,7 @@
 namespace c3 {
 class LCS {
  public:
- LCS() = default;
+  LCS() = default;
   /*!
    * Constructor for the time-varying LCS
    *        xₖ₊₁ = Aₖxₖ + Bₖuₖ + Dₖλₖ + dₖ
@@ -132,6 +132,8 @@ class LCS {
   static LCS CreatePlaceholderLCS(int n_x, int n_u, int n_lambda, int N,
                                   double dt);
 
+  friend std::ostream& operator<<(std::ostream& os, const LCS& m);
+
  private:
   std::vector<Eigen::MatrixXd> A_;
   std::vector<Eigen::MatrixXd> B_;
@@ -148,7 +150,6 @@ class LCS {
   int n_;
   int m_;
   int k_;
-
 };
 
 }  // namespace c3

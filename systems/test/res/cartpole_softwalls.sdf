@@ -9,8 +9,12 @@
       <inertial>
         <mass>0.978</mass>
         <inertia>
-          <ixx>1.0e-20</ixx><iyy>1.0e-20</iyy><izz>1.0e-20</izz>
-          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+          <ixx>1.0e-20</ixx>
+          <iyy>1.0e-20</iyy>
+          <izz>1.0e-20</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
         </inertia>
       </inertial>
 
@@ -30,17 +34,22 @@
     <link name='Pole'>
       <!-- The pole is modeled as a point mass at the top of a pole. -->
       <!-- The length of the pole is 0.6 meters. -->
-      <pose>0 0 0.6 0 0 0</pose>
+      <pose>0 0 0 0 0 0</pose>
       <inertial>
-        <mass>0.35</mass>
+        <pose>0 0 0.4267 0 0 0</pose>
+        <mass>0.411</mass>
         <inertia>
-          <ixx>1.0e-20</ixx><iyy>1.0e-20</iyy><izz>1.0e-20</izz>
-          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+          <ixx>1.0e-20</ixx>
+          <iyy>1.0e-20</iyy>
+          <izz>1.0e-20</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
         </inertia>
       </inertial>
 
       <visual name='pole_point_mass'>
-        <pose>0 0 0 0 0 0</pose>
+        <pose>0 0 0.6 0 0 0</pose>
         <geometry>
           <sphere>
             <radius>0.025</radius>
@@ -52,7 +61,7 @@
       </visual>
 
       <visual name='pole_rod'>
-        <pose>0 0 -0.3 0 0 0</pose>
+        <pose>0 0 0.3 0 0 0</pose>
         <geometry>
           <cylinder>
             <radius>0.005</radius>
@@ -65,10 +74,10 @@
       </visual>
 
       <collision name='pole_point_mass'>
-        <pose>0 0 0 0 0 0</pose>
+        <pose>0 0 0.6 0 0 0</pose>
         <geometry>
           <sphere>
-            <radius>0.025</radius>
+            <radius>0.00001</radius>
           </sphere>
         </geometry>
       </collision>
@@ -77,31 +86,53 @@
 
     <!-- Add two soft walls on the both sides of the cartpole. -->
     <link name="left_wall">
-      <pose>-0.425 0 0.6 0 0 0</pose>
+      <pose>-0.5 0 0.6 0 0 0</pose>
       <visual name="left_wall">
         <geometry>
           <box>
-            <size>0.15 0.3 0.5</size>
+            <size>0.3 0.3 0.5</size>
           </box>
         </geometry>
         <material>
           <diffuse>1.0 1.0 0.0 0.8</diffuse>
         </material>
       </visual>
+      <collision name='left_wall'>
+        <geometry>
+          <box>
+            <size>0.3 0.3 0.5</size>
+          </box>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:point_contact_stiffness>100</drake:point_contact_stiffness>
+          <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
+        </drake:proximity_properties>
+      </collision>
     </link>
 
     <link name="right_wall">
-      <pose>0.425 0 0.6 0 0 0</pose>
+      <pose>0.5 0 0.6 0 0 0</pose>
       <visual name="right_wall">
         <geometry>
           <box>
-            <size>0.15 0.3 0.5</size>
+            <size>0.3 0.3 0.5</size>
           </box>
         </geometry>
         <material>
           <diffuse>1.0 1.0 0.0 0.8</diffuse>
         </material>
       </visual>
+      <collision name='right_wall'>
+        <geometry>
+          <box>
+            <size>0.3 0.3 0.5</size>
+          </box>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:point_contact_stiffness>100</drake:point_contact_stiffness>
+          <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
+        </drake:proximity_properties>
+      </collision>
     </link>
 
     <joint name='CartSlider' type='prismatic'>
@@ -120,7 +151,7 @@
 
     <joint name='PolePin' type='revolute'>
       <!-- Pose of the joint frame in the pole's frame (located at the COM) -->
-      <pose>0 0 -0.6 0 0 0</pose>
+      <pose>0 0 0 0 0 0</pose>
       <parent>Cart</parent>
       <child>Pole</child>
       <axis>

@@ -32,10 +32,10 @@ cc_library(
         
         ],
     deps = [
-        "//core:c3",
-        "//multibody:lcs_factory",
-        ":solver_options_io",
         ":vector",
+        "//core:c3",
+        "//core:options",
+        "//multibody:lcs_factory",
         "@drake//:drake_shared_library",
     ],
 )
@@ -48,7 +48,24 @@ filegroup(
 cc_binary(
     name = "c3_controller_test",
     srcs = [
-        "test/c3_controller_test.cc"],
+        "test/c3_controller_test.cc", 
+        "test/test_utils.hpp" ],
+    data = [
+        ":test_data"
+    ],
+    deps = [
+        "//core:c3",
+        ":systems",
+        "//common:utilities",
+        "//core:c3_cartpole_problem",
+    ]
+)
+
+cc_binary(
+    name = "lcs_factory_system_test",
+    srcs = [
+        "test/lcs_factory_system_test.cc", 
+        "test/test_utils.hpp" ],
     data = [
         ":test_data"
     ],

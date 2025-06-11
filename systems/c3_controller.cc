@@ -6,6 +6,7 @@
 
 #include "core/c3_miqp.h"
 #include "core/c3_qp.h"
+#include "multibody/lcs_factory.h"
 
 namespace c3 {
 
@@ -56,19 +57,7 @@ C3Controller::C3Controller(
   }
 
   // Determine the size of lambda based on the contact model
-  n_lambda_ = 0;
-  if (controller_options_.contact_model == "stewart_and_trinkle") {
-    n_lambda_ = 2 * controller_options_.num_contacts +
-                2 * controller_options_.num_friction_directions *
-                    controller_options_.num_contacts;
-  } else if (controller_options_.contact_model == "anitescu") {
-    n_lambda_ = 2 * controller_options_.num_friction_directions *
-                controller_options_.num_contacts;
-  } else {
-    drake::log()->error("Unknown contact model: {}",
-                        controller_options_.contact_model);
-  }
-  DRAKE_THROW_UNLESS(n_lambda_ > 0);
+  n_lambda_ = multibody::LCSFactory::GetNumContactVariables(controller_options_);
 
   // Placeholder vector for initialization
   VectorXd zeros = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);

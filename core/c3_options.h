@@ -5,6 +5,30 @@
 
 namespace c3 {
 
+struct LCSOptions {
+  std::string contact_model;    // "stewart_and_trinkle" or "anitescu" or
+                                // "frictionless_spring"
+  int num_friction_directions;  // Number of friction directions per contact
+  int num_contacts;             // Number of contacts in the system
+  double spring_stiffness;  // Spring stiffness for frictionless spring model
+  std::vector<double> mu;   // Friction coefficient for each contact
+
+  int N;      // number of time steps in the prediction horizon
+  double dt;  // time step size
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(contact_model));
+    a->Visit(DRAKE_NVP(num_friction_directions));
+    a->Visit(DRAKE_NVP(num_contacts));
+    a->Visit(DRAKE_NVP(spring_stiffness));
+    a->Visit(DRAKE_NVP(mu));
+
+    a->Visit(DRAKE_NVP(N));
+    a->Visit(DRAKE_NVP(dt));
+  }
+};
+
 struct C3Options {
   // Hyperparameters
   bool warm_start =
@@ -18,16 +42,9 @@ struct C3Options {
   int delta_option =
       1;  // 1 initializes the state value of the delta value with x0
 
-  std::string contact_model;    // "stewart_and_trinkle" or "anitescu"
-  int num_friction_directions;  // Number of friction directions per contact
-  int num_contacts;             // Number of contacts in the system
-  std::vector<double> mu;       // Friction coefficient for each contact
-
   std::string projection_type;  // "QP" or "MIQP"
   double M = 1000;              // big M value for MIQP
 
-  int N;              // number of time steps in the prediction horizon
-  double dt;          // time step size
   int admm_iter = 3;  // total number of ADMM iterations
 
   // See comments below for how we parse the .yaml into the cost matrices
@@ -51,9 +68,9 @@ struct C3Options {
   // Unused except when parsing the costs from a yaml
   // We assume a diagonal Q, R, G, U matrix, so we can just specify the diagonal
   // terms as *_vector. To make indexing even easier, we split the parsing of
-  // the g_vector and u_vector into the x, lambda, and u terms. The Stewart and
-  // Trinkle contact model uses *_gamma, *_lambda_n, *_lambda_t while the
-  // Anitescu model uses *_lambda.
+  // the g_vector and u_vector into the x, lambda, and u terms. *_lambda are the
+  // default weights. If not specified, the Stewart and Trinkle formulation of
+  // *_gamma, *_lambda_n, *_lambda_t will be used.
   std::vector<double> q_vector;
   std::vector<double> r_vector;
 
@@ -82,19 +99,10 @@ struct C3Options {
     a->Visit(DRAKE_NVP(num_threads));
     a->Visit(DRAKE_NVP(delta_option));
 
-    a->Visit(DRAKE_NVP(contact_model));
-    a->Visit(DRAKE_NVP(num_friction_directions));
-    a->Visit(DRAKE_NVP(num_contacts));
-    a->Visit(DRAKE_NVP(mu));
-
     a->Visit(DRAKE_NVP(projection_type));
-    if (projection_type == "QP") {
-      DRAKE_DEMAND(contact_model == "anitescu");
-    }
+
     a->Visit(DRAKE_NVP(M));
 
-    a->Visit(DRAKE_NVP(N));
-    a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(admm_iter));
 
     a->Visit(DRAKE_NVP(rho_scale));
@@ -121,24 +129,23 @@ struct C3Options {
 
     g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());
-    if (contact_model == "stewart_and_trinkle") {
-      g_vector.insert(g_vector.end(), g_gamma.begin(), g_gamma.end());
-      g_vector.insert(g_vector.end(), g_lambda_n.begin(), g_lambda_n.end());
-      g_vector.insert(g_vector.end(), g_lambda_t.begin(), g_lambda_t.end());
-    } else {
-      g_vector.insert(g_vector.end(), g_lambda.begin(), g_lambda.end());
+    if (g_lambda.empty()) {
+      g_lambda.insert(g_lambda.end(), g_gamma.begin(), g_gamma.end());
+      g_lambda.insert(g_lambda.end(), g_lambda_n.begin(), g_lambda_n.end());
+      g_lambda.insert(g_lambda.end(), g_lambda_t.begin(), g_lambda_t.end());
     }
+    g_vector.insert(g_vector.end(), g_lambda.begin(), g_lambda.end());
 
     g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
     u_vector = std::vector<double>();
     u_vector.insert(u_vector.end(), u_x.begin(), u_x.end());
-    if (contact_model == "stewart_and_trinkle") {
-      u_vector.insert(u_vector.end(), u_gamma.begin(), u_gamma.end());
-      u_vector.insert(u_vector.end(), u_lambda_n.begin(), u_lambda_n.end());
-      u_vector.insert(u_vector.end(), u_lambda_t.begin(), u_lambda_t.end());
-    } else {
-      u_vector.insert(u_vector.end(), u_lambda.begin(), u_lambda.end());
+    if (u_lambda.empty()) {
+      u_lambda.insert(u_lambda.end(), u_gamma.begin(), u_gamma.end());
+      u_lambda.insert(u_lambda.end(), u_lambda_n.begin(), u_lambda_n.end());
+      u_lambda.insert(u_lambda.end(), u_lambda_t.begin(), u_lambda_t.end());
     }
+
+    u_vector.insert(u_vector.end(), u_lambda.begin(), u_lambda.end());
     u_vector.insert(u_vector.end(), u_u.begin(), u_u.end());
 
     Eigen::VectorXd q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
@@ -150,11 +157,6 @@ struct C3Options {
     Eigen::VectorXd u = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->u_vector.data(), this->u_vector.size());
 
-    DRAKE_DEMAND(static_cast<int>(g_lambda.size()) ==
-                 num_contacts * num_friction_directions * 2);
-    DRAKE_DEMAND(static_cast<int>(u_lambda.size()) ==
-                 num_contacts * num_friction_directions * 2);
-    DRAKE_DEMAND(mu.size() == (size_t)num_contacts);
     DRAKE_DEMAND(g.size() == u.size());
 
     Q = w_Q * q.asDiagonal();
@@ -206,7 +208,7 @@ struct C3StatePredictionJoint {
   }
 };
 
-struct C3ControllerOptions : public C3Options {
+struct C3ControllerOptions : public C3Options, public LCSOptions {
   // Additional options specific to the C3Controller
   double solve_time_filter_alpha = 0.0;
   double publish_frequency = 100.0;  // Hz
@@ -216,9 +218,35 @@ struct C3ControllerOptions : public C3Options {
   template <typename Archive>
   void Serialize(Archive* a) {
     C3Options::Serialize(a);
+    LCSOptions::Serialize(a);
     a->Visit(DRAKE_NVP(solve_time_filter_alpha));
     a->Visit(DRAKE_NVP(publish_frequency));
     a->Visit(DRAKE_NVP(state_prediction_joints));
+
+    if (projection_type == "QP") {
+      DRAKE_DEMAND(contact_model == "anitescu");
+    }
+
+    if (contact_model == "frictionless_spring") {
+      DRAKE_DEMAND(static_cast<int>(g_lambda.size()) == num_contacts);
+      DRAKE_DEMAND(static_cast<int>(u_lambda.size()) == num_contacts);
+    }
+    else if (contact_model == "stewart_and_trinkle") {
+      DRAKE_DEMAND(static_cast<int>(g_lambda.size()) ==
+                   num_contacts * num_friction_directions * 2 +
+                       num_contacts * 2);
+      DRAKE_DEMAND(static_cast<int>(u_lambda.size()) ==
+                   num_contacts * num_friction_directions * 2 +
+                       num_contacts * 2);
+    } else if (contact_model == "anitescu") {
+      DRAKE_DEMAND(static_cast<int>(g_lambda.size()) ==
+                   num_contacts * num_friction_directions * 2);
+      DRAKE_DEMAND(static_cast<int>(u_lambda.size()) ==
+                   num_contacts * num_friction_directions * 2);
+    } else {
+      throw std::runtime_error("unknown or unsupported contact model");
+    }
+    DRAKE_DEMAND(mu.size() == (size_t)num_contacts);
   }
 };
 
