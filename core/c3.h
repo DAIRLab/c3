@@ -32,13 +32,17 @@ class C3 {
     bool HasSameDimensionsAs(const CostMatrices& other) const {
       // Check vector and matrix dimensions
       return (Q.size() == other.Q.size() &&
-              Q.at(0).size() == other.Q.at(0).size() &&
+              Q.at(0).rows() == other.Q.at(0).rows() &&
+              Q.at(0).cols() == other.Q.at(0).cols() &&
               R.size() == other.R.size() &&
-              R.at(0).size() == other.R.at(0).size() &&
+              R.at(0).rows() == other.R.at(0).rows() &&
+              R.at(0).cols() == other.R.at(0).cols() &&
               G.size() == other.G.size() &&
-              G.at(0).size() == other.G.at(0).size() &&
+              G.at(0).rows() == other.G.at(0).rows() &&
+              G.at(0).cols() == other.G.at(0).cols() &&
               U.size() == other.U.size() &&
-              U.at(0).size() == other.U.at(0).size());
+              U.at(0).rows() == other.U.at(0).rows() &&
+              U.at(0).cols() == other.U.at(0).cols());
     }
     std::vector<Eigen::MatrixXd> Q;
     std::vector<Eigen::MatrixXd> R;
@@ -100,7 +104,7 @@ class C3 {
    *
    * @param costs A reference to the CostMatrices object to be updated.
    */
-  void UpdateCostMatrices(CostMatrices& costs);
+  void UpdateCostMatrices(const CostMatrices& costs);
 
   /**
    * @brief Get the current cost matrices used in the system.
@@ -136,7 +140,8 @@ class C3 {
    */
   void AddLinearConstraint(const Eigen::MatrixXd& A,
                            const Eigen::VectorXd& lower_bound,
-                           const Eigen::VectorXd& upper_bound, int constraint);
+                           const Eigen::VectorXd& upper_bound,
+                           ConstraintVariable constraint);
 
   /*!
    * Add a single-row linear constraint
@@ -145,7 +150,7 @@ class C3 {
    *  (or better yet, make this three functions)
    */
   void AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
-                           double upper_bound, int constraint);
+                           double upper_bound, ConstraintVariable constraint);
 
   /*! Remove all constraints previously added by AddLinearConstraint */
   void RemoveConstraints();

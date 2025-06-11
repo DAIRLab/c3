@@ -57,7 +57,7 @@ double LCS::ScaleComplementarityDynamics() {
   return scale;
 }
 
-const VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& u) {
+const VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& u) const {
   VectorXd x_final;
   VectorXd force;
   drake::solvers::MobyLCPSolver<double> LCPSolver;

@@ -15,7 +15,7 @@ LCSSimulator::LCSSimulator(int n_x, int n_u, int n_lambda, int N, double dt) {
 }
 
 // Constructor using an existing LCS object
-LCSSimulator::LCSSimulator(LCS lcs) {
+LCSSimulator::LCSSimulator(const LCS &lcs) {
   init(lcs.num_states(), lcs.num_inputs(), lcs.num_lambdas(), lcs.N(),
        lcs.dt());
 }
@@ -49,7 +49,7 @@ void LCSSimulator::SimulateOneStep(
   if (!get_input_port_lcs().HasValue(context)) {
     throw std::runtime_error("Input port LCS [LCSSimulator] not connected");
   }
-  LCS lcs = this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
+  const auto& lcs = this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
 
   // Retrieve the current state and action from the input ports
   auto state = this->EvalVectorInput(context, state_input_port_)->value();
@@ -60,7 +60,8 @@ void LCSSimulator::SimulateOneStep(
   VectorXd u = Eigen::Map<VectorXd>(action.data(), action.size());
 
   // Compute the next state using the LCS simulation
-  next_state->set_value(lcs.Simulate(x, u));
+  VectorXd xn = lcs.Simulate(x, u);
+  next_state->set_value(xn);
 }
 
 }  // namespace systems

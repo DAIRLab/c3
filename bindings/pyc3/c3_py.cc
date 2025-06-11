@@ -66,6 +66,12 @@ PYBIND11_MODULE(c3, m) {
           [](C3::CostMatrices& self, const std::vector<Eigen::MatrixXd>& val) {
             self.U = val;
           });
+  
+  py::enum_<ConstraintVariable>(m, "ConstraintVariable")
+        .value("STATE", ConstraintVariable::STATE)
+        .value("INPUT", ConstraintVariable::INPUT)
+        .value("FORCE", ConstraintVariable::FORCE)
+        .export_values();
 
   py::class_<C3, PyC3>(m, "C3")
       .def(py::init<const LCS&, const C3::CostMatrices&,
@@ -90,14 +96,14 @@ PYBIND11_MODULE(c3, m) {
       .def("AddLinearConstraint",
            static_cast<void (C3::*)(
                const Eigen::MatrixXd&, const Eigen::VectorXd&,
-               const Eigen::VectorXd&, int)>(&C3::AddLinearConstraint),
+               const Eigen::VectorXd&, ConstraintVariable)>(&C3::AddLinearConstraint),
            py::arg("A"), py::arg("lower_bound"), py::arg("upper_bound"),
-           py::arg("constraint"))
+           py::arg("constraint_type"))
       .def("AddLinearConstraint",
            static_cast<void (C3::*)(const Eigen::RowVectorXd&, double, double,
-                                    int)>(&C3::AddLinearConstraint),
+                                    ConstraintVariable)>(&C3::AddLinearConstraint),
            py::arg("A"), py::arg("lower_bound"), py::arg("upper_bound"),
-           py::arg("constraint"))
+           py::arg("constraint_type"))
       .def("RemoveConstraints", &C3::RemoveConstraints)
       .def("GetLinearConstraints", &C3::GetLinearConstraints,
            py::return_value_policy::copy)

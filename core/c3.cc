@@ -224,7 +224,7 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   }
 }
 
-void C3::UpdateCostMatrices(CostMatrices& costs) {
+void C3::UpdateCostMatrices(const CostMatrices& costs) {
   DRAKE_DEMAND(cost_matrices_.HasSameDimensionsAs(costs));
   cost_matrices_ = costs;
 
@@ -469,7 +469,8 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
 
 void C3::AddLinearConstraint(const Eigen::MatrixXd& A,
                              const VectorXd& lower_bound,
-                             const VectorXd& upper_bound, int constraint) {
+                             const VectorXd& upper_bound,
+                             ConstraintVariable constraint) {
   if (constraint == 1) {
     for (int i = 1; i < N_; ++i) {
       user_constraints_.push_back(
@@ -493,7 +494,8 @@ void C3::AddLinearConstraint(const Eigen::MatrixXd& A,
 }
 
 void C3::AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
-                             double upper_bound, int constraint) {
+                             double upper_bound,
+                             ConstraintVariable constraint) {
   Eigen::VectorXd lb(1);
   lb << lower_bound;
   Eigen::VectorXd ub(1);

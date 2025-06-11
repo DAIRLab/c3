@@ -89,7 +89,8 @@ class C3CartpoleTestParameterizedLinearConstraints
 // Test if user can manipulate linear constraints using MatrixXd
 TEST_P(C3CartpoleTestParameterizedLinearConstraints, LinearConstraintsTest) {
   bool use_row_vector = std::get<0>(GetParam());
-  int constraint_type = std::get<1>(GetParam());
+  c3::ConstraintVariable constraint_type =
+      static_cast<c3::ConstraintVariable>(std::get<1>(GetParam()));
   int constraint_size = std::get<2>(GetParam());
   int num_of_new_constraints =
       constraint_type == c3::ConstraintVariable::STATE ? N - 1 : N;
@@ -140,7 +141,7 @@ TEST_F(C3CartpoleTest, RemoveLinearConstraintsTest) {
   double lb = 0.0;
   double ub = 2.0;
 
-  pOpt->AddLinearConstraint(Al, lb, ub, 1);
+  pOpt->AddLinearConstraint(Al, lb, ub, c3::ConstraintVariable::STATE);
 
   std::vector<LinearConstraintBinding> user_constraints =
       pOpt->GetLinearConstraints();
@@ -361,7 +362,7 @@ TEST_F(C3CartpoleTest, End2EndCartpoleTest) {
 
     /// simulate the LCS
     x[i + 1] = pSystem->Simulate(x[i], input[i]);
-    if (x[i+1].isZero(0.1)) {
+    if (x[i + 1].isZero(0.1)) {
       close_to_zero_counter++;
       if (close_to_zero_counter == 30) break;
     } else {

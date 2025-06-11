@@ -1,9 +1,9 @@
 // Includes for core controllers, simulators, and test problems.
 #include "systems/c3_controller.h"
 
-#include "common/system_util.hpp"
 #include "core/test/c3_cartpole_problem.hpp"
 #include "systems/lcs_simulator.h"
+#include "systems/common/system_utils.hpp"
 
 // Includes for Drake systems and primitives.
 #include <drake/geometry/drake_visualizer.h>

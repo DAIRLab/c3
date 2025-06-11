@@ -6,6 +6,7 @@
 #include <drake/systems/framework/system_visitor.h>
 
 namespace c3 {
+namespace systems {
 namespace common {
 // Utility function to save and visualize the system diagram.
 void DrawAndSaveDiagramGraph(const drake::systems::Diagram<double>& diagram,
@@ -28,4 +29,5 @@ void DrawAndSaveDiagramGraph(const drake::systems::Diagram<double>& diagram,
   (void)std::system(cmd.c_str());
 }
 }  // namespace common
+}  // namespace systems
 }  // namespace c3

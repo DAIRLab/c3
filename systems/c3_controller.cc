@@ -38,6 +38,7 @@ C3Controller::C3Controller(
   solve_time_filter_constant_ = controller_options_.solve_time_filter_alpha;
 
   // Determine the size of lambda based on the contact model
+  n_lambda_ = 0;
   if (controller_options_.contact_model == "stewart_and_trinkle") {
     n_lambda_ = 2 * controller_options_.num_contacts +
                 2 * controller_options_.num_friction_directions *
@@ -45,7 +46,11 @@ C3Controller::C3Controller(
   } else if (controller_options_.contact_model == "anitescu") {
     n_lambda_ = 2 * controller_options_.num_friction_directions *
                 controller_options_.num_contacts;
+  } else {
+    drake::log()->error("Unknown contact model: {}",
+                      controller_options_.contact_model);
   }
+  DRAKE_THROW_UNLESS(n_lambda_ > 0);
 
   // Placeholder vector for initialization
   VectorXd zeros = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
@@ -64,9 +69,10 @@ C3Controller::C3Controller(
     c3_ = std::make_unique<C3QP>(lcs_placeholder, costs, x_desired_placeholder,
                                  controller_options_);
   } else {
-    std::cerr << ("Unknown projection type") << std::endl;
-    DRAKE_THROW_UNLESS(false);
+    drake::log()->error("Unknown projection type : {}",
+                        controller_options_.projection_type);
   }
+  DRAKE_THROW_UNLESS(c3_ != nullptr);
 
   // Declare input ports
   lcs_state_input_port_ =
@@ -111,11 +117,10 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   auto start = std::chrono::high_resolution_clock::now();
 
   // Retrieve inputs
-  const BasicVector<double>& x_des =
+  const auto& x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
-  const TimestampedVector<double>* lcs_x =
-      (TimestampedVector<double>*)this->EvalVectorInput(context,
-                                                        lcs_state_input_port_);
+  const auto lcs_x = (TimestampedVector<double>*)this->EvalVectorInput(
+      context, lcs_state_input_port_);
   if (!get_input_port_lcs().HasValue(context)) {
     throw std::runtime_error("Input port LCS [C3Controller] not connected");
   }

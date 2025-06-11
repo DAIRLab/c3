@@ -51,7 +51,17 @@ cc_binary(
     deps = [
         "//core:c3",
         ":systems",
-        "//common:utilities",
+        ":system_utils",
         "//core:c3_cartpole_problem",
     ]
+)
+
+cc_library(
+    name = "system_utils",
+    hdrs = [
+        "common/system_utils.hpp",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
 )
