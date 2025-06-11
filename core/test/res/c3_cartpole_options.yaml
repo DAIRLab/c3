@@ -7,9 +7,11 @@ delta_option: 0
 
 #options are 'stewart_and_trinkle' or 'anitescu'
 # contact_model : 'stewart_and_trinkle'
-contact_model: 'anitescu'
-num_friction_directions: 1
-num_contacts: 1
+contact_model: 'frictionless_spring'
+num_friction_directions: 0
+num_contacts: 2
+spring_stiffness: 100
+mu : [0, 0]
 
 projection_type: 'MIQP'
 M: 1000
@@ -54,7 +56,7 @@ u_u: [0]
 
 solve_time_filter_alpha: 0.0
 #set to 0 to publish as fast as possible
-publish_frequency : 30
+publish_frequency : 100
 state_prediction_joints : []
   # - name : "CartSlider"
   #   max_acceleration : 10

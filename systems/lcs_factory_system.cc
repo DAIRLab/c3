@@ -29,28 +29,21 @@ LCSFactorySystem::LCSFactorySystem(
     drake::systems::Context<drake::AutoDiffXd>& context_ad,
     const std::vector<drake::SortedPair<drake::geometry::GeometryId>>
         contact_geoms,
-    C3Options c3_options)
+    LCSOptions options)
     : plant_(plant),
       context_(context),
       plant_ad_(plant_ad),
       context_ad_(context_ad),
       contact_pairs_(contact_geoms),
-      c3_options_(std::move(c3_options)),
-      N_(c3_options_.N) {
+      options_(std::move(options)),
+      N_(options_.N),
+      dt_(options_.dt) {
   this->set_name("lcs_factory_system");
 
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_x_ = n_q_ + n_v_;
-  dt_ = c3_options_.dt;
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
-    n_lambda_ =
-        2 * c3_options_.num_contacts +
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
-  } else if (c3_options_.contact_model == "anitescu") {
-    n_lambda_ =
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
-  }
+  n_lambda_ = multibody::LCSFactory::GetNumContactVariables(options_);
   n_u_ = plant_.num_actuators();
 
   lcs_state_input_port_ =
@@ -61,17 +54,10 @@ LCSFactorySystem::LCSFactorySystem(
       this->DeclareVectorInputPort("u_lcs", BasicVector<double>(n_u_))
           .get_index();
 
-  MatrixXd A = MatrixXd::Zero(n_x_, n_x_);
-  MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
-  VectorXd d = VectorXd::Zero(n_x_);
-  MatrixXd D = MatrixXd::Zero(n_x_, n_lambda_);
-  MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
-  MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
-  MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
-  VectorXd c = VectorXd::Zero(n_lambda_);
-  lcs_port_ = this->DeclareAbstractOutputPort(
-                      "lcs", LCS(A, B, D, d, E, F, H, c, N_, dt_),
-                      &LCSFactorySystem::OutputLCS)
+  auto lcs_placeholder =
+      LCS::CreatePlaceholderLCS(n_x_, n_u_, n_lambda_, N_, dt_);
+  lcs_port_ = this->DeclareAbstractOutputPort("lcs", lcs_placeholder,
+                                              &LCSFactorySystem::OutputLCS)
                   .get_index();
 
   lcs_contact_jacobian_port_ =
@@ -85,36 +71,27 @@ LCSFactorySystem::LCSFactorySystem(
 
 void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
                                  LCS* output_lcs) const {
-  const TimestampedVector<double>* lcs_x =
-      (TimestampedVector<double>*)this->EvalVectorInput(context,
-                                                        lcs_state_input_port_);
+  const auto lcs_x = (TimestampedVector<double>*)this->EvalVectorInput(
+      context, lcs_state_input_port_);
   const auto lcs_u = (BasicVector<double>*)this->EvalVectorInput(
       context, lcs_inputs_input_port_);
   DRAKE_DEMAND(lcs_x->get_data().size() == n_x_);
   DRAKE_DEMAND(lcs_u->get_value().size() == n_u_);
-  VectorXd q_v_u =
-      VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
-                     plant_.num_actuators());
+
+  VectorXd q_v_u = VectorXd::Zero(n_x_ + n_u_);
   q_v_u << lcs_x->get_data(), lcs_u->get_value();
   drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
 
-  plant_.SetPositionsAndVelocities(&context_, q_v_u.head(n_x_));
+  multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, q_v_u.head(4),
+                                                    &context_);
   multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u_), &context_);
+  multibody::SetPositionsAndVelocitiesIfNew<drake::AutoDiffXd>(
+      plant_ad_, q_v_u_ad.head(4), &context_ad_);
   multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u_),
                                                &context_ad_);
-  multibody::ContactModel contact_model;
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
-    contact_model = multibody::ContactModel::kStewartAndTrinkle;
-  } else if (c3_options_.contact_model == "anitescu") {
-    contact_model = multibody::ContactModel::kAnitescu;
-  } else {
-    throw std::runtime_error("unknown or unsupported contact model");
-  }
 
   *output_lcs = LCSFactory::LinearizePlantToLCS(
-      plant_, context_, plant_ad_, context_ad_, contact_pairs_,
-      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
-      c3_options_.N, contact_model);
+      plant_, context_, plant_ad_, context_ad_, contact_pairs_, options_);
 }
 
 void LCSFactorySystem::OutputLCSContactJacobian(
@@ -124,27 +101,13 @@ void LCSFactorySystem::OutputLCSContactJacobian(
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
 
-  VectorXd q_v_u =
-      VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
-                     plant_.num_actuators());
   // u is irrelevant in pure geometric/kinematic calculation
-  q_v_u << lcs_x->get_data(), VectorXd::Zero(n_u_);
-
-  plant_.SetPositionsAndVelocities(&context_, q_v_u.head(n_x_));
-  multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u_), &context_);
-  multibody::ContactModel contact_model;
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
-    contact_model = multibody::ContactModel::kStewartAndTrinkle;
-  } else if (c3_options_.contact_model == "anitescu") {
-    contact_model = multibody::ContactModel::kAnitescu;
-  } else {
-    throw std::runtime_error("unknown or unsupported contact model");
-  }
+  VectorXd state = lcs_x->get_data();
+  multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, state, &context_);
 
   std::vector<Eigen::VectorXd> contact_points;
-  *output = LCSFactory::ComputeContactJacobian(
-      plant_, context_, contact_pairs_, c3_options_.num_friction_directions,
-      c3_options_.mu, contact_model);
+  *output = LCSFactory::ComputeContactJacobian(plant_, context_, contact_pairs_,
+                                               options_);
 }
 
 }  // namespace systems

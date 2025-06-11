@@ -53,7 +53,7 @@ class C3CartpoleProblem {
 
     // Initial state
     x0.resize(n);
-    x0 << 0, -0.5, 0.5, -0.4;
+    x0 << 0.1, -0.5, 0.5, -0.4;
 
     // System dynamics matrices
     MatrixXd Ainit(n, n);
