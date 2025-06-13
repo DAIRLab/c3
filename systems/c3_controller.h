@@ -43,7 +43,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 
   // Accessors for input ports.
   const drake::systems::InputPort<double>& get_input_port_target() const {
-    return this->get_input_port(target_input_port_);
+    return this->get_input_port(lcs_desired_state_input_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_lcs_state() const {
     return this->get_input_port(lcs_state_input_port_);
@@ -99,6 +99,57 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 
  private:
   /**
+   * @struct StatePredictionJoint
+   * @brief Represents the configuration and constraints for a joint in a state
+   * prediction system.
+   *
+   * This structure is used to define the indices and sizes of position (q) and
+   * velocity (v) components for a joint, as well as the maximum allowable
+   * acceleration for the joint.
+   *
+   * @var q_start_index
+   * The starting index of the position (q) component for the joint in the state
+   * vector.
+   *
+   * @var q_size
+   * The size (number of elements) of the position (q) component for the joint.
+   *
+   * @var v_start_index
+   * The starting index of the velocity (v) component for the joint in the state
+   * vector.
+   *
+   * @var v_size
+   * The size (number of elements) of the velocity (v) component for the joint.
+   *
+   * @var max_acceleration
+   * The maximum allowable acceleration for the joint.
+   */
+  struct StatePredictionJoint {
+    int q_start_index;
+    int q_size;
+    int v_start_index;
+    int v_size;
+    double max_acceleration;
+  };
+
+  /**
+   * @brief Adjusts the input state vector by clamping it to a predicted state
+   *        based on maximum acceleration constraints for specified joints.
+   *
+   * This function modifies the provided state vector `x0` by incorporating
+   * a predicted state derived from the C3 solution. The predicted state is
+   * interpolated based on the filtered solve time and clamped to ensure that
+   * joint positions and velocities do not exceed the maximum acceleration
+   * constraints defined for the state prediction joints. If the solve time
+   * is zero, the function returns early without making any modifications.
+   *
+   * @param x0 A reference to the state vector to be adjusted. This vector
+   *           contains the positions and velocities of the system.
+   */
+  void UseClampedPredictedState(drake::VectorX<double>& x0,
+                                double& filtered_solve_time) const;
+
+  /**
    * @brief Computes the C3 solution and intermediated given a discrete state.
    * @param context The system context.
    * @param discrete_state The discrete state (usually the current state of the
@@ -126,7 +177,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
                              C3Output::C3Intermediates* c3_intermediates) const;
 
   // Input and output port indices.
-  drake::systems::InputPortIndex target_input_port_;
+  drake::systems::InputPortIndex lcs_desired_state_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
   drake::systems::InputPortIndex lcs_input_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
@@ -153,10 +204,11 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   // Solve time filter constant.
   double solve_time_filter_constant_;
 
-  // Indices for discrete state variables.
-  drake::systems::DiscreteStateIndex plan_start_time_index_;
-  drake::systems::DiscreteStateIndex x_pred_index_;
+  // mutable values.
+  drake::systems::DiscreteStateIndex start_time_index_;
   drake::systems::DiscreteStateIndex filtered_solve_time_index_;
+
+  std::vector<StatePredictionJoint> state_prediction_joints_;
 
   // Cost matrices for optimization.
   std::vector<Eigen::MatrixXd> Q_;  ///< State cost matrices.

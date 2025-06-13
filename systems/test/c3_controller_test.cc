@@ -228,7 +228,7 @@ int DoMain() {
   simulator.set_target_realtime_rate(
       1.0);  // Run simulation at real-time speed.
   simulator.Initialize();
-  simulator.AdvanceTo(10.0);  // Run simulation for 10 seconds.
+  simulator.AdvanceTo(20.0);  // Run simulation for 10 seconds.
 
   return -1;  // Indicate end of program.
 }
