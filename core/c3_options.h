@@ -85,7 +85,6 @@ struct C3Options {
     a->Visit(DRAKE_NVP(num_friction_directions));
     a->Visit(DRAKE_NVP(num_contacts));
 
-
     a->Visit(DRAKE_NVP(projection_type));
     if (projection_type == "QP") {
       DRAKE_DEMAND(contact_model == "anitescu");
@@ -167,16 +166,56 @@ inline C3Options LoadC3Options(const std::string& filename) {
   return options;
 }
 
+/**
+ * @struct C3StatePredictionJoint
+ * @brief Represents the state prediction parameters for a joint in the system.
+ *
+ * This structure is used to define the properties of a joint, including its
+ * name and the maximum allowable acceleration. The joints specified will be
+ * used for clamping the predicted state during the optimization process to
+ * ensure that the predicted states remain within physically realistic bounds
+ * based on the maximum acceleration.
+ *
+ * In C3 Options file, the structure to specify these joints would look like:
+ * ```
+ * state_prediction_joints:
+ *   - name: "joint_name"
+ *     max_acceleration: 10.0  # Maximum acceleration in m/s^2
+ *   - name: "another_joint_name"
+ *     max_acceleration: 5.0   # Maximum acceleration in m/s^2
+ * ```
+ * or 
+ * ```
+ * state_prediction_joints: []
+ * ```
+ * If no predicition is required
+ */
+struct C3StatePredictionJoint {
+  // Joint name
+  std::string name;
+  // Maximum acceleration for the joint
+  double max_acceleration;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(name));
+    a->Visit(DRAKE_NVP(max_acceleration));
+  }
+};
+
 struct C3ControllerOptions : public C3Options {
   // Additional options specific to the C3Controller
   double solve_time_filter_alpha = 0.0;
   double publish_frequency = 100.0;  // Hz
+
+  std::vector<C3StatePredictionJoint> state_prediction_joints;
 
   template <typename Archive>
   void Serialize(Archive* a) {
     C3Options::Serialize(a);
     a->Visit(DRAKE_NVP(solve_time_filter_alpha));
     a->Visit(DRAKE_NVP(publish_frequency));
+    a->Visit(DRAKE_NVP(state_prediction_joints));
   }
 };
 
