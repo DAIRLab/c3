@@ -55,6 +55,6 @@ u_u: [0]
 solve_time_filter_alpha: 0.0
 #set to 0 to publish as fast as possible
 publish_frequency : 30
-state_prediction_joints : 
-  - name : "CartSlider"
-    max_acceleration : 10
+state_prediction_joints : []
+  # - name : "CartSlider"
+  #   max_acceleration : 10
