@@ -34,7 +34,8 @@ class C3Controller : public drake::systems::LeafSystem<double> {
    * @brief Constructor: Initializes the controller with the given plant and
    * options.
    * @param plant The multibody plant to control.
-   * @param options Options for configuring the C3 controller and underlying C3
+   * @param costs The cost matrices for the C3 optimization problem.
+   * @param controller_options Options for configuring the C3 controller and
    * solver.
    */
   explicit C3Controller(const drake::multibody::MultibodyPlant<double>& plant,
@@ -64,7 +65,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 
   /**
    * @brief Updates the cost matrices used by the controller.
-   * @param costs The new cost matrices.
+   * @param costs The new cost matrices to be used in the optimization problem.
    */
   void UpdateCostMatrices(C3::CostMatrices& costs) {
     c3_->UpdateCostMatrices(costs);
@@ -106,51 +107,35 @@ class C3Controller : public drake::systems::LeafSystem<double> {
    * This structure is used to define the indices and sizes of position (q) and
    * velocity (v) components for a joint, as well as the maximum allowable
    * acceleration for the joint.
-   *
-   * @var q_start_index
-   * The starting index of the position (q) component for the joint in the state
-   * vector.
-   *
-   * @var q_size
-   * The size (number of elements) of the position (q) component for the joint.
-   *
-   * @var v_start_index
-   * The starting index of the velocity (v) component for the joint in the state
-   * vector.
-   *
-   * @var v_size
-   * The size (number of elements) of the velocity (v) component for the joint.
-   *
-   * @var max_acceleration
-   * The maximum allowable acceleration for the joint.
    */
   struct StatePredictionJoint {
-    int q_start_index;
-    int q_size;
-    int v_start_index;
-    int v_size;
-    double max_acceleration;
+    int q_start_index;        ///< Starting index of the position (q) component.
+    int q_size;               ///< Size of the position (q) component.
+    int v_start_index;        ///< Starting index of the velocity (v) component.
+    int v_size;               ///< Size of the velocity (v) component.
+    double max_acceleration;  ///< Maximum allowable acceleration for the joint.
   };
 
   /**
    * @brief Adjusts the input state vector by clamping it to a predicted state
-   *        based on maximum acceleration constraints for specified joints.
+   * based on maximum acceleration constraints for specified joints.
    *
    * This function modifies the provided state vector `x0` by incorporating
-   * a predicted state derived from the C3 solution. The predicted state is
-   * interpolated based on the filtered solve time and clamped to ensure that
-   * joint positions and velocities do not exceed the maximum acceleration
-   * constraints defined for the state prediction joints. If the solve time
-   * is zero, the function returns early without making any modifications.
+   * a predicted state derived from the previous C3 solution. The predicted
+   * state is interpolated based on the filtered solve time and clamped to
+   * ensure that joint positions and velocities do not exceed the maximum
+   * acceleration constraints defined for the state prediction joints. If the
+   * solve time is zero, the function returns early without making any
+   * modifications.
    *
    * @param x0 A reference to the state vector to be adjusted. This vector
    *           contains the positions and velocities of the system.
    */
-  void UseClampedPredictedState(drake::VectorX<double>& x0,
-                                double& filtered_solve_time) const;
+  void ResolvePredictedState(drake::VectorX<double>& x0,
+                           double& filtered_solve_time) const;
 
   /**
-   * @brief Computes the C3 solution and intermediated given a discrete state.
+   * @brief Computes the C3 solution and intermediates given a discrete state.
    * @param context The system context.
    * @param discrete_state The discrete state (usually the current state of the
    * system).
@@ -205,7 +190,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   double solve_time_filter_constant_;
 
   // mutable values.
-  drake::systems::DiscreteStateIndex start_time_index_;
+  drake::systems::DiscreteStateIndex plan_start_time_index_;
   drake::systems::DiscreteStateIndex filtered_solve_time_index_;
 
   std::vector<StatePredictionJoint> state_prediction_joints_;

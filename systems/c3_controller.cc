@@ -39,6 +39,7 @@ C3Controller::C3Controller(
   dt_ = controller_options_.dt;
   solve_time_filter_constant_ = controller_options_.solve_time_filter_alpha;
 
+  // Initialize state prediction joints
   for (auto joint_description : controller_options_.state_prediction_joints) {
     const auto joint = &plant.GetJointByName(joint_description.name);
     state_prediction_joints_.push_back(
@@ -108,7 +109,7 @@ C3Controller::C3Controller(
           .get_index();
 
   // Declare discrete states
-  start_time_index_ = DeclareDiscreteState(1);
+  plan_start_time_index_ = DeclareDiscreteState(1);
   filtered_solve_time_index_ = DeclareDiscreteState(1);
 
   // Declare periodic or forced update events
@@ -128,7 +129,8 @@ drake::systems::EventStatus C3Controller::ComputePlan(
 
   auto& filtered_solve_time =
       discrete_state->get_mutable_value(filtered_solve_time_index_)[0];
-  auto& start_time = discrete_state->get_mutable_value(start_time_index_)[0];
+  auto& start_time =
+      discrete_state->get_mutable_value(plan_start_time_index_)[0];
 
   // Retrieve inputs
   // Get the state of the system from the input port
@@ -149,8 +151,9 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   std::vector<VectorXd> target =
       std::vector<VectorXd>(N_ + 1, desired_state.value());
 
+  // Clamp predicted state if state prediction joints are defined
   if (!state_prediction_joints_.empty())
-    UseClampedPredictedState(x0, filtered_solve_time);
+    ResolvePredictedState(x0, filtered_solve_time);
 
   // Update LCS and target in the C3 problem
   c3_->UpdateLCS(lcs);
@@ -177,9 +180,10 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   return drake::systems::EventStatus::Succeeded();
 }
 
-void C3Controller::UseClampedPredictedState(drake::VectorX<double>& x0,
-                                            double& filtered_solve_time) const {
-  // Return early if solve time is zero, as clamping cannot be performed
+void C3Controller::ResolvePredictedState(drake::VectorX<double>& x0,
+                                       double& filtered_solve_time) const {
+  // Return early if solve time is zero (which should only occur in the first
+  // iteration), as clamping cannot be performed
   if (filtered_solve_time == 0.0) {
     drake::log()->info(
         "Filtered solve time is zero, presuming first iteration and skipping "
@@ -195,8 +199,9 @@ void C3Controller::UseClampedPredictedState(drake::VectorX<double>& x0,
   if (filtered_solve_time < (N_ - 1) * dt_) {
     int predicted_state_index = std::floor(filtered_solve_time / dt_);
     double averaging_weight = filtered_solve_time / dt_ - predicted_state_index;
-    predicted_state = (1 - averaging_weight) * pre_x_sol[predicted_state_index] +
-                      averaging_weight * pre_x_sol[predicted_state_index + 1];
+    predicted_state =
+        (1 - averaging_weight) * pre_x_sol[predicted_state_index] +
+        averaging_weight * pre_x_sol[predicted_state_index + 1];
   }
 
   // Approximate the loop time step for clamping
@@ -227,7 +232,7 @@ void C3Controller::UseClampedPredictedState(drake::VectorX<double>& x0,
 void C3Controller::OutputC3Solution(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const {
-  double start_time = context.get_discrete_state(start_time_index_)[0];
+  double start_time = context.get_discrete_state(plan_start_time_index_)[0];
   double solve_time = context.get_discrete_state(filtered_solve_time_index_)[0];
 
   // Retrieve the full solution from the C3 problem
@@ -247,7 +252,7 @@ void C3Controller::OutputC3Solution(
 void C3Controller::OutputC3Intermediates(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const {
-  double start_time = context.get_discrete_state(start_time_index_)[0];
+  double start_time = context.get_discrete_state(plan_start_time_index_)[0];
   double solve_time = context.get_discrete_state(filtered_solve_time_index_)[0];
 
   // Retrieve intermediate solutions from the C3 problem
