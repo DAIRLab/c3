@@ -43,7 +43,7 @@ C3Controller::C3Controller(
   for (auto joint_description : controller_options_.state_prediction_joints) {
     const auto joint = &plant.GetJointByName(joint_description.name);
     state_prediction_joints_.push_back(
-        StatePredictionJoint(joint->position_start(), joint->num_positions(),
+        JointDescription(joint->position_start(), joint->num_positions(),
                              joint->velocity_start(), joint->num_velocities(),
                              joint_description.max_acceleration));
   }
@@ -208,7 +208,7 @@ void C3Controller::ResolvePredictedState(drake::VectorX<double>& x0,
   float approx_loop_dt = std::min(dt_, filtered_solve_time);
 
   // Clamp the predicted state based on maximum acceleration constraints
-  for (const StatePredictionJoint& joint : state_prediction_joints_) {
+  for (const JointDescription& joint : state_prediction_joints_) {
     for (int idx = joint.q_start_index;
          idx < joint.q_start_index + joint.q_size; ++idx) {
       // Ensure the joint indices are within bounds

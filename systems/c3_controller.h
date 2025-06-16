@@ -100,15 +100,15 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 
  private:
   /**
-   * @struct StatePredictionJoint
-   * @brief Represents the configuration and constraints for a joint in a state
-   * prediction system.
+   * @struct JointDescription
+   * @brief Allows to extract necessary information about a joint from the plant
+   * object.
    *
    * This structure is used to define the indices and sizes of position (q) and
    * velocity (v) components for a joint, as well as the maximum allowable
    * acceleration for the joint.
    */
-  struct StatePredictionJoint {
+  struct JointDescription {
     int q_start_index;        ///< Starting index of the position (q) component.
     int q_size;               ///< Size of the position (q) component.
     int v_start_index;        ///< Starting index of the velocity (v) component.
@@ -117,22 +117,40 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   };
 
   /**
-   * @brief Adjusts the input state vector by clamping it to a predicted state
-   * based on maximum acceleration constraints for specified joints.
+   * @brief Predicts the system state at the time C3 will compute the planned
+   * trajectory, accounting for computation delay and bounded acceleration.
    *
-   * This function modifies the provided state vector `x0` by incorporating
-   * a predicted state derived from the previous C3 solution. The predicted
-   * state is interpolated based on the filtered solve time and clamped to
-   * ensure that joint positions and velocities do not exceed the maximum
-   * acceleration constraints defined for the state prediction joints. If the
-   * solve time is zero, the function returns early without making any
-   * modifications.
+   * Due to the computation time required by C3, there is a delay that makes
+   * the planned states and inputs outdated relative to the current system
+   * state. To address this, this function predicts the state at which C3 will
+   * compute the planned trajectory. The prediction is based on the previous
+   * C3 solution and the assumption that the state is subject to bounded
+   * acceleration constraints.
+   *
+   * The prediction process involves:
+   * 1. Using the filtered solve time to estimate the delay.
+   * 2. Using the planned trajectory from the previous C3 solution to estimate
+   *    how the states evolve over the next N timesteps, where N is the planning
+   *    horizon, under the given control policy. If the solve time exceeds the
+   *    planning horizon, the state at the final planning step is used. If the
+   *    solve time falls between i * Δt and (i+1)⋅Δt, the predicted state is
+   *    interpolated between the states at the ith and (i+1)th steps.
+   * 3. Clamping the predicted state to ensure joint positions and velocities
+   *    respect the maximum acceleration constraints.
+   *
+   * This is the default behavior, but users can customize this function
+   * according to their specific needs.
+   *
+   * If the solve time is zero, the function returns early without modifying
+   * the state vector.
    *
    * @param x0 A reference to the state vector to be adjusted. This vector
    *           contains the positions and velocities of the system.
+   * @param filtered_solve_time The filtered computation time used to estimate
+   *                            the delay for state prediction.
    */
   void ResolvePredictedState(drake::VectorX<double>& x0,
-                           double& filtered_solve_time) const;
+                             double& filtered_solve_time) const;
 
   /**
    * @brief Computes the C3 solution and intermediates given a discrete state.
@@ -193,7 +211,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex plan_start_time_index_;
   drake::systems::DiscreteStateIndex filtered_solve_time_index_;
 
-  std::vector<StatePredictionJoint> state_prediction_joints_;
+  std::vector<JointDescription> state_prediction_joints_;
 
   // Cost matrices for optimization.
   std::vector<Eigen::MatrixXd> Q_;  ///< State cost matrices.
