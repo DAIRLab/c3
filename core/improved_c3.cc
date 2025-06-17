@@ -242,7 +242,7 @@ void ImprovedC3::Solve(const VectorXd &x0) {
   }
   for (int iter = 0; iter < options_.admm_iter; iter++) {
     ADMMStep(x0, &delta, &w, &G, iter);
-    debug_z->push_back(delta);
+    // debug_z->push_back(delta);
   }
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
@@ -304,7 +304,7 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
   } else {
     *delta = SolveProjection(cost_matrices_.U, ZW, admm_iteration);
   }
-  
+  debug_qp->push_back(*delta);
   for (int i = 0; i < N_; ++i) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);
     w->at(i) = w->at(i) / options_.rho_scale;
@@ -403,6 +403,26 @@ vector<VectorXd> ImprovedC3::SolveQP(const VectorXd &x0,
   } else {
     std::cout << "QP failed to solve" << std::endl;
   }
+
+  // get the cost for each term
+  // int index = 0;
+  // for (const auto& binding : prog_.GetAllCosts()) {
+  //     auto cost = binding.evaluator();
+  //     const auto& vars = binding.variables();
+
+  //     Eigen::VectorXd x(vars.size());
+  //     for (int i = 0; i < vars.size(); ++i) {
+  //         x[i] = result.GetSolution(vars[i]);
+  //     }
+
+  //     Eigen::VectorXd y;
+  //     cost->Eval(x, &y);  // Usually returns a 1D vector with a single value
+
+  //     std::cout << "Term [" << index++ << "] Cost value: " << y[0] << std::endl;
+  // }
+
+
+  // 
   // // print z_sol_ for debugging
   // std::cout << "z_sol_: ";
   // for (int i = 0; i < z_sol_->size(); ++i) {
@@ -482,6 +502,8 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
                                "close to zero in SolveSingleProjection");
     }
     u_ratio = std::sqrt(u1 / u2);
+    // print u_ratio for debugging
+    // std::cout << "u_ratio: " << u_ratio << std::endl;
 
     // Get current lambda and gamma values
     double lambda_val = delta_c(n_x_ + i);

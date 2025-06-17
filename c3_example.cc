@@ -150,9 +150,7 @@ int DoMain(int argc, char* argv[]) {
   x[0] = x0;
 
   double total_time = 0;
-  std::ofstream outfile("/home/yufeiyang/Documents/c3/c3_delta_output.txt");  
-  std::ofstream outfile_gamma("/home/yufeiyang/Documents/c3/c3_gamma_output.txt");
-
+  std::ofstream outfile("/home/yufeiyang/Documents/c3/c3_delta_output.txt");
   for (int i = 0; i < timesteps - 1; i++) {
     if (options.delta_option == 1) {
       /// reset delta and w (option 1)
@@ -193,11 +191,7 @@ int DoMain(int argc, char* argv[]) {
 
     const Eigen::VectorXd debug_lambda_i = opt.GetDualDeltaSolution()[0].segment(n, m);
     const Eigen::VectorXd gamma = E[0] * x[0] + F[0] * debug_lambda_i + H[0] * input[0] + d[0];
-    
-    outfile_gamma << gamma << "\n";
-    outfile_gamma << "\n";
-    
-    // std::cout << "gamma: " << gamma.transpose() << std::endl;
+    std::cout << "gamma: " << gamma.transpose() << std::endl;
 
     // /// print the state
     // std::cout << "state: " << x[i + 1] << std::endl;
@@ -210,8 +204,6 @@ int DoMain(int argc, char* argv[]) {
   }
   outfile.flush();
   outfile.close();
-  outfile_gamma.flush();  
-  outfile_gamma.close();
 
   std::cout << "Average time: " << total_time / (timesteps - 1) << std::endl;
   return 0;

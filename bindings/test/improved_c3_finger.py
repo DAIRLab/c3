@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.animation import FuncAnimation
 
+
 from pyc3 import (
     LCS,
     C3Options,
@@ -70,21 +71,22 @@ def make_fingergait_costs(lcs: LCS) -> ImprovedC3CostMatrices:
     print(f"Number of states: {n}, Number of lambdas: {m}, Number of inputs: {k}")
 
     R = [np.eye(k) for _ in range(N)]
-    Q_init = np.array([[6000, 0, 0, 0, 0, 0],
-                    [0, 10, 0, 0, 0, 0],
-                    [0, 0, 10, 0, 0, 0],
-                    [0, 0, 0, 10, 0, 0],
-                    [0, 0, 0, 0, 10, 0],
-                    [0, 0, 0, 0, 0, 10]])
+    Q_init = np.array([[250, 0, 0, 0, 0, 0],
+                        [0, 0.1, 0, 0, 0, 0],
+                        [0, 0, 100, 0, 0, 0],
+                        [0, 0, 0, 1, 0, 0],
+                        [0, 0, 0, 0, 100, 0],
+                        [0, 0, 0, 0, 0, 1]])
     Q = [Q_init for _ in range(N + 1)]
     Ginit = np.zeros((n + 2 * m + k, n + 2 * m + k))
-    Ginit[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.eye(m)
-    Ginit[n : n + m, n : n + m] = np.eye(m)
+    Ginit[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = 10*np.diag(np.array([1, 1, 1, 1, 1, 1]))
+    Ginit[n : n + m, n : n + m] = 10*np.diag(np.array([1.5, 1, 1, 1.5, 1, 1]))
     G = [Ginit for _ in range(N)]
 
     U = np.zeros((n + 2 * m + k, n + 2 * m + k))
     U[n : n + m, n : n + m] = np.eye(m)
-    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = 1000 * np.eye(m)
+    scale = 100
+    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] =  np.diag(np.array([scale, 1/scale, 1/scale, scale, 1/scale, 1/scale]))
     U = [U for _ in range(N)]
 
     return ImprovedC3CostMatrices(Q, R, G, U)
@@ -188,19 +190,19 @@ def main():
     costs = make_fingergait_costs(finger)
 
     n = finger.num_states()
-    Xd0 = np.array([[0], [0], [2], [0], [4], [0]])
+    Xd0 = np.array([[0], [0], [0], [0], [0], [0]])
     xd = [Xd0 for _ in range(N + 1)]
     options = C3Options()
-    options.admm_iter = 30
-    options.rho_scale = 2.5
+    options.admm_iter = 10
+    options.rho_scale = 1.1
     options.num_threads = 10
     options.delta_option = 0
 
     opt = ImprovedC3(finger, costs, xd, options)
 
-    x0 = np.array([[-8], [0], [3], [0], [4], [0]])
+    x0 = np.array([[-6], [0], [1], [0], [3], [0]])
 
-    system_iter = 1000
+    system_iter = 500
 
     x = np.zeros((n, system_iter + 1))
 
@@ -214,6 +216,8 @@ def main():
     a1 = np.array([0, 0, 1, 0, 0, 0])
     a2 = np.array([0, 0, 0, 0, 1, 0])
 
+    debug_delta = []
+
     u1 = np.array([0, 0, 1, 0])
     u2 = np.array([0, 0, 0, 1])
     debug_info = []
@@ -222,6 +226,7 @@ def main():
     opt.AddLinearConstraint(a2, 3, 5, 1)
     opt.AddLinearConstraint(u1, 0, 10000, 2)
     opt.AddLinearConstraint(u2, 0, 10000, 2)
+    predict = []
     for i in range(system_iter):
         # whe i = 0; get result from SolveQP
         start_time = time.perf_counter()
@@ -236,33 +241,45 @@ def main():
         u_opt = opt.GetInputSolution()[0]
         z_sol.append(opt.GetFullSolution())
         prediction = finger.Simulate(x[:, i], u_opt)
+        predict.append(prediction)
         u_sol.append(u_opt)
         x[:, i + 1] = prediction
         x_.append(opt.GetStateSolution())
+        # print(opt.GetStateSolution())
 
 
     sdf_sol = np.array(sdf_sol)
     delta_sol = np.array(delta_sol)
-    print(delta_sol.shape)
+    print("delta shape", delta_sol.shape)
 
     dt = finger.dt()
 
     debug_info = np.array(debug_info)
     debug_qp = np.array(debug_qp)
-    print(debug_info.shape)
+    # print(debug_info.shape)
     # # save debug info to file
     # with open('/home/yufeiyang/Documents/c3/debug_output/debug_info.txt', 'a') as f:
     #     f.write('\n')
     #     np.savetxt(f, debug_info[1], fmt='%s')
 
     z_sol = np.array(z_sol)
-    print(z_sol.shape)
+    # print(z_sol.shape)
+    predict = np.array(predict)
+    print("sai")
+    print(predict.shape)
+    print(x.shape)
     # Save the results to a file
     np.save('/home/yufeiyang/Documents/c3/debug_output/debug.npy', debug_info)
     np.save('/home/yufeiyang/Documents/c3/debug_output/debug_qp.npy', debug_qp)
     np.save('/home/yufeiyang/Documents/c3/debug_output/z_sol.npy', z_sol)
     np.save('/home/yufeiyang/Documents/c3/debug_output/delta_sol.npy', delta_sol)
     np.save('/home/yufeiyang/Documents/c3/debug_output/x_.npy', x_)
+    np.save('/home/yufeiyang/Documents/c3/debug_output/predict.npy', predict)
+
+    # regular data
+    np.save("/home/yufeiyang/Documents/c3/debug_output/finger_x.npy", x)
+    np.save("/home/yufeiyang/Documents/c3/debug_output/finger_delta.npy", delta_sol)
+    np.save("/home/yufeiyang/Documents/c3/debug_output/finger_u.npy", u_sol)
 
     # Create animation if necessary
     len_p = 0.6  # rod length
@@ -278,41 +295,59 @@ def main():
         f"Average solve time: {np.mean(solve_times)}, equivalent to {1 / np.mean(solve_times)} Hz"
     )
 
-    fig, ax = plt.subplots(4, 1, figsize=(10, 10))
+    fig1, ax1 = plt.subplots(2, 1, figsize=(10, 10))
 
-    ax[0].plot(time_x, x.T)
-    ax[0].legend(["Object position", "Object velocity", "Gripper 1 position", "Gripper 1 velocity",
+    ax1[0].plot(time_x, x.T)
+    ax1[0].legend(["Object position", "Object velocity", "Gripper 1 position", "Gripper 1 velocity",
                  "Gripper 2 position", "Gripper 2 velocity"])
-    ax[0].set_xlabel("Time (s)")
-    ax[0].set_ylabel("State")
-    ax[0].set_title("Finger Gait Example")
+    ax1[0].set_xlabel("Time (s)")
+    ax1[0].set_ylabel("State")
+    ax1[0].set_title("Finger Gait Example")
 
-    ax[1].plot(time_x[:-1], delta_sol[:, 0, 6], label=r"$\lambda_1$")
-    ax[1].plot(time_x[:-1], delta_sol[:, 0, 7], label=r"$\lambda_1$")
-    ax[1].plot(time_x[:-1], delta_sol[:, 0, 8], label=r"$\lambda_1$")
-    ax[1].plot(time_x[:-1], delta_sol[:, 0, 12], label=r"$\gamma_1$")
-    ax[1].plot(time_x[:-1], delta_sol[:, 0, 13], label=r"$\gamma_1$")
-    ax[1].plot(time_x[:-1], delta_sol[:, 0, 14], label=r"$\gamma_1$")
-    ax[1].legend()
-    ax[1].set_ylabel(r"Gripper 1")
-    ax[1].set_xlabel("Time (s)")
+    ax1[1].plot(time_x[:-1], u_sol)
+    ax1[1].legend(["G1 acceleration", 'G2 acceleration', 'G1 normal force', 'G2 normal force'])
+    ax1[1].set_xlabel("Time (s)")
+    ax1[1].set_ylabel("Input")
 
-    ax[2].plot(time_x[:-1], delta_sol[:, 0, 9], label=r"$\lambda_2$")
-    ax[2].plot(time_x[:-1], delta_sol[:, 0, 10], label=r"$\lambda_2$")
-    ax[2].plot(time_x[:-1], delta_sol[:, 0, 11], label=r"$\lambda_2$")
-    ax[2].plot(time_x[:-1], delta_sol[:, 0, 15], label=r"$\gamma_2$")
-    ax[2].plot(time_x[:-1], delta_sol[:, 0, 16], label=r"$\gamma_2$")
-    ax[2].plot(time_x[:-1], delta_sol[:, 0, 17], label=r"$\gamma_2$")
-    ax[2].legend()
-    ax[2].set_ylabel(r"Gripper 2")
-    ax[2].set_xlabel("Time (s)")
+    fig2, ax2 = plt.subplots(6, 1, figsize=(10, 10))
+    ax2[0].plot(time_x[:-1], delta_sol[:, 0, 6], label=r"$Slack var$")
+    ax2[0].plot(time_x[:-1], delta_sol[:, 0, 12], label=r"$\gamma_1$")
+    ax2[0].legend(["Gripper 1 Slack var", "gamma"])
 
-    ax[3].plot(time_x[:-1], u_sol)
-    ax[3].legend(["G1 acceleration", 'G2 acceleration', 'G1 normal force', 'G2 normal force'])
-    ax[3].set_xlabel("Time (s)")
-    ax[3].set_ylabel("Input")
+
+    ax2[1].plot(time_x[:-1], delta_sol[:, 0, 7], label=r"$Pos tangential force$")
+    ax2[1].plot(time_x[:-1], delta_sol[:, 0, 13], label=r"$\gamma_1$")
+    ax2[1].legend(["Gripper 1 Pos tangential force", "gamma"])
+
+    ax2[2].plot(time_x[:-1], delta_sol[:, 0, 8], label=r"$Neg tangential force$")
+    ax2[2].plot(time_x[:-1], delta_sol[:, 0, 14], label=r"$\gamma_1$")
+    ax2[2].legend(["Gripper 1 Neg tangential force", "gamma"])
+
+    ax2[3].plot(time_x[:-1], delta_sol[:, 0, 9], label=r"$Slack var$")
+    ax2[3].plot(time_x[:-1], delta_sol[:, 0, 15], label=r"$\gamma_2$")
+    ax2[3].legend(["Gripper 2 Slack var", "gamma"])
+
+    ax2[4].plot(time_x[:-1], delta_sol[:, 0, 10], label=r"$Pos tangential force$")
+    ax2[4].plot(time_x[:-1], delta_sol[:, 0, 16], label=r"$\gamma_2$")
+    ax2[4].legend(["Gripper 2 Pos tangential force", "gamma"])
+
+    ax2[5].plot(time_x[:-1], delta_sol[:, 0, 11], label=r"$Neg tangential force$")
+    ax2[5].plot(time_x[:-1], delta_sol[:, 0, 17], label=r"$\gamma_2$")
+    ax2[5].legend(["Gripper 2 Neg tangential force", "gamma"])
+
+    # ax[2].legend()
+    # ax[2].set_ylabel(r"Gripper 2")
+    # ax[2].set_xlabel("Time (s)")
+
+
     # ax[3]
     plt.tight_layout()
+    # plt.show()
+
+    plt.figure()
+    plt.plot(time_x[:-1], predict)
+    plt.legend(["Object position", "Object velocity", "Gripper 1 position", "Gripper 1 velocity",
+                 "Gripper 2 position", "Gripper 2 velocity"])
     plt.show()
 
 

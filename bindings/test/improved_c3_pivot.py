@@ -27,8 +27,8 @@ def make_pivot_dynamics(N: int) -> LCS:
     coss = np.cos(xcurrent[4]).item()
     x6 = xcurrent[6, 0]
     x8 = xcurrent[8, 0]
-    x5 = xcurrent[5, 0]
-    x7 = xcurrent[7, 0]
+    x5 = xcurrent[6, 0]
+    x7 = xcurrent[8, 0]
     rt = (-1) * np.sqrt(h * h + w * w)
     z = w * sinn - h*coss
     A = np.array(
@@ -67,9 +67,10 @@ def make_pivot_dynamics(N: int) -> LCS:
         dt * coss * w + dt * sinn * h, dt * sinn * w - h * coss * dt],
         [0, -dt * dt, dt * dt, 0, 0, 0, 0, 0, 0, 0],
         [0, -dt, dt, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, -dt * dt, dt * dt, 0],
-        [0, 0, 0, 0, 0, 0, 0, -dt, dt, 0]
+        [0, 0, 0, 0, -dt * dt, dt * dt, 0, 0, 0, 0],
+        [0, 0, 0, 0, -dt, dt, 0, 0, 0, 0]
     ])
+    print(D.shape)
     E = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                   [0, 0, 0, 0, 0, 0, 0, -1, 0, 0],
                   [0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
@@ -82,16 +83,27 @@ def make_pivot_dynamics(N: int) -> LCS:
                   [0, 0, 1, dt,-h * sinn + w * coss + z, z * dt, 0, 0, 0, 0]])
     F = np.array([
         [0,   -1,   -1,     0,    0,    0,    0,     0,     0,     0],
-        [0,    1,   dt,   -dt,    0,    0,    0,     0,     0,     0],
-        [0,    1,  -dt,    dt,    0,    0,    0,     0,     0,     0],
+        [1,   dt,   -dt,    0,    0,    0,     0,     0,     0,    0],
+        [1,  -dt,    dt,    0,    0,    0,     0,     0,     0,    0],
         [0,    0,    0,     0,   -1,   -1,    0,     0,     0,     0],
-        [0,    0,    1,    dt,  -dt,    0,    0,     0,     0,     0],
-        [0,    0,    1,   -dt,   dt,    0,    0,     0,     0,     0],
-        [0,    0,    0,     0,   -1,   -1,  mu3,     0,  -(dt * sinn - rt * dt * h), -(-dt * sinn + rt * dt * h)],
-        [0,    0,    0,     0,    0,    0,     -(-dt * coss + rt * dt * w), -(dt * coss - dt * rt * w), -(-1), -(dt - rt * dt * coss * w - rt * dt * sinn * h)],
-        [0,    0,    0,     0,    0,    0,     -(-dt + rt * dt * coss * w + rt * dt * sinn * h), -(sinn * w * rt * dt - h * coss * rt * dt), 0, -(-dt * sinn + rt * dt * h)],
-        [-(dt * sinn - rt * dt * h), 0, -(dt * coss - rt * dt * w), -(-dt * coss + rt * dt * w), -(-1), -(-dt + rt * dt * coss * w + rt * dt * sinn * h),
-        (dt - rt * dt * coss * w - rt * dt * sinn * h), -(-sinn * w * rt * dt + h * coss * rt * dt), 0, dt * dt * coss - z * dt * dt * h]
+        [0,    0,    0,     1,    dt,  -dt,    0,    0,     0,     0],
+        [0,    0,    0,     1,   -dt,   dt,    0,    0,     0,     0],
+        [0,    0,    0,     0,    0,    0,     -1,   0,     -1,  mu3],
+        [0, -(dt * sinn - rt * dt * h), -(-dt * sinn + rt * dt * h), 
+         0, -(-dt * coss + rt * dt * w), -(dt * coss - dt * rt * w), -(-1),
+         -(dt - rt * dt * coss * w - rt * dt * sinn * h),
+        -(-dt + rt * dt * coss * w + rt * dt * sinn * h),
+        -(sinn * w * rt * dt - h * coss * rt * dt)],
+        [0,   -(-dt * sinn + rt * dt * h), -(dt * sinn - rt * dt * h), 0,
+         -(dt * coss - rt * dt * w), -(-dt * coss + rt * dt * w), -(-1),
+          -(-dt + rt * dt * coss * w + rt * dt * sinn * h),
+      -(dt - rt * dt * coss * w - rt * dt * sinn * h),
+      -(-sinn * w * rt * dt + h * coss * rt * dt)],
+        [0, dt * dt * coss - z * dt * dt * h, -dt * dt * coss + z * dt * dt * h, 0,
+      dt * dt * sinn + z * dt * dt * w, -dt * dt * sinn - dt * dt * w * z, 0,
+      -z * dt * dt * coss * w - z * dt * dt * sinn * h,
+      z * dt * dt * coss * w + z * dt * dt * sinn * h,
+      dt * dt + z * dt * dt * sinn * w - z * h * coss * dt * dt]
     ])
     
     c = np.array([[0], [-h * g], [h * g], [0], [-h *g], [h * g], [0], [0], [0], [0]])
@@ -100,14 +112,13 @@ def make_pivot_dynamics(N: int) -> LCS:
         [0, 0, mu1, 0],
         [-dt, 0, 0, 0],
         [dt, 0, 0, 0],
+        [0, 0, 0, mu2],
+        [0, -dt, 0, 0],
+        [0, dt, 0, 0],
         [0, 0, 0, 0],
-        [0, mu2, 0, -dt],
-        [0, 0, 0, dt],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-        [-(-dt * coss - rt * dt * x5), -(dt * sinn + dt * rt * x7), 0, 0],
-        [-(dt * coss + rt * dt * x5), -(-dt * sinn - dt * rt * x7), 0, 0],
-        [dt * dt * sinn - dt * dt * x5 * z, dt * dt * coss + dt * dt * x7 * z, 0, 0]
+        [0, 0, -(-dt * coss - rt * dt * x5), -(dt * sinn + dt * rt * x7)],
+        [0, 0, -(dt * coss + rt * dt * x5), -(-dt * sinn - dt * rt * x7)],
+        [0, 0, dt * dt * sinn - dt * dt * x5 * z, dt * dt * coss + dt * dt * x7 * z]
     ])
     return LCS(A, B, D, d, E, F, H, c, N, dt)
 
@@ -140,7 +151,7 @@ def make_pivot_costs(lcs: LCS) -> ImprovedC3CostMatrices:
 
     U = np.zeros((n + 2 * m + k, n + 2 * m + k))
     U[n : n + m, n : n + m] = np.eye(m)
-    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = 10000 * np.eye(m)
+    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = 1000 * np.eye(m)
     U = [U for _ in range(N)]
 
     return ImprovedC3CostMatrices(Q, R, G, U)
@@ -252,6 +263,7 @@ def main():
     delta_sol = []
     z_sol = []
     x_ = []
+    predict = []
     u_sol = []
     # debug_info = []
     for i in range(system_iter):
@@ -268,6 +280,7 @@ def main():
         prediction = cartpole.Simulate(x[:, i], u_opt)
         u_sol.append(u_opt)
         x[:, i + 1] = prediction
+        predict.append(prediction)
         x_.append(opt.GetStateSolution())
 
 
@@ -287,7 +300,7 @@ def main():
     z_sol = np.array(z_sol)
     print(z_sol.shape)
     # # Save the results to a file
-    # np.save('/home/yufeiyang/Documents/c3/debug_output/debug.npy', debug_info)
+    np.save('/home/yufeiyang/Documents/c3/debug_output/debug_pivot.npy', debug_info)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/z_sol.npy', z_sol)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/delta_sol.npy', delta_sol)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/x_.npy', x_)
@@ -298,6 +311,7 @@ def main():
     # anim = animate_cartpole(x, dt, len_p, len_com)
 
     time_x = np.arange(0, system_iter * dt + dt, dt)
+    predict = np.array(predict)
 
     print(
         f"Average solve time: {np.mean(solve_times)}, equivalent to {1 / np.mean(solve_times)} Hz"
@@ -306,7 +320,8 @@ def main():
     fig, ax = plt.subplots(4, 1, figsize=(8, 10))
 
     ax[0].plot(time_x, x.T)
-    # ax[0].legend(["Cart Position", "Pole Angle", "Cart Velocity", "Pole Velocity"])
+    ax[0].legend(["Object x", "Object x vel", "Object y", "Object y vel", "Object angle", "Object angle vel",
+                  "Finger 1 pos", "Finger 1 vel", "Finger 2 pos", "Finger 2 vel"])
     ax[0].set_xlabel("Time (s)")
     ax[0].set_ylabel("State")
     ax[0].set_title("Pivot Example")
@@ -340,12 +355,16 @@ def main():
     ax[2].set_xlabel("Time (s)")
 
     ax[3].plot(time_x[:-1], u_sol)
-    # ax[3].legend(["G1 acceleration", 'G2 acceleration', 'G1 normal force', 'G2 normal force'])
+    ax[3].legend(["G1 acceleration", 'G2 acceleration', 'G1 normal force', 'G2 normal force'])
     ax[3].set_xlabel("Time (s)")
     ax[3].set_ylabel("Input")
     plt.tight_layout()
     plt.show()
 
-
+    plt.figure
+    plt.plot(time_x[:-1], predict)
+    plt.legend(["Object x", "Object x vel", "Object y", "Object y vel", "Object angle", "Object angle vel",
+                  "Finger 1 pos", "Finger 1 vel", "Finger 2 pos", "Finger 2 vel"])
+    plt.show()
 if __name__ == "__main__":
     main()

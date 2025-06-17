@@ -365,6 +365,8 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
     }
   }
 
+
+
   return *z_sol_;
 }
 
