@@ -164,7 +164,7 @@ class C3 {
    * @param options The C3Options object containing configuration values.
    * @return CostMatrices The initialized cost matrices.
    */
-  static CostMatrices CreateCostMatricesFromC3Options(const LCS& lcs, const C3Options& options);
+  static CostMatrices CreateCostMatricesFromC3Options(const C3Options& options, int N);
 
   /**
    * @brief Get a vector of user defined linear constraints.

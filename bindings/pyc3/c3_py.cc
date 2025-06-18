@@ -66,12 +66,12 @@ PYBIND11_MODULE(c3, m) {
           [](C3::CostMatrices& self, const std::vector<Eigen::MatrixXd>& val) {
             self.U = val;
           });
-  
+
   py::enum_<ConstraintVariable>(m, "ConstraintVariable")
-        .value("STATE", ConstraintVariable::STATE)
-        .value("INPUT", ConstraintVariable::INPUT)
-        .value("FORCE", ConstraintVariable::FORCE)
-        .export_values();
+      .value("STATE", ConstraintVariable::STATE)
+      .value("INPUT", ConstraintVariable::INPUT)
+      .value("FORCE", ConstraintVariable::FORCE)
+      .export_values();
 
   py::class_<C3, PyC3>(m, "C3")
       .def(py::init<const LCS&, const C3::CostMatrices&,
@@ -96,12 +96,14 @@ PYBIND11_MODULE(c3, m) {
       .def("AddLinearConstraint",
            static_cast<void (C3::*)(
                const Eigen::MatrixXd&, const Eigen::VectorXd&,
-               const Eigen::VectorXd&, ConstraintVariable)>(&C3::AddLinearConstraint),
+               const Eigen::VectorXd&, ConstraintVariable)>(
+               &C3::AddLinearConstraint),
            py::arg("A"), py::arg("lower_bound"), py::arg("upper_bound"),
            py::arg("constraint_type"))
       .def("AddLinearConstraint",
            static_cast<void (C3::*)(const Eigen::RowVectorXd&, double, double,
-                                    ConstraintVariable)>(&C3::AddLinearConstraint),
+                                    ConstraintVariable)>(
+               &C3::AddLinearConstraint),
            py::arg("A"), py::arg("lower_bound"), py::arg("upper_bound"),
            py::arg("constraint_type"))
       .def("RemoveConstraints", &C3::RemoveConstraints)
@@ -200,21 +202,27 @@ PYBIND11_MODULE(c3, m) {
       .def_readwrite("end_on_qp_step", &C3Options::end_on_qp_step)
       .def_readwrite("num_threads", &C3Options::num_threads)
       .def_readwrite("delta_option", &C3Options::delta_option)
-      .def_readwrite("contact_model", &C3Options::contact_model)
-      .def_readwrite("num_friction_directions",
-                     &C3Options::num_friction_directions)
-      .def_readwrite("num_contacts", &C3Options::num_contacts)
       .def_readwrite("projection_type", &C3Options::projection_type)
       .def_readwrite("M", &C3Options::M)
-      .def_readwrite("N", &C3Options::N)
-      .def_readwrite("dt", &C3Options::dt)
       .def_readwrite("admm_iter", &C3Options::admm_iter)
       .def_readwrite("gamma", &C3Options::gamma)
       .def_readwrite("rho_scale", &C3Options::rho_scale);
 
   m.def("LoadC3Options", &LoadC3Options);
 
-  py::class_<C3ControllerOptions, C3Options>(m, "C3ControllerOptions")
+  py::class_<LCSOptions>(m, "LCSOptions")
+      .def(py::init<>())
+      .def_readwrite("dt", &LCSOptions::dt)
+      .def_readwrite("N", &LCSOptions::N)
+      .def_readwrite("contact_model", &LCSOptions::contact_model)
+      .def_readwrite("num_friction_directions",
+                     &LCSOptions::num_friction_directions)
+      .def_readwrite("num_contacts", &LCSOptions::num_contacts)
+      .def_readwrite("spring_stiffness", &LCSOptions::spring_stiffness)
+      .def_readwrite("mu", &LCSOptions::mu);
+
+  py::class_<C3ControllerOptions, C3Options, LCSOptions>(m,
+                                                         "C3ControllerOptions")
       .def(py::init<>())
       .def_readwrite("solve_time_filter_alpha",
                      &C3ControllerOptions::solve_time_filter_alpha)

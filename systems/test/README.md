@@ -12,4 +12,7 @@ The interactions in the cartpole with softwall problem is modeled using as a Lin
 
 For a detailed view of the system architecture, refer to the diagram below:
 
-![LCS Factory System Test Diagram](res/lcs_factory_system_test_diagram.jpg)
+<div style="display: flex; justify-content: space-around;">
+    <img src="res/lcs_factory_system_cartpole_test_diagram.jpg" alt="Cartpole with Softwalls" style="width: 45%;">
+    <img src="res/lcs_factory_system_pivoting_test_diagram.jpg" alt="Cube Pivoting" style="width: 45%;">
+</div>

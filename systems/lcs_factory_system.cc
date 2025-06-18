@@ -82,11 +82,11 @@ void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
   q_v_u << lcs_x->get_data(), lcs_u->get_value();
   drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
 
-  multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, q_v_u.head(4),
+  multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, q_v_u.head(n_q_),
                                                     &context_);
   multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u_), &context_);
   multibody::SetPositionsAndVelocitiesIfNew<drake::AutoDiffXd>(
-      plant_ad_, q_v_u_ad.head(4), &context_ad_);
+      plant_ad_, q_v_u_ad.head(n_q_), &context_ad_);
   multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u_),
                                                &context_ad_);
 

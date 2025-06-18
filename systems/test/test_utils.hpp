@@ -1,12 +1,13 @@
-#include "drake/systems/framework/leaf_system.h"
 #include "systems/c3_controller.h"
+
+#include "drake/systems/framework/leaf_system.h"
 
 using c3::systems::C3Output;
 
 // Custom LeafSystem to process C3 solutions and to get input values.
 class C3Solution2Input : public drake::systems::LeafSystem<double> {
  public:
-  explicit C3Solution2Input() {
+  explicit C3Solution2Input(int n_u) : n_u_(n_u) {
     // Declare input port for C3 solutions.
     c3_solution_port_index_ =
         this->DeclareAbstractInputPort("c3_solution",
@@ -14,7 +15,7 @@ class C3Solution2Input : public drake::systems::LeafSystem<double> {
             .get_index();
     // Declare output port for inputs.
     c3_input_port_index_ =
-        this->DeclareVectorOutputPort("u", 1, &C3Solution2Input::GetC3Input)
+        this->DeclareVectorOutputPort("u", n_u_, &C3Solution2Input::GetC3Input)
             .get_index();
   }
 
@@ -32,13 +33,15 @@ class C3Solution2Input : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex c3_solution_port_index_;
   drake::systems::OutputPortIndex c3_input_port_index_;
 
+  int n_u_;
+
   // Compute the input from the C3 solution.
   void GetC3Input(const drake::systems::Context<double>& context,
                   drake::systems::BasicVector<double>* output) const {
     const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
     DRAKE_ASSERT(input != nullptr);
     const auto& sol = input->get_value<C3Output::C3Solution>();
-    output->SetAtIndex(0, sol.u_sol_(0));  // Set input output.
+    output->get_mutable_value() = sol.u_sol_.col(0).cast<double>();
   }
 };
 
