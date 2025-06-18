@@ -24,3 +24,16 @@ py_binary(
         "//systems:test_data"
     ],
 )
+
+py_binary(
+    name = "lcs_factory_system_py_test",
+    srcs = ["lcs_factory_system_py_test.py"],
+    deps = [
+        "//bindings/pyc3:pyc3",
+        ":c3_core_py_test",
+    ],
+    data = [
+        "//core:test_data",
+        "//systems:test_data"
+    ],
+)

@@ -230,11 +230,6 @@ int RunCartpoleTest() {
   // Create a default context for the diagram.
   auto diagram_context = diagram->CreateDefaultContext();
 
-  c3::systems::common::DrawAndSaveDiagramGraph(
-      *diagram,
-      "/home/stephen/Workspace/DAIR/c3/systems/test/res/"
-      "lcs_factory_system_cartpole_test_diagram");
-
   auto& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
@@ -393,13 +388,7 @@ int RunPivotingTest() {
 
   // Build the diagram.
   auto diagram = builder.Build();
-
-  // Save the diagram graph for visualization.
-  c3::systems::common::DrawAndSaveDiagramGraph(
-      *diagram,
-      "/home/stephen/Workspace/DAIR/c3/systems/test/res/"
-      "lcs_factory_system_pivoting_test_diagram");
-
+  
   // Create a default context for the diagram.
   auto diagram_context = diagram->CreateDefaultContext();
 

@@ -8,6 +8,7 @@
 #include "systems/c3_controller.h"
 #include "systems/framework/c3_output.h"
 #include "systems/framework/timestamped_vector.h"
+#include "systems/lcs_factory_system.h"
 #include "systems/lcs_simulator.h"
 
 #include "drake/bindings/pydrake/common/cpp_template_pybind.h"
@@ -16,6 +17,7 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/primitives/constant_value_source.h"
+#include "drake/bindings/pydrake/common/sorted_pair_pybind.h"
 
 namespace py = pybind11;
 
@@ -77,6 +79,28 @@ PYBIND11_MODULE(systems, m) {
            py::return_value_policy::reference)
       .def("get_output_port_next_state",
            &LCSSimulator::get_output_port_next_state,
+           py::return_value_policy::reference);
+
+  py::class_<LCSFactorySystem, LeafSystem<double>>(m, "LCSFactorySystem")
+      .def(
+          py::init<
+              const MultibodyPlant<double>&, drake::systems::Context<double>&,
+              const MultibodyPlant<drake::AutoDiffXd>&,
+              drake::systems::Context<drake::AutoDiffXd>&,
+              const std::vector<drake::SortedPair<drake::geometry::GeometryId>>,
+              LCSOptions>(),
+          py::arg("plant"), py::arg("context"), py::arg("plant_ad"),
+          py::arg("context_ad"), py::arg("contact_geoms"), py::arg("options"))
+      .def("get_input_port_lcs_state",
+           &LCSFactorySystem::get_input_port_lcs_state,
+           py::return_value_policy::reference)
+      .def("get_input_port_lcs_input",
+           &LCSFactorySystem::get_input_port_lcs_input,
+           py::return_value_policy::reference)
+      .def("get_output_port_lcs", &LCSFactorySystem::get_output_port_lcs,
+           py::return_value_policy::reference)
+      .def("get_output_port_lcs_contact_jacobian",
+           &LCSFactorySystem::get_output_port_lcs_contact_jacobian,
            py::return_value_policy::reference);
 
   py::class_<C3Output::C3Solution>(m, "C3Solution")
