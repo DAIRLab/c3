@@ -112,7 +112,7 @@ int DoMain() {
 
   // Add vector-to-timestamped-vector converter.
   auto vector_to_timestamped_vector =
-      builder.AddSystem<Vector2TimestampedVector>();
+      builder.AddSystem<Vector2TimestampedVector>(4);
   builder.Connect(state_zero_order_hold->get_output_port(),
                   vector_to_timestamped_vector->get_input_port_state());
 
@@ -125,7 +125,7 @@ int DoMain() {
                   c3_controller->get_input_port_target());
 
   // Add and connect C3 solution input system.
-  auto c3_input = builder.AddSystem<C3Solution2Input>();
+  auto c3_input = builder.AddSystem<C3Solution2Input>(1);
   builder.Connect(c3_controller->get_output_port_c3_solution(),
                   c3_input->get_input_port_c3_solution());
   builder.Connect(c3_input->get_output_port_c3_input(),

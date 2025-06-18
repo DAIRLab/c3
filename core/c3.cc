@@ -160,18 +160,18 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
   SetSolverOptions(solver_options);
 }
 
-C3::CostMatrices C3::CreateCostMatricesFromC3Options(
-    const LCS& lcs, const C3Options& options) {
+C3::CostMatrices C3::CreateCostMatricesFromC3Options(const C3Options& options,
+                                                     int N) {
   std::vector<Eigen::MatrixXd> Q;  // State cost matrices.
   std::vector<Eigen::MatrixXd> R;  // Input cost matrices.
 
-  std::vector<MatrixXd> G(lcs.N(),
+  std::vector<MatrixXd> G(N,
                           options.G);  // State-input cross-term matrices.
-  std::vector<MatrixXd> U(lcs.N(),
+  std::vector<MatrixXd> U(N,
                           options.U);  // Constraint matrices.
 
   double discount_factor = 1.0;
-  for (int i = 0; i < lcs.N(); ++i) {
+  for (int i = 0; i < N; ++i) {
     Q.push_back(discount_factor * options.Q);
     R.push_back(discount_factor * options.R);
     discount_factor *= options.gamma;
