@@ -115,7 +115,10 @@ PYBIND11_MODULE(c3, m) {
       .def("GetForceSolution", &C3::GetForceSolution)
       .def("GetInputSolution", &C3::GetInputSolution)
       .def("GetDualDeltaSolution", &C3::GetDualDeltaSolution)
-      .def("GetDualWSolution", &C3::GetDualWSolution);
+      .def("GetDualWSolution", &C3::GetDualWSolution)
+      .def_static("CreateCostMatricesFromC3Options",
+                  &C3::CreateCostMatricesFromC3Options, py::arg("options"),
+                  py::arg("N"));
 
   py::class_<C3MIQP, C3>(m, "C3MIQP")
       .def(py::init<const LCS&, const C3::CostMatrices&,
