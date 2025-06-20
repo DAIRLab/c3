@@ -172,8 +172,19 @@ PYBIND11_MODULE(c3, m) {
       .def("num_states", &LCS::num_states, py::return_value_policy::copy)
       .def("num_inputs", &LCS::num_inputs, py::return_value_policy::copy)
       .def("num_lambdas", &LCS::num_lambdas, py::return_value_policy::copy)
+      .def("set_A", &LCS::set_A, py::arg("A"))
+      .def("set_B", &LCS::set_B, py::arg("B"))
+      .def("set_D", &LCS::set_D, py::arg("D"))
+      .def("set_d", &LCS::set_d, py::arg("d"))
+      .def("set_E", &LCS::set_E, py::arg("E"))
+      .def("set_F", &LCS::set_F, py::arg("F"))
+      .def("set_H", &LCS::set_H, py::arg("H"))
+      .def("set_c", &LCS::set_c, py::arg("c"))
       .def("__copy__", [](const LCS& self) { return LCS(self); })
-      .def("__deepcopy__", [](const LCS& self, py::dict) { return LCS(self); });
+      .def("__deepcopy__", [](const LCS& self, py::dict) { return LCS(self); })
+      .def_static("CreatePlaceholderLCS", &LCS::CreatePlaceholderLCS,
+                  py::arg("n_x"), py::arg("n_u"), py::arg("n_lambda"),
+                  py::arg("N"), py::arg("dt"));
 
   py::class_<C3Options> cls(m, "C3Options");
   cls.def(py::init<>());

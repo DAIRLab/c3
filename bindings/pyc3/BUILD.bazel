@@ -27,11 +27,15 @@ pybind_py_library(
 pybind_py_library(
     name = "c3_multibody_py",
     cc_deps = ["//multibody:lcs_factory",
-                "@drake//:drake_shared_library"],
+                "@drake//:drake_shared_library",
+                "@drake//bindings/pydrake/common:default_scalars_pybind",
+                "@drake//bindings/pydrake/common:sorted_pair_pybind",
+                ],
     cc_so_name = "multibody",
     cc_srcs = ["c3_multibody_py.cc"],
     py_deps = [
         ":module_py",
+        "@drake//bindings/pydrake"
     ],
     py_imports = ["."],
 )
