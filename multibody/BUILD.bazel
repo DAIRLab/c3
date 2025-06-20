@@ -21,3 +21,15 @@ cc_library(
 )
 
 
+cc_test(
+    name = "lcs_factory_test",
+    srcs = ["test/lcs_factory_test.cc"],
+    data = [
+        "//systems:test_data",
+    ],
+    deps = [
+        ":lcs_factory",
+        "@gtest//:main",
+    ],
+
+)

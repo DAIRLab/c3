@@ -7,6 +7,7 @@
 
 #include "core/c3_options.h"
 #include "core/lcs.h"
+#include "multibody/lcs_factory.h"
 
 #include "drake/systems/framework/leaf_system.h"
 
@@ -53,6 +54,7 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>
           contact_geoms,
       LCSOptions options);
+
   /**
    * @brief Gets the input port for the LCS state.
    *
@@ -125,17 +127,6 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex lcs_port_;
   drake::systems::OutputPortIndex lcs_contact_jacobian_port_;
 
-  // References to the MultibodyPlant and its contexts
-  const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>& context_;
-  const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
-  drake::systems::Context<drake::AutoDiffXd>& context_ad_;
-  const std::vector<drake::SortedPair<drake::geometry::GeometryId>>
-      contact_pairs_;
-
-  // Configuration options for the LCSFactory
-  LCSOptions options_;
-
   // Convenience variables for system dimensions
   int n_q_;       ///< Number of positions in the plant.
   int n_v_;       ///< Number of velocities in the plant.
@@ -144,6 +135,8 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
   int n_u_;       ///< Number of actuators in the plant.
   int N_;         ///< Number of time steps for the LCS.
   double dt_;     ///< Time step size for the LCS.
+
+  std::unique_ptr<multibody::LCSFactory> lcs_factory_;  ///< Factory for creating LCS objects.
 };
 
 }  // namespace systems

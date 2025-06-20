@@ -29,22 +29,15 @@ LCSFactorySystem::LCSFactorySystem(
     drake::systems::Context<drake::AutoDiffXd>& context_ad,
     const std::vector<drake::SortedPair<drake::geometry::GeometryId>>
         contact_geoms,
-    LCSOptions options)
-    : plant_(plant),
-      context_(context),
-      plant_ad_(plant_ad),
-      context_ad_(context_ad),
-      contact_pairs_(contact_geoms),
-      options_(std::move(options)),
-      N_(options_.N),
-      dt_(options_.dt) {
+    LCSOptions options) {
   this->set_name("lcs_factory_system");
 
-  n_q_ = plant_.num_positions();
-  n_v_ = plant_.num_velocities();
-  n_x_ = n_q_ + n_v_;
-  n_lambda_ = multibody::LCSFactory::GetNumContactVariables(options_);
-  n_u_ = plant_.num_actuators();
+  n_x_ = plant.num_positions() + plant.num_velocities();
+  n_lambda_ = multibody::LCSFactory::GetNumContactVariables(options);
+  n_u_ = plant.num_actuators();
+
+  lcs_factory_ = std::make_unique<multibody::LCSFactory>(
+      plant, context, plant_ad, context_ad, contact_geoms, options);
 
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
@@ -55,7 +48,7 @@ LCSFactorySystem::LCSFactorySystem(
           .get_index();
 
   auto lcs_placeholder =
-      LCS::CreatePlaceholderLCS(n_x_, n_u_, n_lambda_, N_, dt_);
+      LCS::CreatePlaceholderLCS(n_x_, n_u_, n_lambda_, options.N, options.dt);
   lcs_port_ = this->DeclareAbstractOutputPort("lcs", lcs_placeholder,
                                               &LCSFactorySystem::OutputLCS)
                   .get_index();
@@ -78,36 +71,40 @@ void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
   DRAKE_DEMAND(lcs_x->get_data().size() == n_x_);
   DRAKE_DEMAND(lcs_u->get_value().size() == n_u_);
 
-  VectorXd q_v_u = VectorXd::Zero(n_x_ + n_u_);
-  q_v_u << lcs_x->get_data(), lcs_u->get_value();
-  drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
+  //   VectorXd q_v_u = VectorXd::Zero(n_x_ + n_u_);
+  //   q_v_u << lcs_x->get_data(), lcs_u->get_value();
+  //   drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
 
-  multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, q_v_u.head(n_q_),
-                                                    &context_);
-  multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u_), &context_);
-  multibody::SetPositionsAndVelocitiesIfNew<drake::AutoDiffXd>(
-      plant_ad_, q_v_u_ad.head(n_q_), &context_ad_);
-  multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u_),
-                                               &context_ad_);
+  //   multibody::SetPositionsAndVelocitiesIfNew<double>(plant_,
+  //   q_v_u.head(n_q_),
+  //                                                     &context_);
+  //   multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u_), &context_);
+  //   multibody::SetPositionsAndVelocitiesIfNew<drake::AutoDiffXd>(
+  //       plant_ad_, q_v_u_ad.head(n_q_), &context_ad_);
+  //   multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_,
+  //   q_v_u_ad.tail(n_u_),
+  //                                                &context_ad_);
 
-  *output_lcs = LCSFactory::LinearizePlantToLCS(
-      plant_, context_, plant_ad_, context_ad_, contact_pairs_, options_);
+  //   *output_lcs = LCSFactory::LinearizePlantToLCS(
+  //       plant_, context_, plant_ad_, context_ad_, contact_pairs_, options_);
+
+  lcs_factory_->UpdateStateAndInput(lcs_x->get_data(), lcs_u->get_value());
+  *output_lcs = lcs_factory_->GenerateLCS();
 }
 
 void LCSFactorySystem::OutputLCSContactJacobian(
     const drake::systems::Context<double>& context,
     std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>* output) const {
-  const TimestampedVector<double>* lcs_x =
-      (TimestampedVector<double>*)this->EvalVectorInput(context,
-                                                        lcs_state_input_port_);
 
-  // u is irrelevant in pure geometric/kinematic calculation
-  VectorXd state = lcs_x->get_data();
-  multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, state, &context_);
+  const auto lcs_x = (TimestampedVector<double>*)this->EvalVectorInput(
+      context, lcs_state_input_port_);
+  const auto lcs_u = (BasicVector<double>*)this->EvalVectorInput(
+      context, lcs_inputs_input_port_);
 
-  std::vector<Eigen::VectorXd> contact_points;
-  *output = LCSFactory::ComputeContactJacobian(plant_, context_, contact_pairs_,
-                                               options_);
+  DRAKE_DEMAND(lcs_x->get_data().size() == n_x_);
+  DRAKE_DEMAND(lcs_u->get_value().size() == n_u_);
+  lcs_factory_->UpdateStateAndInput(lcs_x->get_data(), lcs_u->get_value());
+  *output = lcs_factory_->GetContactJacobianAndPoints();
 }
 
 }  // namespace systems
