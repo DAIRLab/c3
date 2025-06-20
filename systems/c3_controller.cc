@@ -42,10 +42,17 @@ C3Controller::C3Controller(
   // Initialize state prediction joints
   for (auto joint_description : controller_options_.state_prediction_joints) {
     const auto joint = &plant.GetJointByName(joint_description.name);
+    if (joint->num_positions() != 1 || joint->num_velocities() != 1) {
+      throw std::runtime_error(
+          fmt::format("Skipping joint {} for state prediction. Only joints "
+                      "with a single position and velocity are currently "
+                      "supported. Please update the MultibodyPlant.",
+                      joint_description.name));
+    }
     state_prediction_joints_.push_back(
         JointDescription(joint->position_start(), joint->num_positions(),
-                             joint->velocity_start(), joint->num_velocities(),
-                             joint_description.max_acceleration));
+                         joint->velocity_start(), joint->num_velocities(),
+                         joint_description.max_acceleration));
   }
 
   // Determine the size of lambda based on the contact model
@@ -181,7 +188,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
 }
 
 void C3Controller::ResolvePredictedState(drake::VectorX<double>& x0,
-                                       double& filtered_solve_time) const {
+                                         double& filtered_solve_time) const {
   // Return early if solve time is zero (which should only occur in the first
   // iteration), as clamping cannot be performed
   if (filtered_solve_time == 0.0) {
@@ -205,27 +212,26 @@ void C3Controller::ResolvePredictedState(drake::VectorX<double>& x0,
   }
 
   // Approximate the loop time step for clamping
-  float approx_loop_dt = std::min(dt_, filtered_solve_time);
+  float approx_loop_dt = std::min((N_ - 1) * dt_, filtered_solve_time);
 
   // Clamp the predicted state based on maximum acceleration constraints
   for (const JointDescription& joint : state_prediction_joints_) {
-    for (int idx = joint.q_start_index;
-         idx < joint.q_start_index + joint.q_size; ++idx) {
-      // Ensure the joint indices are within bounds
-      DRAKE_DEMAND(idx >= 0 && idx < n_q_);
-      x0[idx] = std::clamp(
-          predicted_state[idx],
-          x0[idx] - joint.max_acceleration * approx_loop_dt * approx_loop_dt,
-          x0[idx] + joint.max_acceleration * approx_loop_dt * approx_loop_dt);
-    }
-    for (int idx = n_q_ + joint.v_start_index;
-         idx < n_q_ + joint.v_start_index + joint.v_size; ++idx) {
-      // Ensure the joint indices are within bounds
-      DRAKE_DEMAND(idx >= n_q_ && idx < n_x_);
-      x0[idx] = std::clamp(predicted_state[idx],
-                           x0[idx] - joint.max_acceleration * approx_loop_dt,
-                           x0[idx] + joint.max_acceleration * approx_loop_dt);
-    }
+    // Get the joint indices for position and velocity
+    int x_idx = joint.q_start_index;
+    int v_idx = n_q_ + joint.v_start_index;
+    // Ensure the joint states are within bounds [x + v*dt - a*dt^2, x + v*dt + a*dt^2]
+    DRAKE_DEMAND(x_idx >= 0 && x_idx < n_q_);
+    x0[x_idx] = std::clamp(
+        predicted_state[x_idx],
+        x0[x_idx] + x0[v_idx] * approx_loop_dt -
+            joint.max_acceleration * approx_loop_dt * approx_loop_dt,
+        x0[x_idx] + x0[v_idx] * approx_loop_dt +
+            joint.max_acceleration * approx_loop_dt * approx_loop_dt);
+    // Ensure the velocity stated are within bound [v - a*dt, v + a*dt]
+    DRAKE_DEMAND(v_idx >= n_q_ && v_idx < n_x_);
+    x0[v_idx] = std::clamp(predicted_state[v_idx],
+                           x0[v_idx] - joint.max_acceleration * approx_loop_dt,
+                           x0[v_idx] + joint.max_acceleration * approx_loop_dt);
   }
 }
 

@@ -149,8 +149,8 @@ class C3Controller : public drake::systems::LeafSystem<double> {
    * @param filtered_solve_time The filtered computation time used to estimate
    *                            the delay for state prediction.
    */
-  void ResolvePredictedState(drake::VectorX<double>& x0,
-                             double& filtered_solve_time) const;
+  virtual void ResolvePredictedState(drake::VectorX<double>& x0,
+                                     double& filtered_solve_time) const;
 
   /**
    * @brief Computes the C3 solution and intermediates given a discrete state.
