@@ -11,22 +11,39 @@
 #include "drake/solvers/osqp_solver.h"
 
 namespace c3 {
-  typedef drake::solvers::Binding<drake::solvers::LinearConstraint> LinearConstraintBinding;
+typedef drake::solvers::Binding<drake::solvers::LinearConstraint>
+    LinearConstraintBinding;
+
+enum ConstraintVariable : uint8_t { STATE = 1, INPUT = 2, FORCE = 3 };
 
 class C3 {
-
  public:
-
   /*!
    * Cost matrices for the MPC and ADMM  algorithm.
    * Q and R define standard MPC costs, while G and U are used as similarity
    * costs in the ADMM Augmented lagrangian and projection solves, respectively
    */
   struct CostMatrices {
+    CostMatrices() = default;
     CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
                  const std::vector<Eigen::MatrixXd>& R,
                  const std::vector<Eigen::MatrixXd>& G,
                  const std::vector<Eigen::MatrixXd>& U);
+    bool HasSameDimensionsAs(const CostMatrices& other) const {
+      // Check vector and matrix dimensions
+      return (Q.size() == other.Q.size() &&
+              Q.at(0).rows() == other.Q.at(0).rows() &&
+              Q.at(0).cols() == other.Q.at(0).cols() &&
+              R.size() == other.R.size() &&
+              R.at(0).rows() == other.R.at(0).rows() &&
+              R.at(0).cols() == other.R.at(0).cols() &&
+              G.size() == other.G.size() &&
+              G.at(0).rows() == other.G.at(0).rows() &&
+              G.at(0).cols() == other.G.at(0).cols() &&
+              U.size() == other.U.size() &&
+              U.at(0).rows() == other.U.at(0).rows() &&
+              U.at(0).cols() == other.U.at(0).cols());
+    }
     std::vector<Eigen::MatrixXd> Q;
     std::vector<Eigen::MatrixXd> R;
     std::vector<Eigen::MatrixXd> G;
@@ -36,7 +53,8 @@ class C3 {
   /*!
    * @param LCS system dynamics, defined as an LCS (see lcs.h)
    * @param costs Cost function parameters (see above)
-   * @param x_desired reference trajectory, where the each vector is the desired state at the corresponding knot point
+   * @param x_desired reference trajectory, where the each vector is the desired
+   * state at the corresponding knot point
    * @param options see c3_options.h
    */
   C3(const LCS& LCS, const CostMatrices& costs,
@@ -50,7 +68,7 @@ class C3 {
    */
   void Solve(const Eigen::VectorXd& x0);
 
-  /*!
+  /*!cost_matrices_.
    * Update the dynamics
    * @param lcs the new LCS
    */
@@ -62,14 +80,15 @@ class C3 {
    *              | λᵢ |
    *              | uᵢ |
    *              |xᵢ₊₁|
-   * (Aᵢ, Dᵢ, Bᵢ, dᵢ) are defined by the LCS (Linear Complimentary System). 
-   * (xᵢ, λᵢ, uᵢ) are optimization variables for state, force and input respectively
-   * Each element of the vector provides the dynamics constraint between the (i+1) and ith timesteps. 
-   * A total of (N-1) constraints. 
-   * 
-   * @return const std::vector<drake::solvers::LinearEqualityConstraint*>& 
+   * (Aᵢ, Dᵢ, Bᵢ, dᵢ) are defined by the LCS (Linear Complimentary System).
+   * (xᵢ, λᵢ, uᵢ) are optimization variables for state, force and input
+   * respectively Each element of the vector provides the dynamics constraint
+   * between the (i+1) and ith timesteps. A total of (N-1) constraints.
+   *
+   * @return const std::vector<drake::solvers::LinearEqualityConstraint*>&
    */
-  const std::vector<drake::solvers::LinearEqualityConstraint*>& GetDynamicConstraints();
+  const std::vector<drake::solvers::LinearEqualityConstraint*>&
+  GetDynamicConstraints();
 
   /*!
    * Update the reference trajectory
@@ -78,13 +97,33 @@ class C3 {
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
 
   /**
-   * @brief Get the Quadratic Cost which to be minimized at each timestep (N total).
-   * xᵢᵀQᵢxᵢ − 2x[d]ᵢQᵢᵀxᵢ
+   * @brief Updates the provided cost matrices with new or modified values.
+   *
+   * This function takes a reference to a CostMatrices.
+   * It ensures that the target and input costs are recalculated.
+   *
+   * @param costs A reference to the CostMatrices object to be updated.
+   */
+  void UpdateCostMatrices(const CostMatrices& costs);
+
+  /**
+   * @brief Get the current cost matrices used in the system.
+   *
+   * This function provides access to the cost matrices currently being used
+   * in the computations.
+   *
+   * @return const CostMatrices& The current cost matrices.
+   */
+  const CostMatrices& GetCostMatrices() const { return cost_matrices_; }
+
+  /**
+   * @brief Get the Quadratic Cost which to be minimized at each timestep (N
+   * total). xᵢᵀQᵢxᵢ − 2x[d]ᵢQᵢᵀxᵢ
    * xᵢ     : State variable at the ith timestep
    * x[d]ᵢ  : desired state at the ith timestep
    * Qᵢ     : Cost matrix for the ith timestep
-   * 
-   * @return const std::vector<drake::solvers::QuadraticCost*>& 
+   *
+   * @return const std::vector<drake::solvers::QuadraticCost*>&
    */
   const std::vector<drake::solvers::QuadraticCost*>& GetTargetCost();
 
@@ -101,7 +140,8 @@ class C3 {
    */
   void AddLinearConstraint(const Eigen::MatrixXd& A,
                            const Eigen::VectorXd& lower_bound,
-                           const Eigen::VectorXd& upper_bound, int constraint);
+                           const Eigen::VectorXd& upper_bound,
+                           ConstraintVariable constraint);
 
   /*!
    * Add a single-row linear constraint
@@ -109,28 +149,40 @@ class C3 {
    * TODO (@Brian-Acosta or @ebianchini) make constraint an enum
    *  (or better yet, make this three functions)
    */
-  void AddLinearConstraint(const Eigen::RowVectorXd& A,
-                           double lower_bound, double upper_bound, int constraint);
+  void AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
+                           double upper_bound, ConstraintVariable constraint);
 
   /*! Remove all constraints previously added by AddLinearConstraint */
   void RemoveConstraints();
 
   /**
-   * @brief Get a vector of user defined linear constraints. 
+   * @brief Creates cost matrices from the provided C3Options.
+   *
+   * This function initializes and populates the cost matrices required for
+   * computations within the core module using the values defined in C3Options.
+   *
+   * @param options The C3Options object containing configuration values.
+   * @return CostMatrices The initialized cost matrices.
+   */
+  static CostMatrices CreateCostMatricesFromC3Options(const C3Options& options);
+
+  /**
+   * @brief Get a vector of user defined linear constraints.
    * lb ≼ Axᵢ ≼ ub
    * lb ≼ Auᵢ ≼ ub
    * lb ≼ Aλᵢ ≼ ub
    * xᵢ     : State variable at the ith timestep
    * uᵢ     : Input variable at the ith timestep
    * λᵢ     : Force variable at the ith timestep
-   * The vector will consist of m constraints (for State, Input or Force) added for N timesteps.  
-   * A total of mN elements in the vector.
-   * 
-   * @return const std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>& 
+   * The vector will consist of m constraints (for State, Input or Force) added
+   * for N timesteps. A total of mN elements in the vector.
+   *
+   * @return const
+   * std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>&
    */
   const std::vector<LinearConstraintBinding>& GetLinearConstraints();
 
-  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
+  void SetSolverOptions(const drake::solvers::SolverOptions& options) {
     prog_.SetSolverOptions(options);
   }
 
@@ -149,20 +201,20 @@ class C3 {
   std::vector<std::vector<Eigen::VectorXd>> warm_start_u_;
   bool warm_start_;
   const int N_;
-  const int n_x_;  // n
+  const int n_x_;       // n
   const int n_lambda_;  // m
-  const int n_u_;  // k
+  const int n_u_;       // k
 
   /*!
-  * Project delta_c onto the LCP constraint.
-  * @param U cost weight on the similarity between the pre and post projection
-  *          values
-  * @param delta_c value to project to the LCP constraint
-  * @param E, F, H, c LCS state, force, input, and constant terms
-  * @param admm_iteration index of the current ADMM iteration
-  * @param warm_start_index index into cache of warm start variables
-  * @return
-  */
+   * Project delta_c onto the LCP constraint.
+   * @param U cost weight on the similarity between the pre and post projection
+   *          values
+   * @param delta_c value to project to the LCP constraint
+   * @param E, F, H, c LCS state, force, input, and constant terms
+   * @param admm_iteration index of the current ADMM iteration
+   * @param warm_start_index index into cache of warm start variables
+   * @return
+   */
   virtual Eigen::VectorXd SolveSingleProjection(
       const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
@@ -170,7 +222,6 @@ class C3 {
       const int admm_iteration, const int& warm_start_index) = 0;
 
  private:
-
   /*!
    * Scales the LCS matrices internally to better condition the problem.
    * This only scales the lambdas.
@@ -188,26 +239,25 @@ class C3 {
       int admm_iteration);
 
   /*!
- * Solve a single ADMM step
- * @param x0 initial state of the system
- * @param delta copy variables from the previous step
- * @param w dual variables from the previous step
- * @param G augmented lagrangian similarity cost from the previous step
- * @param admm_iteration Index of the current ADMM iteration
- */
+   * Solve a single ADMM step
+   * @param x0 initial state of the system
+   * @param delta copy variables from the previous step
+   * @param w dual variables from the previous step
+   * @param G augmented lagrangian similarity cost from the previous step
+   * @param admm_iteration Index of the current ADMM iteration
+   */
   void ADMMStep(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta,
                 std::vector<Eigen::VectorXd>* w,
                 std::vector<Eigen::MatrixXd>* G, int admm_iteration);
 
-
   /*!
-  * Solve a single QP, without LCP constraints
-  * @param x0 The initial state of the system
-  * @param G Weights for the augmented lagrangian
-  * @param WD A reference to the (w - delta) variables
-  * @param admm_iteration Index of the current ADMM iteration
-  * @param is_final_solve Whether this is the final ADMM iteration
-  */
+   * Solve a single QP, without LCP constraints
+   * @param x0 The initial state of the system
+   * @param G Weights for the augmented lagrangian
+   * @param WD A reference to the (w - delta) variables
+   * @param admm_iteration Index of the current ADMM iteration
+   * @param is_final_solve Whether this is the final ADMM iteration
+   */
   std::vector<Eigen::VectorXd> SolveQP(const Eigen::VectorXd& x0,
                                        const std::vector<Eigen::MatrixXd>& G,
                                        const std::vector<Eigen::VectorXd>& WD,
@@ -215,8 +265,8 @@ class C3 {
                                        bool is_final_solve = false);
 
   LCS lcs_;
-  double AnDn_ = 1.0; // Scaling factor for lambdas
-  const CostMatrices cost_matrices_;
+  double AnDn_ = 1.0;  // Scaling factor for lambdas
+  CostMatrices cost_matrices_;
   std::vector<Eigen::VectorXd> x_desired_;
   const C3Options options_;
   double solve_time_ = 0;
@@ -230,9 +280,11 @@ class C3 {
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
 
   // QP step constraints
-  std::shared_ptr<drake::solvers::LinearEqualityConstraint> initial_state_constraint_;
+  std::shared_ptr<drake::solvers::LinearEqualityConstraint>
+      initial_state_constraint_;
+  std::shared_ptr<drake::solvers::LinearEqualityConstraint>
+      initial_force_constraint_;
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
-  std::vector<LinearConstraintBinding> constraints_;
   std::vector<LinearConstraintBinding> user_constraints_;
 
   /// Projection step variables are defined outside of the MathematicalProgram

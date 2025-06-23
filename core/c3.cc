@@ -7,7 +7,9 @@
 #include <omp.h>
 
 #include "lcs.h"
+#include "solver_options_io.h"
 
+#include "drake/common/text_logging.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/moby_lcp_solver.h"
 #include "drake/solvers/osqp_solver.h"
@@ -38,7 +40,7 @@ C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
   this->U = U;
 }
 
-C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
+C3::C3(const LCS& lcs, const CostMatrices& costs,
        const vector<VectorXd>& x_desired, const C3Options& options)
     : warm_start_(options.warm_start),
       N_(lcs.N()),
@@ -113,6 +115,7 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
 
   // initialize the constraint bindings
   initial_state_constraint_ = nullptr;
+  initial_force_constraint_ = nullptr;
   dynamics_constraints_.resize(N_);
   target_cost_.resize(N_ + 1);
 
@@ -120,9 +123,9 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   LinEq.block(0, n_x_ + n_lambda_ + n_u_, n_x_, n_x_) =
       -1 * MatrixXd::Identity(n_x_, n_x_);
   for (int i = 0; i < N_; ++i) {
-    LinEq.block(0, 0, n_x_, n_x_) = lcs.A().at(i);
-    LinEq.block(0, n_x_, n_x_, n_lambda_) = lcs.D().at(i);
-    LinEq.block(0, n_x_ + n_lambda_, n_x_, n_u_) = lcs.B().at(i);
+    LinEq.block(0, 0, n_x_, n_x_) = lcs_.A().at(i);
+    LinEq.block(0, n_x_, n_x_, n_lambda_) = lcs_.D().at(i);
+    LinEq.block(0, n_x_ + n_lambda_, n_x_, n_u_) = lcs_.B().at(i);
 
     dynamics_constraints_[i] =
         prog_
@@ -136,25 +139,56 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   for (int i = 0; i < N_ + 1; ++i) {
     target_cost_[i] =
         prog_
-            .AddQuadraticCost(2 * cost_matrices_.Q.at(i), -2 * cost_matrices_.Q.at(i) * x_desired_.at(i),
+            .AddQuadraticCost(2 * cost_matrices_.Q.at(i),
+                              -2 * cost_matrices_.Q.at(i) * x_desired_.at(i),
                               x_.at(i), 1)
             .evaluator()
             .get();
     if (i < N_) {
-      input_costs_[i] =
-          prog_
-              .AddQuadraticCost(2 * cost_matrices_.R.at(i), VectorXd::Zero(n_u_), u_.at(i), 1)
-              .evaluator();
+      input_costs_[i] = prog_
+                            .AddQuadraticCost(2 * cost_matrices_.R.at(i),
+                                              VectorXd::Zero(n_u_), u_.at(i), 1)
+                            .evaluator();
     }
   }
+
+  // Set default solver options
+  drake::solvers::SolverOptions solver_options =
+      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
+          "core/configs/solver_options_default.yaml")
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+  SetSolverOptions(solver_options);
+}
+
+C3::CostMatrices C3::CreateCostMatricesFromC3Options(const C3Options& options) {
+  std::vector<Eigen::MatrixXd> Q;  // State cost matrices.
+  std::vector<Eigen::MatrixXd> R;  // Input cost matrices.
+
+  std::vector<MatrixXd> G(options.N,
+                          options.G);  // State-input cross-term matrices.
+  std::vector<MatrixXd> U(options.N,
+                          options.U);  // Constraint matrices.
+
+  double discount_factor = 1.0;
+  for (int i = 0; i < options.N; ++i) {
+    Q.push_back(discount_factor * options.Q);
+    R.push_back(discount_factor * options.R);
+    discount_factor *= options.gamma;
+  }
+  Q.push_back(discount_factor * options.Q);
+
+  return CostMatrices(Q, R, G, U);  // Initialize the cost matrices.
 }
 
 void C3::ScaleLCS() {
-  DRAKE_DEMAND(lcs_.D()[0].norm() > 0);
-  double Dn = lcs_.D()[0].norm();
-  double An = lcs_.A()[0].norm();
-  AnDn_ = An / Dn;
-  lcs_.ScaleComplementarityDynamics(AnDn_);
+  if (!options_.scale_lcs) {
+    // If the LCS is a placeholder or scaling is disabled, we do not scale
+    // the complementarity dynamics.
+    AnDn_ = 1.0;
+    return;
+  }
+
+  AnDn_ = lcs_.ScaleComplementarityDynamics();
 }
 
 void C3::UpdateLCS(const LCS& lcs) {
@@ -172,23 +206,40 @@ void C3::UpdateLCS(const LCS& lcs) {
     LinEq.block(0, n_x_, n_x_, n_lambda_) = lcs_.D().at(i);
     LinEq.block(0, n_x_ + n_lambda_, n_x_, n_u_) = lcs_.B().at(i);
 
-    dynamics_constraints_[i]->UpdateCoefficients(LinEq, -lcs.d().at(i));
+    dynamics_constraints_[i]->UpdateCoefficients(LinEq, -lcs_.d().at(i));
   }
 }
 
-const std::vector<drake::solvers::LinearEqualityConstraint*>& C3::GetDynamicConstraints(){
+const std::vector<drake::solvers::LinearEqualityConstraint*>&
+C3::GetDynamicConstraints() {
   return dynamics_constraints_;
 }
 
 void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   x_desired_ = x_des;
   for (int i = 0; i < N_ + 1; ++i) {
-    target_cost_[i]->UpdateCoefficients(2 * cost_matrices_.Q.at(i),
-                                        -2 * cost_matrices_.Q.at(i) * x_desired_.at(i));
+    target_cost_[i]->UpdateCoefficients(
+        2 * cost_matrices_.Q.at(i),
+        -2 * cost_matrices_.Q.at(i) * x_desired_.at(i));
   }
 }
 
-const std::vector<drake::solvers::QuadraticCost*>& C3::GetTargetCost(){
+void C3::UpdateCostMatrices(const CostMatrices& costs) {
+  DRAKE_DEMAND(cost_matrices_.HasSameDimensionsAs(costs));
+  cost_matrices_ = costs;
+
+  for (int i = 0; i < N_ + 1; ++i) {
+    target_cost_[i]->UpdateCoefficients(
+        2 * cost_matrices_.Q.at(i),
+        -2 * cost_matrices_.Q.at(i) * x_desired_.at(i));
+    if (i < N_) {
+      input_costs_[i]->UpdateCoefficients(2 * cost_matrices_.R.at(i),
+                                          VectorXd::Zero(n_u_));
+    }
+  }
+}
+
+const std::vector<drake::solvers::QuadraticCost*>& C3::GetTargetCost() {
   return target_cost_;
 }
 
@@ -213,8 +264,9 @@ void C3::Solve(const VectorXd& x0) {
   vector<MatrixXd> G = cost_matrices_.G;
 
   for (int i = 0; i < N_; ++i) {
-    input_costs_[i]->UpdateCoefficients(2 * cost_matrices_.R.at(i),
-                                        -2 * cost_matrices_.R.at(i) * u_sol_->at(i));
+    input_costs_[i]->UpdateCoefficients(
+        2 * cost_matrices_.R.at(i),
+        -2 * cost_matrices_.R.at(i) * u_sol_->at(i));
   }
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
@@ -275,7 +327,6 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
 
   if (cost_matrices_.U[0].isZero(0)) {
     *delta = SolveProjection(*G, ZW, admm_iteration);
-
   } else {
     *delta = SolveProjection(cost_matrices_.U, ZW, admm_iteration);
   }
@@ -293,8 +344,19 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   if (h_is_zero_ == 1) {  // No dependence on u, so just simulate passive system
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd lambda0;
-    LCPSolver.SolveLcpLemke(lcs_.F()[0], lcs_.E()[0] * x0 + lcs_.c()[0], &lambda0);
-    constraints_.push_back(prog_.AddLinearConstraint(lambda_[0] == lambda0));
+    LCPSolver.SolveLcpLemke(lcs_.F()[0], lcs_.E()[0] * x0 + lcs_.c()[0],
+                            &lambda0);
+    // Force constraints to be updated before every solve if no dependence on u
+    if (initial_force_constraint_) {
+      initial_force_constraint_->UpdateCoefficients(
+          MatrixXd::Identity(n_lambda_, n_lambda_), lambda0);
+    } else {
+      initial_force_constraint_ =
+          prog_
+              .AddLinearEqualityConstraint(
+                  MatrixXd::Identity(n_lambda_, n_lambda_), lambda0, lambda_[0])
+              .evaluator();
+    }
   }
 
   for (auto& cost : costs_) {
@@ -363,6 +425,9 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
     if (warm_start_) {
       warm_start_x_[admm_iteration][N_] = result.GetSolution(x_[N_]);
     }
+  } else {
+    drake::log()->warn("C3::SolveQP failed to solve the QP with status: {}",
+                       result.get_solution_result());
   }
 
   return *z_sol_;
@@ -376,7 +441,8 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
   if (options_.num_threads > 0) {
     omp_set_dynamic(0);  // Explicitly disable dynamic teams
     omp_set_num_threads(options_.num_threads);  // Set number of threads
-    omp_set_nested(1);
+    omp_set_nested(0);
+    omp_set_schedule(omp_sched_static, 0);
   }
 
 #pragma omp parallel for num_threads(options_.num_threads)
@@ -387,14 +453,14 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
             SolveSingleProjection(U[i], WZ[i], lcs_.E()[i], lcs_.F()[i],
                                   lcs_.H()[i], lcs_.c()[i], admm_iteration, -1);
       } else {
-        deltaProj[i] = SolveSingleProjection(U[i], WZ[i], lcs_.E()[i],
-                                             lcs_.F()[i], lcs_.H()[i], lcs_.c()[i],
-                                             admm_iteration, i + 1);
+        deltaProj[i] = SolveSingleProjection(
+            U[i], WZ[i], lcs_.E()[i], lcs_.F()[i], lcs_.H()[i], lcs_.c()[i],
+            admm_iteration, i + 1);
       }
     } else {
       deltaProj[i] =
-          SolveSingleProjection(U[i], WZ[i], lcs_.E()[i], lcs_.F()[i], lcs_.H()[i],
-                                lcs_.c()[i], admm_iteration, -1);
+          SolveSingleProjection(U[i], WZ[i], lcs_.E()[i], lcs_.F()[i],
+                                lcs_.H()[i], lcs_.c()[i], admm_iteration, -1);
     }
   }
 
@@ -403,7 +469,8 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
 
 void C3::AddLinearConstraint(const Eigen::MatrixXd& A,
                              const VectorXd& lower_bound,
-                             const VectorXd& upper_bound, int constraint) {
+                             const VectorXd& upper_bound,
+                             ConstraintVariable constraint) {
   if (constraint == 1) {
     for (int i = 1; i < N_; ++i) {
       user_constraints_.push_back(
@@ -426,9 +493,9 @@ void C3::AddLinearConstraint(const Eigen::MatrixXd& A,
   }
 }
 
-void C3::AddLinearConstraint(const Eigen::RowVectorXd& A,
-                             double lower_bound,
-                             double upper_bound, int constraint) {
+void C3::AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
+                             double upper_bound,
+                             ConstraintVariable constraint) {
   Eigen::VectorXd lb(1);
   lb << lower_bound;
   Eigen::VectorXd ub(1);
@@ -443,7 +510,7 @@ void C3::RemoveConstraints() {
   user_constraints_.clear();
 }
 
-const std::vector<LinearConstraintBinding>& C3::GetLinearConstraints(){
+const std::vector<LinearConstraintBinding>& C3::GetLinearConstraints() {
   return user_constraints_;
 }
 

@@ -12,6 +12,7 @@ using Eigen::VectorXd;
 using std::vector;
 
 using c3::C3Options;
+using c3::ConstraintVariable;
 
 void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_,
                    vector<MatrixXd>* B_, vector<MatrixXd>* D_,
@@ -60,9 +61,9 @@ int DoMain(int argc, char* argv[]) {
   /// C3 options
   C3Options options;
 
-  int stateconstraint = 1;
-  int inputconstraint = 2;
-  int forceconstraint = 3;
+  ConstraintVariable stateconstraint = ConstraintVariable::STATE;
+  ConstraintVariable inputconstraint = ConstraintVariable::INPUT;
+  ConstraintVariable forceconstraint = ConstraintVariable::FORCE;
 
   if (example == 0) {
     init_cartpole(&nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd, &cd,
