@@ -186,8 +186,8 @@ def main():
     delta_sol = []
     z_sol = []
 
+    start_time = time.perf_counter()
     for i in range(system_iter):
-        start_time = time.perf_counter()
         opt.Solve(x[:, i])
         solve_times.append(time.perf_counter() - start_time)
         delta_sol.append(opt.GetDualDeltaSolution())
@@ -199,6 +199,7 @@ def main():
         if i == 10:
             z_qp = np.array(opt.GetPrimalZAfterQP())
             delta_proj = np.array(opt.GetDualDeltaAfterProjection())
+    print(f"Total time: {time.perf_counter() - start_time}")
 
     delta_sol = np.array(delta_sol)
     z_sol = np.array(z_sol)

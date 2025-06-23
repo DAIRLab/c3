@@ -11,8 +11,24 @@ py_binary(
 )
 
 py_binary(
+    name = "c3_random_lcs",
+    srcs = ["c3_random_lcs.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+    ],
+)
+
+py_binary(
     name = "improved_c3_py_test",
     srcs = ["improved_c3_py_test.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+    ],
+)
+
+py_binary(
+    name = "improved_c3_random_lcs",
+    srcs = ["improved_c3_random_lcs.py"],
     deps = [
         "//bindings/pyc3:c3_py",
     ],
