@@ -1,0 +1,11 @@
+package c3;
+
+/*  lcmtype containing information to visualize forces in meshcat
+*/
+struct lcmt_forces
+{
+  int64_t utime;
+
+  int32_t num_forces;
+  lcmt_contact_force forces[num_forces];
+}
