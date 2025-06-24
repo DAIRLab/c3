@@ -242,7 +242,6 @@ void ImprovedC3::Solve(const VectorXd &x0) {
   }
   for (int iter = 0; iter < options_.admm_iter; iter++) {
     ADMMStep(x0, &delta, &w, &G, iter);
-    // debug_z->push_back(delta);
   }
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
@@ -251,7 +250,6 @@ void ImprovedC3::Solve(const VectorXd &x0) {
   }
 
   vector<VectorXd> zfin = SolveQP(x0, G, WD, options_.admm_iter, true);
-  debug_qp->push_back(zfin);
   *w_sol_ = w;
   *delta_sol_ = delta;
 
@@ -304,6 +302,22 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
   } else {
     *delta = SolveProjection(cost_matrices_.U, ZW, admm_iteration);
   }
+  // print content in *delta
+  std::cout << "delta: " << std::endl;
+  int count = 0;
+  for (const auto &d : *delta) {
+    if (count < 10) {
+      std::cout << "delta[" << count << "]: " << d.transpose() << std::endl;
+    } else {
+      std::cout << "delta[" << count << "] is not printed" << std::endl;
+    }
+    count++;
+
+  }
+
+
+
+
   debug_qp->push_back(*delta);
   for (int i = 0; i < N_; ++i) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);

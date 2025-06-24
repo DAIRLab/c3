@@ -140,6 +140,8 @@ class C3 {
   std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
+  std::vector<std::vector<Eigen::VectorXd>> GetDebugInfo() { return *debug_z; }
+  std::vector<std::vector<Eigen::VectorXd>> GetQPInfo() { return *debug_qp; }
 
  protected:
   std::vector<std::vector<Eigen::VectorXd>> warm_start_delta_;
@@ -241,6 +243,11 @@ class C3 {
   std::vector<drake::solvers::QuadraticCost*> target_cost_;
   std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
   std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
+
+    // debug vars
+  std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> debug_z;
+  std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> debug_qp;
+  // 
 
   // Solutions
   std::unique_ptr<std::vector<Eigen::VectorXd>> x_sol_;

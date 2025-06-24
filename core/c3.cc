@@ -93,6 +93,12 @@ C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
   u_sol_ = std::make_unique<std::vector<VectorXd>>();
   w_sol_ = std::make_unique<std::vector<VectorXd>>();
   delta_sol_ = std::make_unique<std::vector<VectorXd>>();
+
+  // debug vars
+  debug_z = std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
+  debug_qp = std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
+
+
   for (int i = 0; i < N_; ++i) {
     z_sol_->push_back(Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
     x_sol_->push_back(Eigen::VectorXd::Zero(n_x_));
@@ -267,6 +273,7 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   }
 
   vector<VectorXd> z = SolveQP(x0, *G, WD, admm_iteration, true);
+  debug_z->push_back(z);
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
   for (int i = 0; i < N_; ++i) {
@@ -285,6 +292,7 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
     w->at(i) = w->at(i) / options_.rho_scale;
     G->at(i) = G->at(i) * options_.rho_scale;
   }
+  debug_qp->push_back(*delta);
 }
 
 vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,

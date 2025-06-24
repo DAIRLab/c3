@@ -55,11 +55,39 @@ plt.show()
 # for i in range(6):
 #     plt.plot(timesteps, delta_data[:, i], label=f"Signal {i+1}")
 
-# plt.xlabel("Timestep")
-# plt.ylabel("Value")
-# plt.title("Time Series for 6 Signals")
-# plt.legend()
-# plt.grid(True)
-# plt.tight_layout()
 # plt.show()
 
+def load_admm_data(file_path):
+    blocks = []
+    current_block = []
+
+    with open(file_path, 'r') as f:
+        for line in f:
+            stripped = line.strip()
+            if not stripped:
+                # Empty line: end of block
+                if current_block:
+                    blocks.append(np.vstack(current_block))
+                    current_block = []
+            else:
+                numbers = list(map(float, stripped.split()))
+                current_block.append(numbers)
+        
+        # Catch any last block if file doesn't end with a blank line
+        if current_block:
+            blocks.append(np.vstack(current_block))
+
+    # Convert to final 3D NumPy array: (N, 10, 16)
+    data = np.stack(blocks)
+
+    return data
+if __name__ == "__main__":
+    # load delta and z info
+    delta = load_admm_data("/home/yufeiyang/Documents/c3/c3_debug_delta.txt")
+    z = load_admm_data("/home/yufeiyang/Documents/c3/c3_debug_z.txt")
+    # save as npy file
+    np.save("/home/yufeiyang/Documents/c3/debug_output/original_delta.npy", delta)
+    np.save("/home/yufeiyang/Documents/c3/debug_output/original_z.npy", z)
+
+    print(delta.shape)
+    print(z.shape)

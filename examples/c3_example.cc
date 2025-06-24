@@ -152,6 +152,8 @@ int DoMain(int argc, char* argv[]) {
   double total_time = 0;
   std::ofstream outfile("/home/yufeiyang/Documents/c3/c3_delta_output.txt");  
   std::ofstream outfile_gamma("/home/yufeiyang/Documents/c3/c3_gamma_output.txt");
+  std::ofstream outfile_z("/home/yufeiyang/Documents/c3/c3_debug_z.txt");
+  std::ofstream outfile_delta("/home/yufeiyang/Documents/c3/c3_debug_delta.txt");
 
   for (int i = 0; i < timesteps - 1; i++) {
     if (options.delta_option == 1) {
@@ -207,6 +209,8 @@ int DoMain(int argc, char* argv[]) {
       std::cout << "Could not open output file for writing." << std::endl;
     }
     outfile << "\n";
+
+
   }
   outfile.flush();
   outfile.close();
@@ -214,6 +218,36 @@ int DoMain(int argc, char* argv[]) {
   outfile_gamma.close();
 
   std::cout << "Average time: " << total_time / (timesteps - 1) << std::endl;
+
+
+  //print
+  auto debug_z = opt.GetDebugInfo();
+  auto debug_delta = opt.GetQPInfo();
+  for (const auto& z : debug_z) {
+    for (const auto& vec : z) {
+      outfile_z << vec.transpose() << "\n";
+    }
+    outfile_z << "\n";
+  }
+  for (const auto& delta : debug_delta) {
+    for (const auto& vec : delta) {
+      outfile_delta << vec.transpose() << "\n";
+    }
+    outfile_delta << "\n";
+  }
+  outfile_z.flush();
+  outfile_delta.flush();
+  outfile_z.close();
+  outfile_delta.close();
+  // if (outfile_z.is_open()) {
+  //   outfile_z << opt.GetDebugInfo() << "\n";
+  // }
+  // outfile_z << "\n";
+  // if (outfile_delta.is_open()) {
+  //   outfile_delta << opt.GetQPInfo() << "\n";
+  // }
+  // outfile_delta << "\n";
+
   return 0;
 }
 

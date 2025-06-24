@@ -73,14 +73,14 @@ def make_fingergait_costs(lcs: LCS) -> ImprovedC3CostMatrices:
     R = [np.eye(k) for _ in range(N)]
     Q_init = np.array([[250, 0, 0, 0, 0, 0],
                         [0, 0.1, 0, 0, 0, 0],
-                        [0, 0, 100, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0],
                         [0, 0, 0, 1, 0, 0],
-                        [0, 0, 0, 0, 100, 0],
+                        [0, 0, 0, 0, 50, 0],
                         [0, 0, 0, 0, 0, 1]])
     Q = [Q_init for _ in range(N + 1)]
     Ginit = np.zeros((n + 2 * m + k, n + 2 * m + k))
-    Ginit[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = 10*np.diag(np.array([1, 1, 1, 1, 1, 1]))
-    Ginit[n : n + m, n : n + m] = 10*np.diag(np.array([1.5, 1, 1, 1.5, 1, 1]))
+    Ginit[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = 5*np.diag(np.array([1, 10, 10, 1, 10, 10]))
+    Ginit[n : n + m, n : n + m] = 5*np.diag(np.array([10, 1, 1, 10, 1, 1]))
     G = [Ginit for _ in range(N)]
 
     U = np.zeros((n + 2 * m + k, n + 2 * m + k))
@@ -202,7 +202,7 @@ def main():
 
     x0 = np.array([[-6], [0], [1], [0], [3], [0]])
 
-    system_iter = 500
+    system_iter = 200
 
     x = np.zeros((n, system_iter + 1))
 
@@ -221,7 +221,7 @@ def main():
     u1 = np.array([0, 0, 1, 0])
     u2 = np.array([0, 0, 0, 1])
     debug_info = []
-    debug_qp = []
+    debug_proj = []
     opt.AddLinearConstraint(a1, 1, 3, 1)
     opt.AddLinearConstraint(a2, 3, 5, 1)
     opt.AddLinearConstraint(u1, 0, 10000, 2)
@@ -232,9 +232,6 @@ def main():
         start_time = time.perf_counter()
 
         opt.Solve(x[:, i])
-        if i == 0:
-            debug_info = opt.GetDebugInfo()
-            debug_qp = opt.GetQPInfo()
         solve_times.append(time.perf_counter() - start_time)
         sdf_sol.append(opt.GetSDFSolution())
         delta_sol.append(opt.GetDualDeltaSolution())
@@ -245,46 +242,41 @@ def main():
         u_sol.append(u_opt)
         x[:, i + 1] = prediction
         x_.append(opt.GetStateSolution())
+        # breakpoint()
         # print(opt.GetStateSolution())
 
 
     sdf_sol = np.array(sdf_sol)
     delta_sol = np.array(delta_sol)
-    print("delta shape", delta_sol.shape)
 
     dt = finger.dt()
 
+    debug_info = opt.GetDebugInfo()
+    debug_proj = opt.GetQPInfo()
+    print(len(opt.GetDebugInfo()))
+
     debug_info = np.array(debug_info)
-    debug_qp = np.array(debug_qp)
+    debug_proj = np.array(debug_proj)
+    print("debug qp shape: ", debug_proj.shape)
+    print("debug info shape: ", debug_info.shape)
     # print(debug_info.shape)
     # # save debug info to file
-    # with open('/home/yufeiyang/Documents/c3/debug_output/debug_info.txt', 'a') as f:
-    #     f.write('\n')
-    #     np.savetxt(f, debug_info[1], fmt='%s')
-
     z_sol = np.array(z_sol)
-    # print(z_sol.shape)
     predict = np.array(predict)
-    print("sai")
-    print(predict.shape)
-    print(x.shape)
+    # print(predict.shape)
+    # print(x.shape)
     # Save the results to a file
     np.save('/home/yufeiyang/Documents/c3/debug_output/debug.npy', debug_info)
-    np.save('/home/yufeiyang/Documents/c3/debug_output/debug_qp.npy', debug_qp)
-    np.save('/home/yufeiyang/Documents/c3/debug_output/z_sol.npy', z_sol)
-    np.save('/home/yufeiyang/Documents/c3/debug_output/delta_sol.npy', delta_sol)
-    np.save('/home/yufeiyang/Documents/c3/debug_output/x_.npy', x_)
-    np.save('/home/yufeiyang/Documents/c3/debug_output/predict.npy', predict)
+    np.save('/home/yufeiyang/Documents/c3/debug_output/debug_projection.npy', debug_proj)
+    # np.save('/home/yufeiyang/Documents/c3/debug_output/z_sol.npy', z_sol)
+    # np.save('/home/yufeiyang/Documents/c3/debug_output/delta_sol.npy', delta_sol)
+    # np.save('/home/yufeiyang/Documents/c3/debug_output/x_.npy', x_)
+    # np.save('/home/yufeiyang/Documents/c3/debug_output/predict.npy', predict)
 
     # regular data
-    np.save("/home/yufeiyang/Documents/c3/debug_output/finger_x.npy", x)
-    np.save("/home/yufeiyang/Documents/c3/debug_output/finger_delta.npy", delta_sol)
-    np.save("/home/yufeiyang/Documents/c3/debug_output/finger_u.npy", u_sol)
-
-    # Create animation if necessary
-    len_p = 0.6  # rod length
-    len_com = 0.2  # rod width
-    # anim = animate_fingergait(x, dt, len_p, len_com)
+    # np.save("/home/yufeiyang/Documents/c3/debug_output/finger_x.npy", x)
+    # np.save("/home/yufeiyang/Documents/c3/debug_output/finger_delta.npy", delta_sol)
+    # np.save("/home/yufeiyang/Documents/c3/debug_output/finger_u.npy", u_sol)
 
     time_x = np.arange(0, system_iter * dt + dt, dt)
 
