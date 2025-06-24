@@ -1,0 +1,47 @@
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_java_library",
+    "drake_lcm_py_library",
+)
+load(
+    "@drake//tools/skylark:drake_java.bzl",
+    "drake_java_binary",
+)
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+#Lcm libraries
+drake_lcm_cc_library(
+    name = "lcmt_c3",
+    lcm_package = "c3",
+    lcm_srcs = glob(["*.lcm"]),
+)
+
+drake_lcm_java_library(
+    name = "lcmtypes_c3_java",
+    lcm_package = "c3",
+    lcm_srcs = glob(["*.lcm"]),
+)
+
+drake_lcm_py_library(
+    name = "lcmtypes_c3_py",
+    add_current_package_to_imports = True,  # Use //:module_py instead.
+    extra_srcs = ["__init__.py"],
+    lcm_package = "c3",
+    lcm_srcs = glob(["*.lcm"]),
+    deps = [
+        "@drake//:module_py",
+    ],
+)
+
+drake_java_binary(
+    name = "c3-lcm-spy",
+    main_class = "lcm.spy.Spy",
+    visibility = ["//visibility:private"],
+    runtime_deps = [
+        ":lcmtypes_c3_java",
+        "@drake//lcmtypes:lcmtypes_drake_java",
+    ],
+)

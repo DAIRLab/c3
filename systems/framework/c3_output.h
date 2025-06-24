@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "c3/lcmt_output.hpp"
+
 #include <Eigen/Dense>
 
 using Eigen::MatrixXf;
@@ -56,6 +58,8 @@ class C3Output {
   // explicit C3Output(const lcmt_c3_output& traj);
 
   virtual ~C3Output() = default;
+
+  lcmt_output GenerateLcmObject(double time) const;
 
  private:
   C3Solution c3_solution_;
