@@ -40,6 +40,7 @@ cc_library( name = "c3_controller",
     deps = [
         ":options",
         ":framework",
+        ":publishers",
         "//core:c3",
         "//core:options",
         "//multibody:lcs_factory",
@@ -85,6 +86,36 @@ cc_library(
     deps = [
         "//core:options",
         "//multibody:options",
+    ]
+)
+
+cc_library(
+    name = "publishers",
+    srcs = [
+        "publishers/output_publisher.cc",
+        "publishers/force_publisher.cc"
+    ],
+    hdrs = [
+        "publishers/output_publisher.h",
+        "publishers/force_publisher.h"
+    ],
+    deps = [
+        ":c3_output",
+        "//lcmtypes:lcmt_c3",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "c3_output",
+        srcs = [
+        "framework/c3_output.cc",
+    ],
+    hdrs = [
+        "framework/c3_output.h",
+        ],
+    deps = [
+        "//lcmtypes:lcmt_c3",
         "@drake//:drake_shared_library",
     ]
 )
