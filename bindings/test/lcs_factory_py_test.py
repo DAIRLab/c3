@@ -22,7 +22,7 @@ def make_cube_pivoting_lcs_plant():
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
     parser = Parser(plant, scene_graph)
-    parser.AddModels("systems/test/res/cube_pivoting.sdf")
+    parser.AddModels("systems/test/resources/cube_pivoting/cube_pivoting.sdf")
     plant.Finalize()
 
     # Build the plant diagram.
@@ -66,7 +66,9 @@ def make_cube_pivoting_lcs_plant():
 
 
 def main():
-    options = LoadC3ControllerOptions("systems/test/res/c3_pivoting_options.yaml")
+    c3_controller_options = LoadC3ControllerOptions("systems/test/resources/cube_pivoting/c3_controller_pivoting_options.yaml")
+    c3_options = c3_controller_options.c3_options
+    lcs_factory_options = c3_controller_options.lcs_factory_options
     _, diagram, diagram_context, plant, contact_pairs = make_cube_pivoting_lcs_plant()
 
     plant_autodiff = System.ToAutoDiffXd(plant)
@@ -78,14 +80,14 @@ def main():
         plant_autodiff,
         plant_autodiff_context,
         contact_pairs,
-        options,
+        lcs_factory_options,
     )
 
-    costs = C3MIQP.CreateCostMatricesFromC3Options(options, options.N)
+    costs = C3MIQP.CreateCostMatricesFromC3Options(c3_options, lcs_factory_options.N)
 
     x0 = np.array([0, 0.75, 0, -0.6, 0.75, 0.1, 0.125, 0, 0, 0, 0, 0, 0, 0])
     xd = np.array([0, 0.75, 0.785, -0.5, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 0])
-    xd = [xd for _ in range(options.N + 1)]
+    xd = [xd for _ in range(lcs_factory_options.N + 1)]
 
     system_iter = 200
 
@@ -97,11 +99,11 @@ def main():
     pivoting = LCS.CreatePlaceholderLCS(
         plant.num_positions() + plant.num_velocities(),
         plant.num_actuators(),
-        LCSFactory.GetNumContactVariables(options),
-        options.N,
-        options.dt,
+        LCSFactory.GetNumContactVariables(lcs_factory_options),
+        lcs_factory_options.N,
+        lcs_factory_options.dt,
     )
-    opt = C3MIQP(pivoting, costs, xd, options)
+    opt = C3MIQP(pivoting, costs, xd, c3_options)
 
     # Add linear constraints to the controller.
     A = np.zeros((14, 14))
@@ -124,7 +126,7 @@ def main():
         prediction = pivoting.Simulate(x[:, i], u[:, i + 1])
         x[:, i + 1] = prediction
 
-    dt = options.dt
+    dt = lcs_factory_options.dt
     time_x = np.arange(0, system_iter * dt + dt, dt)
 
     plt.plot(time_x, x.T[:, : plant.num_positions()])

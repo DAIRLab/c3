@@ -6,6 +6,7 @@
 #include "core/c3.h"
 #include "core/lcs.h"
 #include "systems/c3_controller.h"
+#include "systems/c3_controller_options.h"
 #include "systems/framework/c3_output.h"
 #include "systems/framework/timestamped_vector.h"
 #include "systems/lcs_factory_system.h"
@@ -13,11 +14,11 @@
 
 #include "drake/bindings/pydrake/common/cpp_template_pybind.h"
 #include "drake/bindings/pydrake/common/default_scalars_pybind.h"
+#include "drake/bindings/pydrake/common/sorted_pair_pybind.h"
 #include "drake/bindings/pydrake/common/value_pybind.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/primitives/constant_value_source.h"
-#include "drake/bindings/pydrake/common/sorted_pair_pybind.h"
 
 namespace py = pybind11;
 
@@ -88,7 +89,7 @@ PYBIND11_MODULE(systems, m) {
               const MultibodyPlant<drake::AutoDiffXd>&,
               drake::systems::Context<drake::AutoDiffXd>&,
               const std::vector<drake::SortedPair<drake::geometry::GeometryId>>,
-              LCSOptions>(),
+              LCSFactoryOptions>(),
           py::arg("plant"), py::arg("context"), py::arg("plant_ad"),
           py::arg("context_ad"), py::arg("contact_geoms"), py::arg("options"))
       .def("get_input_port_lcs_state",
@@ -156,6 +157,27 @@ PYBIND11_MODULE(systems, m) {
   drake::pydrake::AddValueInstantiation<c3::LCS>(m);
   drake::pydrake::AddValueInstantiation<C3Output::C3Solution>(m);
   drake::pydrake::AddValueInstantiation<C3Output::C3Intermediates>(m);
+  
+  py::class_<C3StatePredictionJoint>(m, "C3StatePredictionJoint")
+      .def(py::init<>())
+      .def_readwrite("name", &C3StatePredictionJoint::name)
+      .def_readwrite("max_acceleration",
+                     &C3StatePredictionJoint::max_acceleration);
+
+  py::class_<C3ControllerOptions>(m, "C3ControllerOptions")
+      .def(py::init<>())
+      .def_readwrite("solve_time_filter_alpha",
+                     &C3ControllerOptions::solve_time_filter_alpha)
+      .def_readwrite("publish_frequency",
+                     &C3ControllerOptions::publish_frequency)
+      .def_readwrite("projection_type", &C3ControllerOptions::projection_type)
+      .def_readwrite("c3_options", &C3ControllerOptions::c3_options)
+      .def_readwrite("lcs_factory_options",
+                     &C3ControllerOptions::lcs_factory_options)
+      .def_readwrite("state_prediction_joints",
+                     &C3ControllerOptions::state_prediction_joints);
+
+  m.def("LoadC3ControllerOptions", &LoadC3ControllerOptions);
 }
 }  // namespace pyc3
 }  // namespace systems

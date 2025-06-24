@@ -3,31 +3,7 @@
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/common/yaml/yaml_read_archive.h"
 
-namespace c3 {
-
-struct LCSOptions {
-  std::string contact_model;    // "stewart_and_trinkle" or "anitescu" or
-                                // "frictionless_spring"
-  int num_friction_directions;  // Number of friction directions per contact
-  int num_contacts;             // Number of contacts in the system
-  double spring_stiffness;  // Spring stiffness for frictionless spring model
-  std::vector<double> mu;   // Friction coefficient for each contact
-
-  int N;      // number of time steps in the prediction horizon
-  double dt;  // time step size
-
-  template <typename Archive>
-  void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(contact_model));
-    a->Visit(DRAKE_NVP(num_friction_directions));
-    a->Visit(DRAKE_NVP(num_contacts));
-    a->Visit(DRAKE_NVP(spring_stiffness));
-    a->Visit(DRAKE_NVP(mu));
-
-    a->Visit(DRAKE_NVP(N));
-    a->Visit(DRAKE_NVP(dt));
-  }
-};
+namespace c3{
 
 struct C3Options {
   // Hyperparameters
@@ -42,7 +18,6 @@ struct C3Options {
   int delta_option =
       1;  // 1 initializes the state value of the delta value with x0
 
-  std::string projection_type;  // "QP" or "MIQP"
   double M = 1000;              // big M value for MIQP
 
   int admm_iter = 3;  // total number of ADMM iterations
@@ -98,8 +73,6 @@ struct C3Options {
 
     a->Visit(DRAKE_NVP(num_threads));
     a->Visit(DRAKE_NVP(delta_option));
-
-    a->Visit(DRAKE_NVP(projection_type));
 
     a->Visit(DRAKE_NVP(M));
 
@@ -171,89 +144,6 @@ inline C3Options LoadC3Options(const std::string& filename) {
   return options;
 }
 
-/**
- * @struct C3StatePredictionJoint
- * @brief Represents the state prediction parameters for a joint in the system.
- *
- * This structure is used to define the properties of a joint, including its
- * name and the maximum allowable acceleration. The joints specified will be
- * used for clamping the predicted state during the optimization process to
- * ensure that the predicted states remain within physically realistic bounds
- * based on the maximum acceleration.
- *
- * In C3 Options file, the structure to specify these joints would look like:
- * ```
- * state_prediction_joints:
- *   - name: "joint_name"
- *     max_acceleration: 10.0  # Maximum acceleration in m/s^2
- *   - name: "another_joint_name"
- *     max_acceleration: 5.0   # Maximum acceleration in m/s^2
- * ```
- * or 
- * ```
- * state_prediction_joints: []
- * ```
- * If no predicition is required
- */
-struct C3StatePredictionJoint {
-  // Joint name
-  std::string name;
-  // Maximum acceleration for the joint
-  double max_acceleration;
 
-  template <typename Archive>
-  void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(name));
-    a->Visit(DRAKE_NVP(max_acceleration));
-  }
-};
-
-struct C3ControllerOptions : public C3Options, public LCSOptions {
-  // Additional options specific to the C3Controller
-  double solve_time_filter_alpha = 0.0;
-  double publish_frequency = 100.0;  // Hz
-
-  std::vector<C3StatePredictionJoint> state_prediction_joints;
-
-  template <typename Archive>
-  void Serialize(Archive* a) {
-    C3Options::Serialize(a);
-    LCSOptions::Serialize(a);
-    a->Visit(DRAKE_NVP(solve_time_filter_alpha));
-    a->Visit(DRAKE_NVP(publish_frequency));
-    a->Visit(DRAKE_NVP(state_prediction_joints));
-
-    if (projection_type == "QP") {
-      DRAKE_DEMAND(contact_model == "anitescu");
-    }
-
-    if (contact_model == "frictionless_spring") {
-      DRAKE_DEMAND(static_cast<int>(g_lambda.size()) == num_contacts);
-      DRAKE_DEMAND(static_cast<int>(u_lambda.size()) == num_contacts);
-    }
-    else if (contact_model == "stewart_and_trinkle") {
-      DRAKE_DEMAND(static_cast<int>(g_lambda.size()) ==
-                   num_contacts * num_friction_directions * 2 +
-                       num_contacts * 2);
-      DRAKE_DEMAND(static_cast<int>(u_lambda.size()) ==
-                   num_contacts * num_friction_directions * 2 +
-                       num_contacts * 2);
-    } else if (contact_model == "anitescu") {
-      DRAKE_DEMAND(static_cast<int>(g_lambda.size()) ==
-                   num_contacts * num_friction_directions * 2);
-      DRAKE_DEMAND(static_cast<int>(u_lambda.size()) ==
-                   num_contacts * num_friction_directions * 2);
-    } else {
-      throw std::runtime_error("unknown or unsupported contact model");
-    }
-    DRAKE_DEMAND(mu.size() == (size_t)num_contacts);
-  }
-};
-
-inline C3ControllerOptions LoadC3ControllerOptions(
-    const std::string& filename) {
-  auto options = drake::yaml::LoadYamlFile<C3ControllerOptions>(filename);
-  return options;
-}
 
 }  // namespace c3

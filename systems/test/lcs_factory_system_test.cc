@@ -21,6 +21,7 @@
 
 #include "core/test/c3_cartpole_problem.hpp"
 #include "systems/c3_controller.h"
+#include "systems/c3_controller_options.h"
 #include "systems/common/system_utils.hpp"
 #include "systems/lcs_simulator.h"
 #include "systems/test/test_utils.hpp"
@@ -34,6 +35,7 @@ DEFINE_string(experiment_type, "cube_pivoting",
               "'cube_pivoting [Stewart and Trinkle System]'");
 
 using c3::systems::C3Controller;
+using c3::systems::C3ControllerOptions;
 using c3::systems::LCSFactorySystem;
 using c3::systems::LCSSimulator;
 
@@ -109,7 +111,8 @@ int RunCartpoleTest() {
   auto [plant_for_lcs, scene_graph_for_lcs] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
   Parser parser_for_lcs(&plant_for_lcs, &scene_graph_for_lcs);
-  const std::string file_for_lcs = "systems/test/res/cartpole_softwalls.sdf";
+  const std::string file_for_lcs =
+      "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf";
   parser_for_lcs.AddModels(file_for_lcs);
   plant_for_lcs.Finalize();
 
@@ -142,10 +145,15 @@ int RunCartpoleTest() {
   DiagramBuilder<double> builder;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, 0.01);
   Parser parser(&plant, &scene_graph);
-  const std::string file = "systems/test/res/cartpole_softwalls.sdf";
+  const std::string file =
+      "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf";
   parser.AddModels(file);
   plant.set_penetration_allowance(0.15);
   plant.Finalize();
+
+  C3ControllerOptions options = drake::yaml::LoadYamlFile<C3ControllerOptions>(
+      "systems/test/resources/cartpole_softwalls/"
+      "c3_controller_cartpole_options.yaml");
 
   std::unique_ptr<drake::systems::Context<double>> plant_diagram_context =
       plant_diagram->CreateDefaultContext();
@@ -159,11 +167,11 @@ int RunCartpoleTest() {
   auto plant_context_autodiff = plant_autodiff->CreateDefaultContext();
   auto lcs_factory_system = builder.AddSystem<LCSFactorySystem>(
       plant_for_lcs, plant_for_lcs_context, *plant_autodiff,
-      *plant_context_autodiff, contact_pairs, c3_cartpole_problem.options);
+      *plant_context_autodiff, contact_pairs, options.lcs_factory_options);
 
   // Add the C3 controller.
   auto c3_controller = builder.AddSystem<C3Controller>(
-      plant_for_lcs, c3_cartpole_problem.cost, c3_cartpole_problem.options);
+      plant_for_lcs, c3_cartpole_problem.cost, options);
 
   // Add constant vector source for the desired state.
   auto xdes = builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
@@ -194,8 +202,7 @@ int RunCartpoleTest() {
   // Add a ZeroOrderHold system for state updates.
   auto state_zero_order_hold =
       builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
-          1 / c3_cartpole_problem.options.publish_frequency,
-          c3_cartpole_problem.k);
+          1 / options.publish_frequency, c3_cartpole_problem.k);
   builder.Connect(c3_input->get_output_port_c3_input(),
                   state_zero_order_hold->get_input_port());
 
@@ -253,7 +260,8 @@ int RunPivotingTest() {
   auto [plant_for_lcs, scene_graph_for_lcs] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
   Parser parser_for_lcs(&plant_for_lcs, &scene_graph_for_lcs);
-  const std::string file_for_lcs = "systems/test/res/cube_pivoting.sdf";
+  const std::string file_for_lcs =
+      "systems/test/resources/cube_pivoting/cube_pivoting.sdf";
   parser_for_lcs.AddModels(file_for_lcs);
   plant_for_lcs.Finalize();
 
@@ -295,15 +303,17 @@ int RunPivotingTest() {
   DiagramBuilder<double> builder;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, 0.01);
   Parser parser(&plant, &scene_graph);
-  const std::string file = "systems/test/res/cube_pivoting.sdf";
+  const std::string file =
+      "systems/test/resources/cube_pivoting/cube_pivoting.sdf";
   parser.AddModels(file);
   plant.Finalize();
 
   // Load controller options and cost matrices.
   C3ControllerOptions options = drake::yaml::LoadYamlFile<C3ControllerOptions>(
-      "systems/test/res/c3_pivoting_options.yaml");
-  C3::CostMatrices cost =
-      C3::CreateCostMatricesFromC3Options(options, options.N);
+      "systems/test/resources/cube_pivoting/"
+      "c3_controller_pivoting_options.yaml");
+  C3::CostMatrices cost = C3::CreateCostMatricesFromC3Options(
+      options.c3_options, options.lcs_factory_options.N);
 
   // Create contexts for the plant and LCS factory system.
   std::unique_ptr<drake::systems::Context<double>> plant_diagram_context =
@@ -317,7 +327,7 @@ int RunPivotingTest() {
   // Add the LCS factory system.
   auto lcs_factory_system = builder.AddSystem<LCSFactorySystem>(
       plant_for_lcs, plant_for_lcs_context, *plant_autodiff,
-      *plant_context_autodiff, contact_pairs, options);
+      *plant_context_autodiff, contact_pairs, options.lcs_factory_options);
 
   // Add the C3 controller.
   auto c3_controller =
@@ -388,7 +398,7 @@ int RunPivotingTest() {
 
   // Build the diagram.
   auto diagram = builder.Build();
-  
+
   // Create a default context for the diagram.
   auto diagram_context = diagram->CreateDefaultContext();
 
@@ -418,9 +428,10 @@ int main(int argc, char* argv[]) {
     std::cout << "Running Cube Pivoting Test..." << std::endl;
     return RunPivotingTest();
   } else {
-    std::cerr << "Unknown experiment type: " << FLAGS_experiment_type
-              << ". Supported types are 'cartpole_softwalls' and 'cube_pivoting'."
-              << std::endl;
+    std::cerr
+        << "Unknown experiment type: " << FLAGS_experiment_type
+        << ". Supported types are 'cartpole_softwalls' and 'cube_pivoting'."
+        << std::endl;
     return -1;
   }
 }

@@ -33,6 +33,7 @@ cc_library(
         ],
     deps = [
         ":vector",
+        ":options",
         "//core:c3",
         "//core:options",
         "//multibody:lcs_factory",
@@ -40,9 +41,21 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "options",
+    hdrs = [
+        "c3_controller_options.h",
+    ],
+    deps = [
+        "//core:options",
+        "//multibody:options",
+        "@drake//:drake_shared_library",
+    ]
+)
+
 filegroup(
-        name = 'test_data',
-        srcs = glob(['test/res/**'])
+    name = 'test_data',
+    srcs = glob(['test/resources/**'])
 )
 
 cc_binary(
@@ -67,7 +80,7 @@ cc_binary(
         "test/lcs_factory_system_test.cc", 
         "test/test_utils.hpp" ],
     data = [
-        ":test_data"
+        ":test_data",
     ],
     deps = [
         "//core:c3",

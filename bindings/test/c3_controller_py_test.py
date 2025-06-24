@@ -34,7 +34,7 @@ def AddVisualizer(builder, scene_graph, state_port, time_step=0.0):
     parser = Parser(plant, scene_graph)
 
     # Load the Cartpole model from an SDF file.
-    file = "systems/test/res/cartpole_softwalls.sdf"
+    file = "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf"
     parser.AddModels(file)
     plant.Finalize()
 
@@ -58,13 +58,14 @@ def AddVisualizer(builder, scene_graph, state_port, time_step=0.0):
 def DoMain():
     builder = DiagramBuilder()
     scene_graph = builder.AddSystem(SceneGraph())
+    N = 5
 
     # Initialize the C3 cartpole problem.
     options = LoadC3ControllerOptions(
-        "/home/stephen/Workspace/DAIR/c3/core/test/res/c3_cartpole_options.yaml"
+        "systems/test/resources/cartpole_softwalls/c3_controller_cartpole_options.yaml"
     )
-    cartpole = make_cartpole_with_soft_walls_dynamics(options.N)
-    costs = make_cartpole_costs(cartpole, options)
+    cartpole = make_cartpole_with_soft_walls_dynamics(N)
+    costs = make_cartpole_costs(cartpole, options.c3_options, N)
 
     # Add the LCS simulator.
     lcs_simulator = builder.AddSystem(LCSSimulator(cartpole))

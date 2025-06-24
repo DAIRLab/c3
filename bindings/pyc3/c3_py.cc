@@ -216,33 +216,12 @@ PYBIND11_MODULE(c3, m) {
       .def_readwrite("end_on_qp_step", &C3Options::end_on_qp_step)
       .def_readwrite("num_threads", &C3Options::num_threads)
       .def_readwrite("delta_option", &C3Options::delta_option)
-      .def_readwrite("projection_type", &C3Options::projection_type)
       .def_readwrite("M", &C3Options::M)
       .def_readwrite("admm_iter", &C3Options::admm_iter)
       .def_readwrite("gamma", &C3Options::gamma)
       .def_readwrite("rho_scale", &C3Options::rho_scale);
 
   m.def("LoadC3Options", &LoadC3Options);
-
-  py::class_<LCSOptions>(m, "LCSOptions")
-      .def(py::init<>())
-      .def_readwrite("dt", &LCSOptions::dt)
-      .def_readwrite("N", &LCSOptions::N)
-      .def_readwrite("contact_model", &LCSOptions::contact_model)
-      .def_readwrite("num_friction_directions",
-                     &LCSOptions::num_friction_directions)
-      .def_readwrite("num_contacts", &LCSOptions::num_contacts)
-      .def_readwrite("spring_stiffness", &LCSOptions::spring_stiffness)
-      .def_readwrite("mu", &LCSOptions::mu);
-
-  py::class_<C3ControllerOptions, C3Options, LCSOptions>(m,
-                                                         "C3ControllerOptions")
-      .def(py::init<>())
-      .def_readwrite("solve_time_filter_alpha",
-                     &C3ControllerOptions::solve_time_filter_alpha)
-      .def_readwrite("publish_frequency",
-                     &C3ControllerOptions::publish_frequency);
-  m.def("LoadC3ControllerOptions", &LoadC3ControllerOptions);
 }
 }  // namespace pyc3
 }  // namespace c3

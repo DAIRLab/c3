@@ -14,17 +14,33 @@ cc_library(
         "multibody_utils.h",
     ],
     deps = [
+        ":options",
         '//core:lcs',
         '//core:options',
         "@drake//:drake_shared_library",
     ],
 )
 
+cc_library(
+    name = "options",
+    hdrs = [
+        "lcs_factory_options.h"
+            ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+filegroup(
+    name = 'test_data',
+    srcs = glob(['test/resources/**'])
+)
 
 cc_test(
     name = "lcs_factory_test",
     srcs = ["test/lcs_factory_test.cc"],
     data = [
+        ":test_data",
         "//systems:test_data",
     ],
     deps = [

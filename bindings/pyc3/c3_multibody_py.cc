@@ -2,6 +2,7 @@
 #include <pybind11/pybind11.h>
 
 #include "core/lcs.h"
+#include "multibody/lcs_factory_options.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/lcs_factory.h"
 #include "multibody/multibody_utils.h"
@@ -34,7 +35,7 @@ PYBIND11_MODULE(multibody, m) {
                     drake::systems::Context<drake::AutoDiffXd>&,
                     const std::vector<
                         drake::SortedPair<drake::geometry::GeometryId>>&,
-                    const c3::LCSOptions&>(),
+                    const c3::LCSFactoryOptions&>(),
            py::arg("plant"), py::arg("context"), py::arg("plant_ad"),
            py::arg("context_ad"), py::arg("contact_geoms"), py::arg("options"))
       .def("GenerateLCS", &c3::multibody::LCSFactory::GenerateLCS)
@@ -58,9 +59,22 @@ PYBIND11_MODULE(multibody, m) {
                   py::arg("contact_model"), py::arg("num_contacts"),
                   py::arg("num_friction_directions"))
       .def_static("GetNumContactVariables",
-                  py::overload_cast<const c3::LCSOptions>(
+                  py::overload_cast<const c3::LCSFactoryOptions>(
                       &c3::multibody::LCSFactory::GetNumContactVariables),
                   py::arg("options"));
+
+  py::class_<LCSFactoryOptions>(m, "LCSFactoryOptions")
+      .def(py::init<>())
+      .def_readwrite("dt", &LCSFactoryOptions::dt)
+      .def_readwrite("N", &LCSFactoryOptions::N)
+      .def_readwrite("contact_model", &LCSFactoryOptions::contact_model)
+      .def_readwrite("num_friction_directions",
+                     &LCSFactoryOptions::num_friction_directions)
+      .def_readwrite("num_contacts", &LCSFactoryOptions::num_contacts)
+      .def_readwrite("spring_stiffness", &LCSFactoryOptions::spring_stiffness)
+      .def_readwrite("mu", &LCSFactoryOptions::mu);
+
+  m.def("LoadLCSFactoryOptions", &LoadLCSFactoryOptions);
 }
 }  // namespace pyc3
 }  // namespace multibody
