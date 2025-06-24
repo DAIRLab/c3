@@ -53,7 +53,7 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
       drake::systems::Context<drake::AutoDiffXd>& context_ad,
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>
           contact_geoms,
-      LCSOptions options);
+      LCSFactoryOptions options);
 
   /**
    * @brief Gets the input port for the LCS state.
@@ -98,7 +98,7 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
       drake::systems::Context<double>* plant_diagram_context,
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>
           contact_geoms,
-      LCSOptions options);
+      LCSFactoryOptions options);
 
  private:
   /**

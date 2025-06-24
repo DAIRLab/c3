@@ -8,9 +8,9 @@
 #include "common/find_resource.h"
 #include "core/c3.h"
 #include "core/c3_miqp.h"
-#include "core/c3_options.h"
 #include "core/c3_qp.h"
 #include "core/lcs.h"
+#include "systems/c3_controller_options.h"
 #include "systems/framework/c3_output.h"
 #include "systems/framework/timestamped_vector.h"
 

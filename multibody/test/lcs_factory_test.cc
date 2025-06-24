@@ -40,8 +40,8 @@ GTEST_TEST(LCSFactoryTest, GetNumContactVariables) {
                 ContactModel::kFrictionlessSpring, 3, 0),
             3);
 
-  // Test with LCSOptions
-  LCSOptions options;
+  // Test with LCSFactoryOptions
+  LCSFactoryOptions options;
   options.contact_model = "stewart_and_trinkle";
   options.num_friction_directions = 4;
   options.num_contacts = 2;
@@ -64,12 +64,12 @@ class LCSFactoryPivotingTest : public ::testing::TestWithParam<std::string> {
     std::tie(plant, scene_graph) =
         AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
     Parser parser(plant, scene_graph);
-    parser.AddModels("systems/test/res/cube_pivoting.sdf");
+    parser.AddModels("systems/test/resources/cube_pivoting/cube_pivoting.sdf");
     plant->Finalize();
 
     // Load controller options from YAML file.
-    options = drake::yaml::LoadYamlFile<C3ControllerOptions>(
-        "systems/test/res/c3_pivoting_options.yaml");
+    options = drake::yaml::LoadYamlFile<LCSFactoryOptions>(
+        "multibody/test/resources/lcs_factory_pivoting_options.yaml");
     plant_diagram = plant_builder.Build();
     plant_diagram_context = plant_diagram->CreateDefaultContext();
 
@@ -115,7 +115,7 @@ class LCSFactoryPivotingTest : public ::testing::TestWithParam<std::string> {
     drake::VectorX<double> input = VectorXd::Zero(plant->num_actuators());
 
     options.contact_model = GetParam();
-    contact_model = ContactModelMap()[GetParam()];
+    contact_model = GetContactModelMap().at(GetParam());
     lcs_factory = std::make_unique<LCSFactory>(
         *plant, plant_context, *plant_autodiff, *plant_context_autodiff,
         contact_pairs, options);
@@ -130,7 +130,7 @@ class LCSFactoryPivotingTest : public ::testing::TestWithParam<std::string> {
   std::unique_ptr<Diagram<double>> plant_diagram;
   std::unique_ptr<Context<double>> plant_diagram_context;
   std::vector<SortedPair<GeometryId>> contact_pairs;
-  LCSOptions options;
+  LCSFactoryOptions options;
   std::unique_ptr<LCSFactory> lcs_factory;
   ContactModel contact_model = ContactModel::kUnknown;
 };

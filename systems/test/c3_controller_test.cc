@@ -2,9 +2,9 @@
 #include "systems/c3_controller.h"
 
 #include "core/test/c3_cartpole_problem.hpp"
-#include "systems/lcs_simulator.h"
+#include "systems/c3_controller_options.h"
 #include "systems/common/system_utils.hpp"
-
+#include "systems/lcs_simulator.h"
 #include "systems/test/test_utils.hpp"
 
 // Includes for Drake systems and primitives.
@@ -24,6 +24,7 @@
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 
 using c3::systems::C3Controller;
+using c3::systems::C3ControllerOptions;
 using c3::systems::LCSSimulator;
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
@@ -31,8 +32,6 @@ using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
 using Eigen::VectorXd;
-
-
 
 // Adds the Visualizer for the cartpole with softwalls system to a
 // DiagramBuilder and connects it to the SceneGraph.
@@ -46,7 +45,7 @@ std::unique_ptr<MultibodyPlant<double>> AddVisualizer(
   Parser parser(plant.get(), scene_graph);
 
   // Load the Cartpole model from an SDF file.
-  const std::string file = "systems/test/res/cartpole_softwalls.sdf";
+  const std::string file = "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf";
   parser.AddModels(file);
   plant->Finalize();
 
@@ -82,11 +81,13 @@ int DoMain() {
   auto lcs_simulator =
       builder.AddSystem<LCSSimulator>(*(c3_cartpole_problem.pSystem));
 
+  C3ControllerOptions options = drake::yaml::LoadYamlFile<C3ControllerOptions>(
+      "systems/test/resources/cartpole_softwalls/c3_controller_cartpole_options.yaml");
+
   // Add a ZeroOrderHold system for state updates.
   auto state_zero_order_hold =
       builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
-          1 / c3_cartpole_problem.options.publish_frequency,
-          c3_cartpole_problem.n);
+          1 / options.publish_frequency, c3_cartpole_problem.n);
 
   // Connect simulator and ZeroOrderHold.
   builder.Connect(lcs_simulator->get_output_port_next_state(),
@@ -100,7 +101,7 @@ int DoMain() {
 
   // Add the C3 controller.
   auto c3_controller = builder.AddSystem<C3Controller>(
-      *plant, c3_cartpole_problem.cost, c3_cartpole_problem.options);
+      *plant, c3_cartpole_problem.cost, options);
 
   // Add constant value source for the LCS system.
   auto lcs = builder.AddSystem<drake::systems::ConstantValueSource>(

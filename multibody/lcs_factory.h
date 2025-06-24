@@ -6,8 +6,8 @@
 
 #include <Eigen/Dense>
 
-#include "core/c3_options.h"
 #include "core/lcs.h"
+#include "multibody/lcs_factory_options.h"
 
 #include "drake/common/sorted_pair.h"
 #include "drake/geometry/geometry_ids.h"
@@ -38,14 +38,13 @@ enum class ContactModel {
  * @brief A map for converting string representations of contact models to their
  * enum values.
  */
-struct ContactModelMap : public std::map<std::string, ContactModel> {
-  ContactModelMap() {
-    this->operator[]("stewart_and_trinkle") = ContactModel::kStewartAndTrinkle;
-    this->operator[]("anitescu") = ContactModel::kAnitescu;
-    this->operator[]("frictionless_spring") = ContactModel::kFrictionlessSpring;
-  };
-  ~ContactModelMap() {}
-};
+inline const std::map<std::string, ContactModel>& GetContactModelMap() {
+  static const std::map<std::string, ContactModel> kContactModelMap = {
+      {"stewart_and_trinkle", ContactModel::kStewartAndTrinkle},
+      {"anitescu", ContactModel::kAnitescu},
+      {"frictionless_spring", ContactModel::kFrictionlessSpring}};
+  return kContactModelMap;
+}
 
 /**
  * @class LCSFactory
@@ -75,7 +74,7 @@ class LCSFactory {
       drake::systems::Context<drake::AutoDiffXd>& context_ad,
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
           contact_geoms,
-      const LCSOptions& options);
+      const LCSFactoryOptions& options);
 
   /**
    * @brief Generates a Linear Complementarity System (LCS).
@@ -135,7 +134,7 @@ class LCSFactory {
       drake::systems::Context<drake::AutoDiffXd>& context_ad,
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
           contact_geoms,
-      const LCSOptions& options,
+      const LCSFactoryOptions& options,
       const Eigen::Ref<const drake::VectorX<double>>& state,
       const Eigen::Ref<const drake::VectorX<double>>& input);
 
@@ -174,7 +173,7 @@ class LCSFactory {
    * properties.
    * @return int The number of contact variables.
    */
-  static int GetNumContactVariables(const LCSOptions options);
+  static int GetNumContactVariables(const LCSFactoryOptions options);
 
  private:
   /**
@@ -290,7 +289,7 @@ class LCSFactory {
       contact_pairs_;
 
   // Configuration options for the LCSFactory
-  LCSOptions options_;
+  LCSFactoryOptions options_;
 
   int n_q_;                     ///< Number of configuration variables.
   int n_v_;                     ///< Number of velocity variables.
