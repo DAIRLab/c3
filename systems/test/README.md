@@ -4,7 +4,7 @@ This test demonstrates the integration of a C3 controller with a cartpole system
 
 The diagram below illustrates the system architecture used in this test:
 
-![C3 Controller Test Diagram](res/c3_controller_test_diagram.jpg)  
+![C3 Controller Test Diagram](resources/diagrams/cartpole_softwalls_c3_controller_test.jpg)  
 
 # LCS Factory System Test
 
@@ -14,4 +14,5 @@ For a detailed view of the system architecture, refer to the diagram below:
 
 Cartpole with Softwalls            |  Cube Pivoting
 :-------------------------:|:-------------------------:
-![Cartpole with Softwalls](res/cartpole.png)| ![Cube Pivoting](res/pivoting.png)
+![Cartpole with Softwalls Diagram](resources/diagrams/cartpole_softwalls_lcs_factory_systems_test.jpg)| ![Cube Pivoting Diagram](resources/diagrams/cube_pivoting_lcs_factory_systems_test.jpg)
+![Cartpole with Softwalls](resources/cartpole_softwalls/cartpole.png)| ![Cube Pivoting](resources/cube_pivoting/pivoting.png)

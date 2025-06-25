@@ -234,6 +234,9 @@ int RunCartpoleTest() {
 
   auto diagram = builder.Build();
 
+  c3::systems::common::DrawAndSaveDiagramGraph(
+      *diagram, "/home/stephen/Workspace/DAIR/c3/systems/test/resources/cartpole_softwalls/diagram");
+
   // Create a default context for the diagram.
   auto diagram_context = diagram->CreateDefaultContext();
 
@@ -398,6 +401,9 @@ int RunPivotingTest() {
 
   // Build the diagram.
   auto diagram = builder.Build();
+
+  c3::systems::common::DrawAndSaveDiagramGraph(
+      *diagram, "/home/stephen/Workspace/DAIR/c3/systems/test/resources/cube_pivoting/diagram");
 
   // Create a default context for the diagram.
   auto diagram_context = diagram->CreateDefaultContext();
