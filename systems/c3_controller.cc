@@ -10,6 +10,8 @@
 
 #include "drake/common/text_logging.h"
 
+#include "drake/common/text_logging.h"
+
 namespace c3 {
 
 using drake::multibody::ModelInstanceIndex;
