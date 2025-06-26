@@ -24,22 +24,6 @@ pybind_py_library(
     py_imports = ["."],
 )
 
-pybind_py_library(
-    name = "c3_systems_py",
-    cc_deps = ["//systems:systems", 
-                "@drake//:drake_shared_library",
-                "@drake//bindings/pydrake/common:cpp_template_pybind",
-                "@drake//bindings/pydrake/common:default_scalars_pybind",
-                "@drake//bindings/pydrake/common:value_pybind"],
-    cc_so_name = "systems",
-    cc_srcs = ["c3_systems_py.cc"],
-    py_deps = [
-        ":module_py",
-        "@drake//bindings/pydrake"
-    ],
-    py_imports = ["."],
-)
-
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -57,7 +41,6 @@ py_library(
 PY_LIBRARIES = [
     ":module_py",
     ":c3_py",
-    ":c3_systems_py"
 ]
 
 # Package roll-up (for Bazel dependencies).

@@ -32,12 +32,8 @@ cc_library(
     ],
     copts = ["-fopenmp"],
     linkopts = ["-fopenmp"],
-    data = glob([
-        "configs/**",
-    ]),
     deps = [
         ":lcs",
-        ":solver_options_io",
         "@drake//:drake_shared_library",
     ] + select({
          "//tools:with_gurobi": ["@gurobi//:gurobi_cxx"],
@@ -54,27 +50,12 @@ cc_library(
     ],
 )
 
-filegroup(
-        name = 'test_data',
-        srcs = glob(['test/res/**'])
-)
-
-cc_library(
-    name = "c3_cartpole_problem",
-    hdrs = [
-        "test/c3_cartpole_problem.hpp",
-    ],
-    data = [
-        ":test_data",
-    ]
-)
 
 cc_test(
     name = "c3_test",
     srcs = ["test/c3_test.cc"],
     deps = [
         ":c3",
-        ":c3_cartpole_problem",
         "@gtest//:main",
     ],
     env_inherit = [
@@ -82,5 +63,3 @@ cc_test(
         "GRB_LICENSE_FILE"
     ],
 )
-
-

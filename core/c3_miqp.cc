@@ -52,8 +52,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   }
 
   for (int i = 0; i < n_x_ + n_lambda_ + n_u_; i++) {
-    delta_k[i] =
-        model.addVar(-kVariableBounds, kVariableBounds, 0.0, GRB_CONTINUOUS);
+    delta_k[i] = model.addVar(-kVariableBounds, kVariableBounds, 0.0, GRB_CONTINUOUS);
     if (warm_start_index != -1) {
       delta_k[i].set(GRB_DoubleAttr_Start,
                      warm_start_delta_[admm_iteration][warm_start_index](i));

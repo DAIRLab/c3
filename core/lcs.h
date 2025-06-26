@@ -1,15 +1,13 @@
 #pragma once
 
 #include <vector>
-
 #include <Eigen/Dense>
-
 #include "drake/common/drake_assert.h"
 
 namespace c3 {
 class LCS {
  public:
- LCS() = default;
+
   /*!
    * Constructor for the time-varying LCS
    *        xₖ₊₁ = Aₖxₖ + Bₖuₖ + Dₖλₖ + dₖ
@@ -38,6 +36,7 @@ class LCS {
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const int& N,
       double dt);
 
+
   /*! Default Copy and Assignment */
   LCS(const LCS& other) = default;
   LCS& operator=(const LCS&) = default;
@@ -50,19 +49,37 @@ class LCS {
    *
    * @return The state at the next timestep
    */
-  const Eigen::VectorXd Simulate(Eigen::VectorXd& x_init, Eigen::VectorXd& u) const;
+  const Eigen::VectorXd Simulate(Eigen::VectorXd& x_init,
+                                 Eigen::VectorXd& u);
+
 
   /*!
    * Accessors dynamics terms
    */
-  [[nodiscard]] const std::vector<Eigen::MatrixXd>& A() const { return A_; }
-  [[nodiscard]] const std::vector<Eigen::MatrixXd>& B() const { return B_; }
-  [[nodiscard]] const std::vector<Eigen::MatrixXd>& D() const { return D_; }
-  [[nodiscard]] const std::vector<Eigen::VectorXd>& d() const { return d_; }
-  [[nodiscard]] const std::vector<Eigen::MatrixXd>& E() const { return E_; }
-  [[nodiscard]] const std::vector<Eigen::MatrixXd>& F() const { return F_; }
-  [[nodiscard]] const std::vector<Eigen::MatrixXd>& H() const { return H_; }
-  [[nodiscard]] const std::vector<Eigen::VectorXd>& c() const { return c_; }
+  [[nodiscard]] const std::vector<Eigen::MatrixXd>& A() const {
+    return A_;
+  }
+  [[nodiscard]] const std::vector<Eigen::MatrixXd>& B() const {
+    return B_;
+  }
+  [[nodiscard]] const std::vector<Eigen::MatrixXd>& D() const {
+    return D_;
+  }
+  [[nodiscard]] const std::vector<Eigen::VectorXd>& d() const {
+    return d_;
+  }
+  [[nodiscard]] const std::vector<Eigen::MatrixXd>& E() const {
+    return E_;
+  }
+  [[nodiscard]] const std::vector<Eigen::MatrixXd>& F() const {
+    return F_;
+  }
+  [[nodiscard]] const std::vector<Eigen::MatrixXd>& H() const {
+    return H_;
+  }
+  [[nodiscard]] const std::vector<Eigen::VectorXd>& c() const {
+    return c_;
+  }
 
   /*!
    * Accessors for system dimensions
@@ -107,30 +124,17 @@ class LCS {
   }
 
   /*!
-   * Scales the complementarity dynamics by a factor, ensuring that
+   * Scale the complementarity dynamics, such that
    * \lambda_{unscaled} = scale_factor * \lambda_{scaled}
-   * preserves the equivalent system behavior. This can be used to adjust
-   * the numerical properties of the system for better optimization performance.
+   * result in equivalent system behavior
    */
-  double ScaleComplementarityDynamics();
+  void ScaleComplementarityDynamics(double scale_factor);
 
   /*!
    * Returns true if this LCS has the same horizon and state, input, and
    * lambda dimensions as other. Otherwise returns false.
    */
   bool HasSameDimensionsAs(const LCS& other) const;
-
-  /**
-   * @brief Create a temporary placeholder LCS object with all matrix values to
-   * be set to some default values
-   *
-   * @param n_x number of states
-   * @param n_u number of action inputs
-   * @param n_lambda number of force inputs
-   * @return A generated LCS place holder
-   */
-  static LCS CreatePlaceholderLCS(int n_x, int n_u, int n_lambda, int N,
-                                  double dt);
 
  private:
   std::vector<Eigen::MatrixXd> A_;
@@ -148,7 +152,6 @@ class LCS {
   int n_;
   int m_;
   int k_;
-
 };
 
 }  // namespace c3

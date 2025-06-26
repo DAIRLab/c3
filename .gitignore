@@ -5,5 +5,3 @@
 .clwb/
 MODULE.bazel
 MODULE.bazel.lock
-**/__pycache__/** 
-.vscode

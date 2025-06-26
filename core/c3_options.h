@@ -1,37 +1,40 @@
 #pragma once
 
-#include "drake/common/yaml/yaml_io.h"
 #include "drake/common/yaml/yaml_read_archive.h"
+#include "drake/common/yaml/yaml_io.h"
 
 namespace c3 {
 
 struct C3Options {
   // Hyperparameters
-  bool warm_start =
-      true;  // Use results of current admm iteration as warm start for next
-  bool end_on_qp_step =
-      true;  // If false, Run a half step calculating the state using the LCS
-  bool scale_lcs =
-      true;  // Scale the LCS matrices by a factor of norm(A[0])/norm(D[0])
+  int admm_iter = 3;     // total number of ADMM iterations
+  float rho_scale = 10;   // scaling of rho parameter (/rho = rho_scale * /rho)
+  int num_threads = 10;   // 0 is dynamic, greater than 0 for a fixed count
+  int delta_option = 1;  // different options for delta update
+  std::string projection_type;
+  std::string contact_model;
+  double M = 1000;  // big M value for MIQP
+  bool warm_start = true;
+  bool use_predicted_x0;
+  bool end_on_qp_step;
+  bool use_robust_formulation;
+  double solve_time_filter_alpha;
+  double publish_frequency;
 
-  int num_threads = 10;  // 0 is dynamic, greater than 0 for a fixed count
-  int delta_option =
-      1;  // 1 initializes the state value of the delta value with x0
+  std::vector<double> u_horizontal_limits;
+  std::vector<double> u_vertical_limits;
+  std::vector<Eigen::VectorXd> workspace_limits;
+  double workspace_margins;
 
-  std::string contact_model;    // "stewart_and_trinkle" or "anitescu"
-  int num_friction_directions;  // Number of friction directions per contact
-  int num_contacts;             // Number of contacts in the system
-
-  std::string projection_type;  // "QP" or "MIQP"
-  double M = 1000;              // big M value for MIQP
-
-  int N;              // number of time steps in the prediction horizon
-  double dt;          // time step size
-  int admm_iter = 3;  // total number of ADMM iterations
+  int N;
+  double gamma;
+  std::vector<double> mu;
+  double dt;
+  double solve_dt;
+  int num_friction_directions;
+  int num_contacts;
 
   // See comments below for how we parse the .yaml into the cost matrices
-  double gamma;          // scaling factor for state and input the cost matrices
-  float rho_scale = 10;  // scaling of rho parameter (/rho = rho_scale * /rho)
   Eigen::MatrixXd Q;
   Eigen::MatrixXd R;
   Eigen::MatrixXd G;
@@ -72,32 +75,37 @@ struct C3Options {
   std::vector<double> u_lambda;
   std::vector<double> u_u;
 
-  template <typename Archive>
-  void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(warm_start));
-    a->Visit(DRAKE_NVP(end_on_qp_step));
-    a->Visit(DRAKE_NVP(scale_lcs));
-
+  template<typename Archive>
+  void Serialize(Archive *a) {
+    a->Visit(DRAKE_NVP(admm_iter));
+    a->Visit(DRAKE_NVP(rho_scale));
     a->Visit(DRAKE_NVP(num_threads));
     a->Visit(DRAKE_NVP(delta_option));
-
     a->Visit(DRAKE_NVP(contact_model));
-    a->Visit(DRAKE_NVP(num_friction_directions));
-    a->Visit(DRAKE_NVP(num_contacts));
-
     a->Visit(DRAKE_NVP(projection_type));
     if (projection_type == "QP") {
       DRAKE_DEMAND(contact_model == "anitescu");
     }
-    a->Visit(DRAKE_NVP(M));
+    a->Visit(DRAKE_NVP(warm_start));
+    a->Visit(DRAKE_NVP(use_predicted_x0));
+    a->Visit(DRAKE_NVP(end_on_qp_step));
+    a->Visit(DRAKE_NVP(use_robust_formulation));
+    a->Visit(DRAKE_NVP(solve_time_filter_alpha));
+    a->Visit(DRAKE_NVP(publish_frequency));
+
+    a->Visit(DRAKE_NVP(workspace_limits));
+    a->Visit(DRAKE_NVP(u_horizontal_limits));
+    a->Visit(DRAKE_NVP(u_vertical_limits));
+    a->Visit(DRAKE_NVP(workspace_margins));
+
+    a->Visit(DRAKE_NVP(mu));
+    a->Visit(DRAKE_NVP(dt));
+    a->Visit(DRAKE_NVP(solve_dt));
+    a->Visit(DRAKE_NVP(num_friction_directions));
+    a->Visit(DRAKE_NVP(num_contacts));
 
     a->Visit(DRAKE_NVP(N));
-    a->Visit(DRAKE_NVP(dt));
-    a->Visit(DRAKE_NVP(admm_iter));
-
-    a->Visit(DRAKE_NVP(rho_scale));
     a->Visit(DRAKE_NVP(gamma));
-
     a->Visit(DRAKE_NVP(w_Q));
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_G));
@@ -148,10 +156,9 @@ struct C3Options {
     Eigen::VectorXd u = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->u_vector.data(), this->u_vector.size());
 
-    DRAKE_DEMAND(static_cast<int>(g_lambda.size()) ==
-                 num_contacts * num_friction_directions * 2);
-    DRAKE_DEMAND(static_cast<int>(u_lambda.size()) ==
-                 num_contacts * num_friction_directions * 2);
+    DRAKE_DEMAND(static_cast<int>(g_lambda.size()) == num_contacts * num_friction_directions * 2);
+    DRAKE_DEMAND(static_cast<int>(u_lambda.size()) == num_contacts * num_friction_directions * 2);
+    DRAKE_DEMAND(static_cast<int>(mu.size()) == num_contacts);
     DRAKE_DEMAND(g.size() == u.size());
 
     Q = w_Q * q.asDiagonal();
@@ -161,68 +168,9 @@ struct C3Options {
   }
 };
 
-inline C3Options LoadC3Options(const std::string& filename) {
+inline C3Options LoadC3Options(const std::string &filename) {
   auto options = drake::yaml::LoadYamlFile<C3Options>(filename);
   return options;
 }
 
-/**
- * @struct C3StatePredictionJoint
- * @brief Represents the state prediction parameters for a joint in the system.
- *
- * This structure is used to define the properties of a joint, including its
- * name and the maximum allowable acceleration. The joints specified will be
- * used for clamping the predicted state during the optimization process to
- * ensure that the predicted states remain within physically realistic bounds
- * based on the maximum acceleration.
- *
- * In C3 Options file, the structure to specify these joints would look like:
- * ```
- * state_prediction_joints:
- *   - name: "joint_name"
- *     max_acceleration: 10.0  # Maximum acceleration in m/s^2
- *   - name: "another_joint_name"
- *     max_acceleration: 5.0   # Maximum acceleration in m/s^2
- * ```
- * or 
- * ```
- * state_prediction_joints: []
- * ```
- * If no predicition is required
- */
-struct C3StatePredictionJoint {
-  // Joint name
-  std::string name;
-  // Maximum acceleration for the joint
-  double max_acceleration;
-
-  template <typename Archive>
-  void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(name));
-    a->Visit(DRAKE_NVP(max_acceleration));
-  }
-};
-
-struct C3ControllerOptions : public C3Options {
-  // Additional options specific to the C3Controller
-  double solve_time_filter_alpha = 0.0;
-  double publish_frequency = 100.0;  // Hz
-
-  std::vector<C3StatePredictionJoint> state_prediction_joints;
-
-  template <typename Archive>
-  void Serialize(Archive* a) {
-    C3Options::Serialize(a);
-    a->Visit(DRAKE_NVP(solve_time_filter_alpha));
-    a->Visit(DRAKE_NVP(publish_frequency));
-    a->Visit(DRAKE_NVP(state_prediction_joints));
-  }
-};
-
-inline C3ControllerOptions LoadC3ControllerOptions(
-    const std::string& filename) {
-  auto options = drake::yaml::LoadYamlFile<C3ControllerOptions>(filename);
-  return options;
-}
-
-}  // namespace c3
+} // namespace c3
