@@ -3,7 +3,6 @@
 /bazel-out
 /bazel-testlogs
 .clwb/
-MODULE.bazel
 MODULE.bazel.lock
 **/__pycache__/** 
 .vscode
