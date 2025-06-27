@@ -1,7 +1,7 @@
 FROM ubuntu:noble
 WORKDIR C3
 COPY . .
-RUN apt-get update && apt-get install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip clang-15 clang-format-15 ca-certificates gnupg
+RUN apt-get update && apt-get install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip clang-19 clang-format-19 ca-certificates gnupg
 
 RUN set -eux \
   && apt-get install --no-install-recommends  locales \
