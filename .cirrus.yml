@@ -5,8 +5,8 @@ C3_jammy_task:
     cpu: 8
     memory: 24
   test_script:
-    - export CC=clang-12
-    - export CXX=clang++-12
+    - export CC=clang-15
+    - export CXX=clang++-15
     - bazel build
       --define=WITH_GUROBI=OFF
       --local_resources=ram=24000
@@ -25,8 +25,8 @@ C3_noble_task:
     cpu: 8
     memory: 24
   test_script:
-    - export CC=clang-12
-    - export CXX=clang++-12
+    - export CC=clang-19
+    - export CXX=clang++-19
     - bazel build
       --define=WITH_GUROBI=OFF
       --local_resources=ram=24000
