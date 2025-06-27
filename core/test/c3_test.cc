@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "core/c3_miqp.h"
+#include "core/c3_qp.h"
 #include "core/test/c3_cartpole_problem.hpp"
 
 #include "drake/math/discrete_algebraic_riccati_equation.h"
@@ -57,9 +57,9 @@ class C3CartpoleTest : public testing::Test, public C3CartpoleProblem {
  protected:
   C3CartpoleTest() {
     C3CartpoleProblem(0.411, 0.978, 0.6, 0.4267, 0.35, -0.35, 100, 9.81);
-    pOpt = std::make_unique<C3MIQP>(*pSystem, cost, xdesired, options);
+    pOpt = std::make_unique<C3QP>(*pSystem, cost, xdesired, options);
   }
-  std::unique_ptr<C3MIQP> pOpt;
+  std::unique_ptr<C3QP> pOpt;
 };
 
 // Test constructor (maintain backward compatibility if constructor changed)
@@ -342,7 +342,7 @@ TEST_F(C3CartpoleTest, End2EndCartpoleTest) {
   std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
 
-  int timesteps = 500;  // number of timesteps for the simulation
+  int timesteps = 1000;  // number of timesteps for the simulation
 
   /// create state and input arrays
   std::vector<VectorXd> x(timesteps, VectorXd::Zero(n));
