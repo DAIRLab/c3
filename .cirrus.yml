@@ -4,10 +4,17 @@ C3_jammy_task:
     dockerfile: tools/install/jammy/Dockerfile
     cpu: 8
     memory: 24
+  build_cache:
+    folder: bazel-*/
   test_script:
     - export CC=clang-15
     - export CXX=clang++-15
-    - bazel build --define=WITH_GUROBI=OFF --local_resources=ram=24000 --local_resources=cpu=8 --jobs=8 //...
+    - bazel build
+      --define=WITH_GUROBI=OFF
+      --local_resources=ram=24000
+      --local_resources=cpu=8
+      --jobs=8
+      //...
     - bazel test
       --define=WITH_GUROBI=OFF
       --local_resources=ram=24000
@@ -19,6 +26,8 @@ C3_noble_task:
     dockerfile: tools/install/noble/Dockerfile
     cpu: 8
     memory: 24
+  build_cache:
+    folder: bazel-*/
   test_script:
     - export CC=clang-15
     - export CXX=clang++-15
@@ -26,7 +35,7 @@ C3_noble_task:
       --define=WITH_GUROBI=OFF
       --local_resources=ram=24000
       --local_resources=cpu=8
-      --jobs=8 
+      --jobs=8
       //...
     - bazel test
       --define=WITH_GUROBI=OFF
