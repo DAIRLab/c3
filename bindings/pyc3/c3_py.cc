@@ -66,12 +66,12 @@ PYBIND11_MODULE(c3, m) {
           [](C3::CostMatrices& self, const std::vector<Eigen::MatrixXd>& val) {
             self.U = val;
           });
-  
+
   py::enum_<ConstraintVariable>(m, "ConstraintVariable")
-        .value("STATE", ConstraintVariable::STATE)
-        .value("INPUT", ConstraintVariable::INPUT)
-        .value("FORCE", ConstraintVariable::FORCE)
-        .export_values();
+      .value("STATE", ConstraintVariable::STATE)
+      .value("INPUT", ConstraintVariable::INPUT)
+      .value("FORCE", ConstraintVariable::FORCE)
+      .export_values();
 
   py::class_<C3, PyC3>(m, "C3")
       .def(py::init<const LCS&, const C3::CostMatrices&,
@@ -96,12 +96,14 @@ PYBIND11_MODULE(c3, m) {
       .def("AddLinearConstraint",
            static_cast<void (C3::*)(
                const Eigen::MatrixXd&, const Eigen::VectorXd&,
-               const Eigen::VectorXd&, ConstraintVariable)>(&C3::AddLinearConstraint),
+               const Eigen::VectorXd&, ConstraintVariable)>(
+               &C3::AddLinearConstraint),
            py::arg("A"), py::arg("lower_bound"), py::arg("upper_bound"),
            py::arg("constraint_type"))
       .def("AddLinearConstraint",
            static_cast<void (C3::*)(const Eigen::RowVectorXd&, double, double,
-                                    ConstraintVariable)>(&C3::AddLinearConstraint),
+                                    ConstraintVariable)>(
+               &C3::AddLinearConstraint),
            py::arg("A"), py::arg("lower_bound"), py::arg("upper_bound"),
            py::arg("constraint_type"))
       .def("RemoveConstraints", &C3::RemoveConstraints)
@@ -113,7 +115,10 @@ PYBIND11_MODULE(c3, m) {
       .def("GetForceSolution", &C3::GetForceSolution)
       .def("GetInputSolution", &C3::GetInputSolution)
       .def("GetDualDeltaSolution", &C3::GetDualDeltaSolution)
-      .def("GetDualWSolution", &C3::GetDualWSolution);
+      .def("GetDualWSolution", &C3::GetDualWSolution)
+      .def_static("CreateCostMatricesFromC3Options",
+                  &C3::CreateCostMatricesFromC3Options, py::arg("options"),
+                  py::arg("N"));
 
   py::class_<C3MIQP, C3>(m, "C3MIQP")
       .def(py::init<const LCS&, const C3::CostMatrices&,
@@ -167,8 +172,19 @@ PYBIND11_MODULE(c3, m) {
       .def("num_states", &LCS::num_states, py::return_value_policy::copy)
       .def("num_inputs", &LCS::num_inputs, py::return_value_policy::copy)
       .def("num_lambdas", &LCS::num_lambdas, py::return_value_policy::copy)
+      .def("set_A", &LCS::set_A, py::arg("A"))
+      .def("set_B", &LCS::set_B, py::arg("B"))
+      .def("set_D", &LCS::set_D, py::arg("D"))
+      .def("set_d", &LCS::set_d, py::arg("d"))
+      .def("set_E", &LCS::set_E, py::arg("E"))
+      .def("set_F", &LCS::set_F, py::arg("F"))
+      .def("set_H", &LCS::set_H, py::arg("H"))
+      .def("set_c", &LCS::set_c, py::arg("c"))
       .def("__copy__", [](const LCS& self) { return LCS(self); })
-      .def("__deepcopy__", [](const LCS& self, py::dict) { return LCS(self); });
+      .def("__deepcopy__", [](const LCS& self, py::dict) { return LCS(self); })
+      .def_static("CreatePlaceholderLCS", &LCS::CreatePlaceholderLCS,
+                  py::arg("n_x"), py::arg("n_u"), py::arg("n_lambda"),
+                  py::arg("N"), py::arg("dt"));
 
   py::class_<C3Options> cls(m, "C3Options");
   cls.def(py::init<>());
@@ -200,27 +216,12 @@ PYBIND11_MODULE(c3, m) {
       .def_readwrite("end_on_qp_step", &C3Options::end_on_qp_step)
       .def_readwrite("num_threads", &C3Options::num_threads)
       .def_readwrite("delta_option", &C3Options::delta_option)
-      .def_readwrite("contact_model", &C3Options::contact_model)
-      .def_readwrite("num_friction_directions",
-                     &C3Options::num_friction_directions)
-      .def_readwrite("num_contacts", &C3Options::num_contacts)
-      .def_readwrite("projection_type", &C3Options::projection_type)
       .def_readwrite("M", &C3Options::M)
-      .def_readwrite("N", &C3Options::N)
-      .def_readwrite("dt", &C3Options::dt)
       .def_readwrite("admm_iter", &C3Options::admm_iter)
       .def_readwrite("gamma", &C3Options::gamma)
       .def_readwrite("rho_scale", &C3Options::rho_scale);
 
   m.def("LoadC3Options", &LoadC3Options);
-
-  py::class_<C3ControllerOptions, C3Options>(m, "C3ControllerOptions")
-      .def(py::init<>())
-      .def_readwrite("solve_time_filter_alpha",
-                     &C3ControllerOptions::solve_time_filter_alpha)
-      .def_readwrite("publish_frequency",
-                     &C3ControllerOptions::publish_frequency);
-  m.def("LoadC3ControllerOptions", &LoadC3ControllerOptions);
 }
 }  // namespace pyc3
 }  // namespace c3

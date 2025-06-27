@@ -22,29 +22,47 @@ cc_library(
         "c3_controller.cc",
         "lcs_simulator.cc",
         "framework/c3_output.cc",
+        "lcs_factory_system.cc",
     ],
     hdrs = [
         "c3_controller.h",
         "lcs_simulator.h",
         "framework/c3_output.h",
+        "lcs_factory_system.h",
         
         ],
     deps = [
-        "//core:c3",
         ":vector",
+        ":options",
+        "//core:c3",
+        "//core:options",
+        "//multibody:lcs_factory",
         "@drake//:drake_shared_library",
     ],
 )
 
+cc_library(
+    name = "options",
+    hdrs = [
+        "c3_controller_options.h",
+    ],
+    deps = [
+        "//core:options",
+        "//multibody:options",
+        "@drake//:drake_shared_library",
+    ]
+)
+
 filegroup(
-        name = 'test_data',
-        srcs = glob(['test/res/**'])
+    name = 'test_data',
+    srcs = glob(['test/resources/**'])
 )
 
 cc_binary(
     name = "c3_controller_test",
     srcs = [
-        "test/c3_controller_test.cc"],
+        "test/c3_controller_test.cc", 
+        "test/test_utils.hpp" ],
     data = [
         ":test_data"
     ],
@@ -53,6 +71,23 @@ cc_binary(
         ":systems",
         ":system_utils",
         "//core:c3_cartpole_problem",
+    ]
+)
+
+cc_binary(
+    name = "lcs_factory_system_test",
+    srcs = [
+        "test/lcs_factory_system_test.cc", 
+        "test/test_utils.hpp" ],
+    data = [
+        ":test_data",
+    ],
+    deps = [
+        "//core:c3",
+        ":systems",
+        ":system_utils",
+        "//core:c3_cartpole_problem",
+        "@gflags",
     ]
 )
 

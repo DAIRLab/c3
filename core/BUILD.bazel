@@ -4,8 +4,9 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "solver_options_io",
-    hdrs = ["solver_options_io.h"],
+    name = "options",
+    hdrs = ["c3_options.h",
+            "solver_options_io.h"],
     deps = [
         "@drake//:drake_shared_library",
     ],
@@ -27,7 +28,6 @@ cc_library(
     hdrs = [
         "c3.h",
         "c3_miqp.h",
-        "c3_options.h",
         "c3_qp.h",
     ],
     copts = ["-fopenmp"],
@@ -37,7 +37,7 @@ cc_library(
     ]),
     deps = [
         ":lcs",
-        ":solver_options_io",
+        ":options",
         "@drake//:drake_shared_library",
     ] + select({
          "//tools:with_gurobi": ["@gurobi//:gurobi_cxx"],
@@ -55,8 +55,8 @@ cc_library(
 )
 
 filegroup(
-        name = 'test_data',
-        srcs = glob(['test/res/**'])
+    name = 'test_data',
+    srcs = glob(['test/resources/**'])
 )
 
 cc_library(

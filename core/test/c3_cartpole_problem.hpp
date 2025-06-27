@@ -38,22 +38,30 @@ class C3CartpoleProblem {
    */
   C3CartpoleProblem(float mp = 0.411, float mc = 0.978, float len_p = 0.6,
                     float len_com = 0.4267, float d1 = 0.35, float d2 = -0.35,
-                    float ks = 100, float g = 9.81) {
+                    float ks = 100, float g = 9.81, int N = 5, float dt = 0.01)
+      : mp(mp),
+        mc(mc),
+        len_p(len_p),
+        len_com(len_com),
+        d1(d1),
+        d2(d2),
+        ks(ks),
+        g(g),
+        N(N),
+        dt(dt) {
     // Initialize dimensions
     n = 4;  // State dimension
     m = 2;  // Complementarity variable dimension
     k = 1;  // Input dimension
 
     // Load controller options from YAML file
-    options = drake::yaml::LoadYamlFile<C3ControllerOptions>(
-        "core/test/res/c3_cartpole_options.yaml");
-    N = options.N;
-    dt = options.dt;  // Time step for the controller
-    float Ts = options.dt;  // Sampling time for the LCS
+    options = drake::yaml::LoadYamlFile<C3Options>(
+        "core/test/resources/c3_cartpole_options.yaml");
+    float Ts = dt;  // Sampling time for the LCS
 
     // Initial state
     x0.resize(n);
-    x0 << 0, -0.5, 0.5, -0.4;
+    x0 << 0.1, -0.5, 0.5, -0.4;
 
     // System dynamics matrices
     MatrixXd Ainit(n, n);
@@ -98,7 +106,7 @@ class C3CartpoleProblem {
     vector<MatrixXd> H(N, Hinit);
 
     // Create LCS system
-    pSystem = std::make_unique<LCS>(A, B, D, d, E, F, H, c, options.dt);
+    pSystem = std::make_unique<LCS>(A, B, D, d, E, F, H, c, dt);
 
     // Use Riccati equation to estimate future cost
     MatrixXd QNinit = drake::math::DiscreteAlgebraicRiccatiEquation(
@@ -121,6 +129,9 @@ class C3CartpoleProblem {
     xdesired.resize(N + 1, xdesiredinit);
   }
 
+  // Cartpole problem parameters
+  float mp, mc, len_p, len_com, d1, d2, ks, g;
+
   // Dimensions (n: state, m: complementarity, k: input, N: MPC horizon)
   int n, m, k, N;
   double dt;
@@ -130,7 +141,7 @@ class C3CartpoleProblem {
   vector<VectorXd> xdesired;
 
   // C3 options
-  C3ControllerOptions options;
+  C3Options options;
 
   // Unique pointer to LCS system
   std::unique_ptr<LCS> pSystem;

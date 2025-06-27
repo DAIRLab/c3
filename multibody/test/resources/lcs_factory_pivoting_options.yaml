@@ -1,0 +1,7 @@
+contact_model: "stewart_and_trinkle"
+num_friction_directions: 1
+num_contacts: 3
+spring_stiffness: 0
+mu: [0.1, 0.1, 0.1]
+N: 10
+dt: 0.01

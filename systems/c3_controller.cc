@@ -6,6 +6,7 @@
 
 #include "core/c3_miqp.h"
 #include "core/c3_qp.h"
+#include "multibody/lcs_factory.h"
 
 namespace c3 {
 
@@ -28,7 +29,7 @@ C3Controller::C3Controller(
     : plant_(plant),
       controller_options_(controller_options),
       publish_frequency_(controller_options.publish_frequency),
-      N_(controller_options_.N) {
+      N_(controller_options_.lcs_factory_options.N) {
   this->set_name("c3_controller");
 
   // Initialize dimensions
@@ -36,7 +37,7 @@ C3Controller::C3Controller(
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
-  dt_ = controller_options_.dt;
+  dt_ = controller_options_.lcs_factory_options.dt;
   solve_time_filter_constant_ = controller_options_.solve_time_filter_alpha;
 
   // Initialize state prediction joints
@@ -56,19 +57,8 @@ C3Controller::C3Controller(
   }
 
   // Determine the size of lambda based on the contact model
-  n_lambda_ = 0;
-  if (controller_options_.contact_model == "stewart_and_trinkle") {
-    n_lambda_ = 2 * controller_options_.num_contacts +
-                2 * controller_options_.num_friction_directions *
-                    controller_options_.num_contacts;
-  } else if (controller_options_.contact_model == "anitescu") {
-    n_lambda_ = 2 * controller_options_.num_friction_directions *
-                controller_options_.num_contacts;
-  } else {
-    drake::log()->error("Unknown contact model: {}",
-                        controller_options_.contact_model);
-  }
-  DRAKE_THROW_UNLESS(n_lambda_ > 0);
+  n_lambda_ = multibody::LCSFactory::GetNumContactVariables(
+      controller_options_.lcs_factory_options);
 
   // Placeholder vector for initialization
   VectorXd zeros = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
@@ -81,11 +71,12 @@ C3Controller::C3Controller(
 
   // Initialize the C3 problem based on the projection type
   if (controller_options_.projection_type == "MIQP") {
-    c3_ = std::make_unique<C3MIQP>(lcs_placeholder, costs,
-                                   x_desired_placeholder, controller_options_);
+    c3_ =
+        std::make_unique<C3MIQP>(lcs_placeholder, costs, x_desired_placeholder,
+                                 controller_options_.c3_options);
   } else if (controller_options_.projection_type == "QP") {
     c3_ = std::make_unique<C3QP>(lcs_placeholder, costs, x_desired_placeholder,
-                                 controller_options_);
+                                 controller_options_.c3_options);
   } else {
     drake::log()->error("Unknown projection type : {}",
                         controller_options_.projection_type);
@@ -219,7 +210,8 @@ void C3Controller::ResolvePredictedState(drake::VectorX<double>& x0,
     // Get the joint indices for position and velocity
     int x_idx = joint.q_start_index;
     int v_idx = n_q_ + joint.v_start_index;
-    // Ensure the joint states are within bounds [x + v*dt - a*dt^2, x + v*dt + a*dt^2]
+    // Ensure the joint states are within bounds [x + v*dt - a*dt^2, x + v*dt +
+    // a*dt^2]
     DRAKE_DEMAND(x_idx >= 0 && x_idx < n_q_);
     x0[x_idx] = std::clamp(
         predicted_state[x_idx],

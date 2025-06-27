@@ -3,8 +3,7 @@ from scipy import linalg
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from pyc3 import LCS, C3MIQP, C3ControllerOptions, CostMatrices, LoadC3ControllerOptions
-
+from pyc3 import LCS, C3MIQP, C3ControllerOptions, CostMatrices, LoadC3Options
 
 
 def make_cartpole_with_soft_walls_dynamics(N: int) -> LCS:
@@ -48,40 +47,50 @@ def make_cartpole_with_soft_walls_dynamics(N: int) -> LCS:
     d = np.zeros((4, 1))
     H = np.zeros((2, 1))
 
-    return LCS(A, B, D, d, E, F, H, c, N, dt,)
+    return LCS(
+        A,
+        B,
+        D,
+        d,
+        E,
+        F,
+        H,
+        c,
+        N,
+        dt,
+    )
 
 
-def make_cartpole_costs(lcs:LCS, options: C3ControllerOptions) -> CostMatrices:
+def make_cartpole_costs(lcs: LCS, options: C3ControllerOptions, N: int) -> CostMatrices:
 
-    R = [options.R for _ in range(options.N)]
-    Q = [options.Q for _ in range(options.N)]
+    R = [options.R for _ in range(N)]
+    Q = [options.Q for _ in range(N)]
     Q.append(linalg.solve_discrete_are(lcs.A()[0], lcs.B()[0], options.Q, options.R))
-    G = [options.G for _ in range(options.N)]
-    U = [options.U for _ in range(options.N)]
+    G = [options.G for _ in range(N)]
+    U = [options.U for _ in range(N)]
 
     return CostMatrices(Q, R, G, U)
 
 
 def main():
-    options = LoadC3ControllerOptions(
-        "core/test/res/c3_cartpole_options.yaml"
-    )
-    cartpole = make_cartpole_with_soft_walls_dynamics(options.N)
-    costs = make_cartpole_costs(cartpole, options)
+    N = 5
+    options = LoadC3Options("core/test/resources/c3_cartpole_options.yaml")
+    cartpole = make_cartpole_with_soft_walls_dynamics(N)
+    costs = make_cartpole_costs(cartpole, options, N)
 
     n = cartpole.num_states()
 
     x0 = np.zeros((n, 1))
-    xd = [x0 for _ in range(options.N + 1)]
+    xd = [x0 for _ in range(N + 1)]
 
     opt = C3MIQP(cartpole, costs, xd, options)
-    
+
     x0[0] = 0.01
     x0[2] = 0.03
 
     system_iter = 500
 
-    x = np.zeros((n, system_iter+1))
+    x = np.zeros((n, system_iter + 1))
 
     x[:, 0] = x0.ravel()
 
@@ -89,7 +98,7 @@ def main():
         opt.Solve(x[:, i])
         u_opt = opt.GetInputSolution()[0]
         prediction = cartpole.Simulate(x[:, i], u_opt)
-        x[:, i+1] = prediction
+        x[:, i + 1] = prediction
 
     dt = cartpole.dt()
     time_x = np.arange(0, system_iter * dt + dt, dt)

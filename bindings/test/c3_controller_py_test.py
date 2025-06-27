@@ -3,17 +3,16 @@ from pydrake.geometry import Meshcat
 from pyc3 import (
     C3Controller,
     LCSSimulator,
-    TimestampedVector,
-    C3Solution,
     LoadC3ControllerOptions,
 )
-from bindings.test.c3_core_py_test import make_cartpole_with_soft_walls_dynamics, make_cartpole_costs
+from test_utils import C3Solution2Input, Vector2TimestampedVector
+from bindings.test.c3_core_py_test import (
+    make_cartpole_with_soft_walls_dynamics,
+    make_cartpole_costs,
+)
 
 from pydrake.all import (
-    AbstractValue,
-    BasicVector,
     DiagramBuilder,
-    LeafSystem,
     SceneGraph,
     Simulator,
     ZeroOrderHold,
@@ -35,7 +34,7 @@ def AddVisualizer(builder, scene_graph, state_port, time_step=0.0):
     parser = Parser(plant, scene_graph)
 
     # Load the Cartpole model from an SDF file.
-    file = "systems/test/res/cartpole_softwalls.sdf"
+    file = "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf"
     parser.AddModels(file)
     plant.Finalize()
 
@@ -56,53 +55,17 @@ def AddVisualizer(builder, scene_graph, state_port, time_step=0.0):
     return plant
 
 
-class C3Solution2Input(LeafSystem):
-    def __init__(self):
-        super().__init__()
-        # Declare input port for C3 solutions.
-        self.c3_solution_port_index = self.DeclareAbstractInputPort(
-            "c3_solution", Value(C3Solution())
-        ).get_index()
-        # Declare output port for actions.
-        self.c3_action_port_index = self.DeclareVectorOutputPort(
-            "u", BasicVector(1), self.GetC3Action
-        ).get_index()
-
-    def GetC3Action(self, context, output):
-        input_value = self.EvalAbstractInput(context, 0)
-        assert input_value is not None
-        sol = input_value.get_value()
-        output[0] = sol.u_sol[0][0]  # Set action output.
-
-
-class Vector2TimestampedVector(LeafSystem):
-    def __init__(self):
-        super().__init__()
-        self.vector_port_index = self.DeclareVectorInputPort(
-            "state", BasicVector(4)
-        ).get_index()
-        self.timestamped_vector_port_index = self.DeclareVectorOutputPort(
-            "timestamped_state",
-            TimestampedVector(4),
-            self.Convert,
-        ).get_index()
-
-    def Convert(self, context, output):
-        input_vector = self.EvalVectorInput(context, self.vector_port_index).get_value()
-        output.SetDataVector(input_vector)
-        output.set_timestamp(context.get_time())  # Set timestamp.
-
-
 def DoMain():
     builder = DiagramBuilder()
     scene_graph = builder.AddSystem(SceneGraph())
+    N = 5
 
     # Initialize the C3 cartpole problem.
     options = LoadC3ControllerOptions(
-        "/home/stephen/Workspace/DAIR/c3/core/test/res/c3_cartpole_options.yaml"
+        "systems/test/resources/cartpole_softwalls/c3_controller_cartpole_options.yaml"
     )
-    cartpole = make_cartpole_with_soft_walls_dynamics(options.N)
-    costs = make_cartpole_costs(cartpole, options)
+    cartpole = make_cartpole_with_soft_walls_dynamics(N)
+    costs = make_cartpole_costs(cartpole, options.c3_options, N)
 
     # Add the LCS simulator.
     lcs_simulator = builder.AddSystem(LCSSimulator(cartpole))
@@ -135,7 +98,7 @@ def DoMain():
     xdes = builder.AddSystem(ConstantVectorSource(np.zeros((n, 1))))
 
     # Add vector-to-timestamped-vector converter.
-    vector_to_timestamped_vector = builder.AddSystem(Vector2TimestampedVector())
+    vector_to_timestamped_vector = builder.AddSystem(Vector2TimestampedVector(n))
     builder.Connect(
         state_zero_order_hold.get_output_port(),
         vector_to_timestamped_vector.get_input_port(0),
@@ -150,7 +113,7 @@ def DoMain():
     builder.Connect(xdes.get_output_port(), c3_controller.get_input_port_target())
 
     # Add and connect C3 solution action system.
-    c3_action = builder.AddSystem(C3Solution2Input())
+    c3_action = builder.AddSystem(C3Solution2Input(cartpole.num_inputs()))
     builder.Connect(
         c3_controller.get_output_port_c3_solution(), c3_action.get_input_port(0)
     )

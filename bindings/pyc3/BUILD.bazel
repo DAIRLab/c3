@@ -25,12 +25,30 @@ pybind_py_library(
 )
 
 pybind_py_library(
+    name = "c3_multibody_py",
+    cc_deps = ["//multibody:lcs_factory",
+                "@drake//:drake_shared_library",
+                "@drake//bindings/pydrake/common:default_scalars_pybind",
+                "@drake//bindings/pydrake/common:sorted_pair_pybind",
+                ],
+    cc_so_name = "multibody",
+    cc_srcs = ["c3_multibody_py.cc"],
+    py_deps = [
+        ":module_py",
+        "@drake//bindings/pydrake"
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
     name = "c3_systems_py",
     cc_deps = ["//systems:systems", 
                 "@drake//:drake_shared_library",
                 "@drake//bindings/pydrake/common:cpp_template_pybind",
                 "@drake//bindings/pydrake/common:default_scalars_pybind",
-                "@drake//bindings/pydrake/common:value_pybind"],
+                "@drake//bindings/pydrake/common:value_pybind",
+                "@drake//bindings/pydrake/common:sorted_pair_pybind",
+                ],
     cc_so_name = "systems",
     cc_srcs = ["c3_systems_py.cc"],
     py_deps = [
@@ -57,7 +75,8 @@ py_library(
 PY_LIBRARIES = [
     ":module_py",
     ":c3_py",
-    ":c3_systems_py"
+    ":c3_systems_py",
+    ":c3_multibody_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

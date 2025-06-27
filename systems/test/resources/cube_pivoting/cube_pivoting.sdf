@@ -1,0 +1,205 @@
+<?xml version="1.0"?>
+<sdf version='1.7'>
+  <world name="cube_pivoting_test_world">
+    <model name="cube_pivoting">
+
+      <link name='platform'>
+        <pose> 0, 0, -0.1, 0, 0, 0</pose>
+        <visual name="platform_visual">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>10 10 0.1</size>
+            </box>
+          </geometry>
+          <material>
+            <diffuse>0 0 0 0.5</diffuse>
+          </material>
+        </visual>
+        <collision name="platform_collision">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>10 10 0.1</size>
+            </box>
+          </geometry>
+          <drake:proximity_properties>
+            <drake:mu_static>0.1</drake:mu_static>
+            <drake:mu_dynamic>0.1</drake:mu_dynamic>
+          </drake:proximity_properties>
+        </collision>
+      </link>
+
+      <link name='cube'>
+        <pose> 0, 0, 0, 0, 0, 0</pose>
+        <inertial>
+          <mass>1</mass>
+        </inertial>
+        <visual name="cube_visual">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>1 1 1</size>
+            </box>
+          </geometry>
+          <material>
+            <diffuse>0.8 0.4 0.0 0.5</diffuse>
+          </material>
+        </visual>
+        <collision name="cube_collision">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>1 1 1</size>
+            </box>
+          </geometry>
+          <drake:proximity_properties>
+            <drake:mu_static>0.1</drake:mu_static>
+            <drake:mu_dynamic>0.1</drake:mu_dynamic>
+          </drake:proximity_properties>
+        </collision>
+      </link>
+
+      <link name='left_finger'>
+        <pose> 0, 0, 0, 1.57079632679, 0, 0</pose>
+        <inertial>
+          <mass>1</mass>
+        </inertial>
+        <visual name="left_finger_visual">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <sphere>
+              <radius>0.1</radius>
+            </sphere>
+          </geometry>
+          <material>
+            <diffuse>0.8 0 0.0 1</diffuse>
+          </material>
+        </visual>
+        <collision name="left_finger_collision">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <sphere>
+              <radius>0.1</radius>
+            </sphere>
+          </geometry>
+          <drake:proximity_properties>
+            <drake:mu_static>0.1</drake:mu_static>
+            <drake:mu_dynamic>0.1</drake:mu_dynamic>
+          </drake:proximity_properties>
+        </collision>
+      </link>
+
+      <link name='right_finger'>
+        <inertial>
+          <mass>1</mass>
+        </inertial>
+        <pose> 0, 0, 0, 1.57079632679, 0, 0</pose>
+        <visual name="right_finger_visual">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <sphere>
+              <radius>0.1</radius>
+            </sphere>
+          </geometry>
+          <material>
+            <diffuse>0.8 0 0.0 1</diffuse>
+          </material>
+        </visual>
+        <collision name="right_finger_collision">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <sphere>
+              <radius>0.1</radius>
+            </sphere>
+          </geometry>
+          <drake:proximity_properties>
+            <drake:mu_static>0.1</drake:mu_static>
+            <drake:mu_dynamic>0.1</drake:mu_dynamic>
+          </drake:proximity_properties>
+        </collision>
+      </link>
+
+      <joint name='platform_fixed' type='fixed'>
+        <parent>world</parent>
+        <child>platform</child>
+      </joint>
+
+      <link name='world_frame' />
+
+      <joint name='world_fixed' type='fixed'>
+        <parent>world</parent>
+        <child>world_frame</child>
+      </joint>
+
+      <frame name='cube_motion_frame' attached_to='world_fixed'>
+        <pose>0 0 0 1.57079632679 0 0</pose>
+      </frame>
+      <frame name='cube_frame' attached_to='cube' />
+
+      <drake:joint name="cube_joint" type="planar">
+        <drake:parent>cube_motion_frame</drake:parent>
+        <drake:child>cube_frame</drake:child>
+        <drake:damping>0.0 0.0 0.0</drake:damping>
+      </drake:joint>
+
+      <link name='left_virtual_frame' />
+
+      <joint name='left_finger_x' type='prismatic'>
+        <parent>world</parent>
+        <child>left_virtual_frame</child>
+        <axis>
+          <xyz>1.0 0.0 0.0</xyz>
+          <limit>
+            <effort>10.0</effort>
+            <lower>-1</lower>
+            <upper>0</upper>
+          </limit>
+        </axis>
+      </joint>
+
+      <joint name='left_finger_y' type='prismatic'>
+        <parent>left_virtual_frame</parent>
+        <child>left_finger</child>
+        <axis>
+          <xyz>0.0 1.0 0.0</xyz>
+          <limit>
+            <effort>10.0</effort>
+            <lower>0</lower>
+            <upper>1</upper>
+          </limit>
+        </axis>
+      </joint>
+
+      <link name='right_virtual_frame' />
+
+      <joint name='right_finger_x' type='prismatic'>
+        <parent>world</parent>
+        <child>right_virtual_frame</child>
+        <axis>
+          <xyz>1.0 0.0 0.0</xyz>
+          <limit>
+            <effort>10.0</effort>
+            <lower>0</lower>
+            <upper>1</upper>
+          </limit>
+        </axis>
+      </joint>
+
+      <joint name='right_finger_y' type='prismatic'>
+        <parent>right_virtual_frame</parent>
+        <child>right_finger</child>
+        <axis>
+          <xyz>0.0 1.0 0.0</xyz>
+          <limit>
+            <effort>10.0</effort>
+            <lower>0</lower>
+            <upper>1</upper>
+          </limit>
+        </axis>
+      </joint>
+
+    </model>
+  </world>
+
+</sdf>
