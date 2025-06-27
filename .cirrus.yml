@@ -21,7 +21,7 @@ C3_jammy_task:
       //...
   always:
     test_artifact:
-      path: "bazel-testlogs/**.xml"
+      path: "bazel-testlogs/**/*.xml"
       format: junit
 
 C3_noble_task:
@@ -47,5 +47,5 @@ C3_noble_task:
       //...
   always:
     test_artifact:
-      path: "bazel-testlogs/**.xml"
+      path: "bazel-testlogs/**/*.xml"
       format: junit

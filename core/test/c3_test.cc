@@ -123,7 +123,7 @@ TEST_P(C3CartpoleTestParameterizedLinearConstraints, LinearConstraintsTest) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     LinearConstraintTests, C3CartpoleTestParameterizedLinearConstraints,
     ::testing::Values(std::make_tuple(false, c3::ConstraintVariable::STATE, 4),
                       std::make_tuple(false, c3::ConstraintVariable::INPUT, 1),
