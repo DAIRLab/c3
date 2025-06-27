@@ -18,6 +18,7 @@ C3_jammy_task:
       --define=WITH_GUROBI=OFF
       --local_resources=ram=24000
       --local_resources=cpu=8
+      --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
   always:
     test_artifact:
@@ -44,6 +45,7 @@ C3_noble_task:
       --define=WITH_GUROBI=OFF
       --local_resources=ram=24000
       --local_resources=cpu=8
+      --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
   always:
     test_artifact:
