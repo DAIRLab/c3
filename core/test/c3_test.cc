@@ -263,7 +263,7 @@ TEST_P(C3CartpoleTestParameterizedScalingLCSTest, ScalingLCSTest) {
   options.scale_lcs = std::get<0>(GetParam());
   bool use_update_lcs = std::get<1>(GetParam());
 
-  C3MIQP optimizer(*pSystem, cost, xdesired, options);
+  C3QP optimizer(*pSystem, cost, xdesired, options);
   if (use_update_lcs) {
     optimizer.UpdateLCS(*pSystem);
   }
