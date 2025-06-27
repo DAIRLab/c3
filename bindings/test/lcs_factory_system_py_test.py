@@ -35,7 +35,14 @@ from bindings.test.c3_core_py_test import (
 
 
 class SoftWallReactionForce(LeafSystem):
-    def __init__(self, cartpole_softwalls):
+    def __init__(
+        self,
+        cartpole_softwalls,
+        wall_stiffness=100,
+        left_wall_xpos=-0.35,
+        right_wall_xpos=0.35,
+        pole_length=0.6,
+    ):
         LeafSystem.__init__(self)
         self.cartpole_softwalls_ = cartpole_softwalls
         self.DeclareVectorInputPort("cartpole_state", 4)
@@ -45,22 +52,22 @@ class SoftWallReactionForce(LeafSystem):
             self.CalcSoftWallSpatialForce,
         )
         self.pole_body_ = cartpole_softwalls.GetBodyByName("Pole")
-        self.wall_stiffness = 100
+        self.wall_stiffness = wall_stiffness
+        self.left_wall_xpos = left_wall_xpos
+        self.right_wall_xpos = right_wall_xpos
+        self.pole_length = pole_length
 
     def CalcSoftWallSpatialForce(self, context, output):
         cartpole_state = self.get_input_port(0).Eval(context)
         spatial_forces = []
 
-        # Predefined values
-        left_wall_xpos = -0.35
-        right_wall_xpos = 0.35
-        pole_length = 0.6
-
         # Calculate wall force
-        pole_tip_xpos = cartpole_state[0] - pole_length * np.sin(cartpole_state[1])
-        left_wall_force = max(0.0, left_wall_xpos - pole_tip_xpos) * self.wall_stiffness
+        pole_tip_xpos = cartpole_state[0] - self.pole_length * np.sin(cartpole_state[1])
+        left_wall_force = (
+            max(0.0, self.left_wall_xpos - pole_tip_xpos) * self.wall_stiffness
+        )
         right_wall_force = (
-            min(0.0, right_wall_xpos - pole_tip_xpos) * self.wall_stiffness
+            min(0.0, self.right_wall_xpos - pole_tip_xpos) * self.wall_stiffness
         )
         wall_force = 0.0
         if left_wall_force != 0:
@@ -86,34 +93,35 @@ def RunCartpoleTest():
         "c3_controller_cartpole_options.yaml"
     )
     cartpole = make_cartpole_with_soft_walls_dynamics(options.lcs_factory_options.N)
-    costs = make_cartpole_costs(cartpole, options.c3_options, options.lcs_factory_options.N)
+    costs = make_cartpole_costs(
+        cartpole, options.c3_options, options.lcs_factory_options.N
+    )
 
     builder = DiagramBuilder()
-    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
-    parser = Parser(plant, scene_graph)
+    plant_for_lcs, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.01)
+    parser = Parser(plant_for_lcs, scene_graph)
     file = "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf"
     parser.AddModels(file)
-    plant.Finalize()
+    plant_for_lcs.Finalize()
 
     # LCS Factory System
     plant_diagram = builder.Build()
     plant_context = plant_diagram.CreateDefaultContext()
-    plant_for_lcs = plant
     plant_for_lcs_context = plant_diagram.GetMutableSubsystemContext(
-        plant, plant_context
+        plant_for_lcs, plant_context
     )
     plant_autodiff = System.ToAutoDiffXd(plant_for_lcs)
     plant_context_autodiff = plant_autodiff.CreateDefaultContext()
 
-    left_wall_contact_points = plant.GetCollisionGeometriesForBody(
-        plant.GetBodyByName("left_wall")
+    left_wall_contact_points = plant_for_lcs.GetCollisionGeometriesForBody(
+        plant_for_lcs.GetBodyByName("left_wall")
     )
 
-    right_wall_contact_points = plant.GetCollisionGeometriesForBody(
-        plant.GetBodyByName("right_wall")
+    right_wall_contact_points = plant_for_lcs.GetCollisionGeometriesForBody(
+        plant_for_lcs.GetBodyByName("right_wall")
     )
 
-    pole_point_geoms = plant.GetCollisionGeometriesForBody(plant.GetBodyByName("Pole"))
+    pole_point_geoms = plant_for_lcs.GetCollisionGeometriesForBody(plant_for_lcs.GetBodyByName("Pole"))
     contact_geoms = {}
     contact_geoms["LEFT_WALL"] = left_wall_contact_points
     contact_geoms["RIGHT_WALL"] = right_wall_contact_points
@@ -130,9 +138,8 @@ def RunCartpoleTest():
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.01)
     parser = Parser(plant, scene_graph)
-    file = "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf"
+    file = "systems/test/resources/cartpole_softwalls/cartpole_softwalls_no_collision_walls.sdf"
     parser.AddModels(file)
-    plant.set_penetration_allowance(0.15)
     plant.Finalize()
 
     lcs_factory_system = builder.AddSystem(

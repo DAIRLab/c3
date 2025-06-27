@@ -1,7 +1,5 @@
 #include "multibody/lcs_factory.h"
 
-#include <iostream>
-
 #include <drake/multibody/parsing/parser.h>
 #include <gtest/gtest.h>
 
@@ -12,6 +10,24 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/context.h"
 
+/**
+ * @file lcs_factory_test.cc
+ * @brief Tests for the LCSFactory class, which generates Linear Complementarity
+ * Systems (LCS) for multibody systems with contact.
+ *
+ * The tests cover various aspects of the LCSFactory, including:
+ *  - Calculating the number of contact variables for different contact models.
+ *  - Generating an LCS from a MultibodyPlant.
+ *  - Linearizing a MultibodyPlant to an LCS.
+ *  - Updating the state and input of an LCSFactory.
+ *  - Computing the contact Jacobian.
+ *  - Fixing modes in an LCS.
+ *
+ * The tests use a cube pivoting example to verify the correctness of the LCS
+ * generation and manipulation. Different contact models (Stewart-Trinkle,
+ * Anitescu, and Frictionless Spring) are tested to ensure the LCSFactory works
+ * correctly under various conditions.
+ */
 namespace c3 {
 namespace multibody {
 namespace test {
@@ -39,6 +55,8 @@ GTEST_TEST(LCSFactoryTest, GetNumContactVariables) {
   EXPECT_EQ(LCSFactory::GetNumContactVariables(
                 ContactModel::kFrictionlessSpring, 3, 0),
             3);
+  EXPECT_THROW(LCSFactory::GetNumContactVariables(ContactModel::kUnknown, 3, 0),
+               std::out_of_range);
 
   // Test with LCSFactoryOptions
   LCSFactoryOptions options;
@@ -56,6 +74,9 @@ GTEST_TEST(LCSFactoryTest, GetNumContactVariables) {
   options.num_friction_directions = 0;
   options.num_contacts = 3;
   EXPECT_EQ(LCSFactory::GetNumContactVariables(options), 3);
+
+  options.contact_model = "some_random_contact_model";
+  EXPECT_THROW(LCSFactory::GetNumContactVariables(options), std::out_of_range);
 }
 
 class LCSFactoryPivotingTest : public ::testing::TestWithParam<std::string> {

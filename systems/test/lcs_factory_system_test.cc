@@ -118,7 +118,7 @@ int RunCartpoleTest() {
 
   DiagramBuilder<double> plant_builder;
   auto [plant_for_lcs, scene_graph_for_lcs] =
-      AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
+      AddMultibodyPlantSceneGraph(&plant_builder, 0.01);
   Parser parser_for_lcs(&plant_for_lcs, &scene_graph_for_lcs);
   const std::string file_for_lcs =
       "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf";
@@ -155,9 +155,8 @@ int RunCartpoleTest() {
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, 0.01);
   Parser parser(&plant, &scene_graph);
   const std::string file =
-      "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf";
+      "systems/test/resources/cartpole_softwalls/cartpole_softwalls_no_collision_walls.sdf";
   parser.AddModels(file);
-  plant.set_penetration_allowance(0.15);
   plant.Finalize();
 
   C3ControllerOptions options = drake::yaml::LoadYamlFile<C3ControllerOptions>(

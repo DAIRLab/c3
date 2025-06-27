@@ -226,7 +226,7 @@ LCS LCSFactory::GenerateLCS() {
     FormulateFrictionlessSpringContactDynamics(
         phi, Jn, qdotNv, options_.spring_stiffness, M, D, E, F, H, c);
   } else {
-    throw std::runtime_error("Unsupported contact model.");
+    throw std::out_of_range("Unsupported contact model.");
   }
   /*============== Formulate D, E, F, G and c Matrices ==================*/
 
@@ -552,11 +552,12 @@ int LCSFactory::GetNumContactVariables(ContactModel contact_model,
            2 * num_contacts *
                num_friction_directions;  // Compute contact variable count
                                          // for Stewart-Trinkle model
-  } else {
+  } else if (contact_model == ContactModel::kAnitescu) {
     return 2 * num_contacts *
            num_friction_directions;  // Compute contact variable
                                      // count for Anitescu model
   }
+  throw std::out_of_range("Unknown contact model.");
 }
 
 int LCSFactory::GetNumContactVariables(const LCSFactoryOptions options) {

@@ -49,8 +49,6 @@ build --action_env=PATH=/usr/bin:/bin
 build --action_env=LD_LIBRARY_PATH=
 
 # use python3 by default
-build --python_path=/home/stephen/Workspace/DAIR/dair-env/bin/python --noincompatible_use_python_toolchains
+build --python_path=python3
 
 build --define=WITH_GUROBI=ON
-
-build --local_resources=cpu=8

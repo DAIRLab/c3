@@ -9,8 +9,6 @@
 
 #include "drake/bindings/pydrake/common/sorted_pair_pybind.h"
 
-#define PYBIND11_DETAILED_ERROR_MESSAGES
-
 namespace py = pybind11;
 namespace c3 {
 namespace multibody {

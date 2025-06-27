@@ -1,12 +1,15 @@
 #pragma once
 
 #include "core/c3_options.h"
+#include "multibody/lcs_factory.h"
 #include "multibody/lcs_factory_options.h"
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/common/yaml/yaml_read_archive.h"
 
 namespace c3 {
+using multibody::LCSFactory;
+
 namespace systems {
 /**
  * @struct C3StatePredictionJoint
@@ -72,30 +75,12 @@ struct C3ControllerOptions {
       DRAKE_DEMAND(lcs_factory_options.contact_model == "anitescu");
     }
 
-    if (lcs_factory_options.contact_model == "frictionless_spring") {
-      DRAKE_DEMAND(static_cast<int>(c3_options.g_lambda.size()) ==
-                   lcs_factory_options.num_contacts);
-      DRAKE_DEMAND(static_cast<int>(c3_options.u_lambda.size()) ==
-                   lcs_factory_options.num_contacts);
-    } else if (lcs_factory_options.contact_model == "stewart_and_trinkle") {
-      DRAKE_DEMAND(static_cast<int>(c3_options.g_lambda.size()) ==
-                   lcs_factory_options.num_contacts *
-                           lcs_factory_options.num_friction_directions * 2 +
-                       lcs_factory_options.num_contacts * 2);
-      DRAKE_DEMAND(static_cast<int>(c3_options.u_lambda.size()) ==
-                   lcs_factory_options.num_contacts *
-                           lcs_factory_options.num_friction_directions * 2 +
-                       lcs_factory_options.num_contacts * 2);
-    } else if (lcs_factory_options.contact_model == "anitescu") {
-      DRAKE_DEMAND(static_cast<int>(c3_options.g_lambda.size()) ==
-                   lcs_factory_options.num_contacts *
-                       lcs_factory_options.num_friction_directions * 2);
-      DRAKE_DEMAND(static_cast<int>(c3_options.u_lambda.size()) ==
-                   lcs_factory_options.num_contacts *
-                       lcs_factory_options.num_friction_directions * 2);
-    } else {
-      throw std::runtime_error("unknown or unsupported contact model");
-    }
+    int expected_lambda_size =
+        LCSFactory::GetNumContactVariables(lcs_factory_options);
+    DRAKE_DEMAND(static_cast<int>(c3_options.g_lambda.size()) ==
+                 expected_lambda_size);
+    DRAKE_DEMAND(static_cast<int>(c3_options.u_lambda.size()) ==
+                 expected_lambda_size);
   }
 };
 
