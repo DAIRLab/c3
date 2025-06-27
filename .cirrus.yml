@@ -5,7 +5,7 @@ C3_jammy_task:
     cpu: 8
     memory: 24
   build_cache:
-    folder: bazel-*/
+    folder: bazel-out
   test_script:
     - export CC=clang-15
     - export CXX=clang++-15
@@ -20,6 +20,11 @@ C3_jammy_task:
       --local_resources=ram=24000
       --local_resources=cpu=8
       //...
+  always:
+    test_artifact:
+      path: "bazel-testlogs/**.xml"
+      format: junit
+
 C3_noble_task:
   timeout_in: 120m
   container:
@@ -27,7 +32,7 @@ C3_noble_task:
     cpu: 8
     memory: 24
   build_cache:
-    folder: bazel-*/
+    folder: bazel-out
   test_script:
     - export CC=clang-15
     - export CXX=clang++-15
@@ -42,3 +47,7 @@ C3_noble_task:
       --local_resources=ram=24000
       --local_resources=cpu=8
       //...
+  always:
+    test_artifact:
+      path: "bazel-testlogs/**.xml"
+      format: junit
