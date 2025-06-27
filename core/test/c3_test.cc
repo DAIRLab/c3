@@ -285,7 +285,7 @@ TEST_P(C3CartpoleTestParameterizedScalingLCSTest, ScalingLCSTest) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     ScalingLCSTests, C3CartpoleTestParameterizedScalingLCSTest,
     ::testing::Values(
         std::make_tuple(
