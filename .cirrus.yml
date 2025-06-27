@@ -1,4 +1,4 @@
-C3_jammy_task:
+jammy_task:
   timeout_in: 120m
   container:
     dockerfile: tools/install/jammy/Dockerfile
@@ -21,11 +21,11 @@ C3_jammy_task:
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
   always:
-    test_artifact:
-      path: "bazel-testlogs/**/*.xml"
+    jammy_test_artifacts:
+      path: "bazel-testlogs/**/test.xml"
       format: junit
 
-C3_noble_task:
+noble_task:
   timeout_in: 120m
   container:
     dockerfile: tools/install/noble/Dockerfile
@@ -48,6 +48,6 @@ C3_noble_task:
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
   always:
-    test_artifact:
-      path: "bazel-testlogs/**/*.xml"
+    noble_test_artifacts:
+      path: "bazel-testlogs/**/test.xml"
       format: junit
