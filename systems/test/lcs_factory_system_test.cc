@@ -33,6 +33,9 @@ DEFINE_string(experiment_type, "cube_pivoting",
               "The type of experiment to test the LCSFactorySystem with. "
               "Options: 'cartpole_softwalls [Frictionless Spring System]', "
               "'cube_pivoting [Stewart and Trinkle System]'");
+DEFINE_string(diagram_path, "",
+              "Path to store the diagram (.ps) for the system. If empty, will "
+              "be ignored");
 
 using c3::systems::C3Controller;
 using c3::systems::C3ControllerOptions;
@@ -234,8 +237,8 @@ int RunCartpoleTest() {
 
   auto diagram = builder.Build();
 
-  c3::systems::common::DrawAndSaveDiagramGraph(
-      *diagram, "/home/stephen/Workspace/DAIR/c3/systems/test/resources/cartpole_softwalls/diagram");
+  if (!FLAGS_diagram_path.empty())
+    c3::systems::common::DrawAndSaveDiagramGraph(*diagram, FLAGS_diagram_path);
 
   // Create a default context for the diagram.
   auto diagram_context = diagram->CreateDefaultContext();
@@ -402,8 +405,8 @@ int RunPivotingTest() {
   // Build the diagram.
   auto diagram = builder.Build();
 
-  c3::systems::common::DrawAndSaveDiagramGraph(
-      *diagram, "/home/stephen/Workspace/DAIR/c3/systems/test/resources/cube_pivoting/diagram");
+  if (!FLAGS_diagram_path.empty())
+    c3::systems::common::DrawAndSaveDiagramGraph(*diagram, FLAGS_diagram_path);
 
   // Create a default context for the diagram.
   auto diagram_context = diagram->CreateDefaultContext();

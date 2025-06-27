@@ -46,7 +46,7 @@ class GeomGeomCollider {
    *
    * @param context The context for the MultibodyPlant.
    * @param num_friction_directions The number of friction directions to use
-   *        in the polytope approximation. Must be greater than 1. 
+   *        in the polytope approximation. Must be greater than 1.
    * @param wrt An enum specifying whether the Jacobian should be computed with
    *        respect to configuration variables (q) or velocity variables (v).
    *        Defaults to JacobianWrtVariable::kV.
@@ -167,6 +167,27 @@ class GeomGeomCollider {
       Eigen::Matrix<double, Eigen::Dynamic, 3> force_basis,
       drake::multibody::JacobianWrtVariable wrt,
       const drake::math::RotationMatrix<T>& R_WC);
+
+  /**
+   * @brief Computes the force basis for a polytope approximation of a friction
+   * cone.
+   *
+   * This function calculates a set of vectors that define the
+   * directions along which contact forces can be applied. These vectors are
+   * used to approximate a friction cone as a polytope. The number of vectors
+   * determines the fidelity of the approximation.
+   *
+   * @param num_friction_directions The number of friction directions to use in
+   *        the polytope approximation. This value determines the number of
+   *        edges in the polytope and must be greater than 1.
+   *
+   * @return A matrix whose columns form  basis vectors for the
+   *         contact forces. The first column is the contact normal, and the
+   *         remaining columns are tangent vectors that define the edges of the
+   *         polytope.
+   */
+  Eigen::Matrix<double, Eigen::Dynamic, 3> ComputePolytopeForceBasis(
+      const int num_friction_directions) const;
 
   /**
    * @brief Computes the force basis for a 2D planar problem.

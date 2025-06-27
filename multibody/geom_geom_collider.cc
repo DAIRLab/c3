@@ -103,6 +103,23 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::EvalPolytope(
         num_friction_directions));
   }
 
+  auto polytope_force_bases =
+      ComputePolytopeForceBasis(num_friction_directions);
+
+  // Get geometry query result to access contact normal
+  const auto query_result = GetGeometryQueryResult(context);
+
+  // Create rotation matrix from contact normal
+  auto R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(
+      query_result.signed_distance_pair.nhat_BA_W, 0);
+
+  return DoEval(context, query_result, polytope_force_bases, wrt, R_WC);
+}
+
+template <typename T>
+Matrix<double, Eigen::Dynamic, 3>
+GeomGeomCollider<T>::ComputePolytopeForceBasis(
+    const int num_friction_directions) const {
   // Build friction basis
   Matrix<double, Eigen::Dynamic, 3> force_basis(2 * num_friction_directions + 1,
                                                 3);
@@ -113,14 +130,7 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::EvalPolytope(
     force_basis.row(2 * i + 1) = Vector3d(0, cos(theta), sin(theta));
     force_basis.row(2 * i + 2) = -force_basis.row(2 * i + 1);
   }
-
-  const auto query_result = GetGeometryQueryResult(context);
-
-  // Create rotation matrix from contact normal
-  auto R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(
-      query_result.signed_distance_pair.nhat_BA_W, 0);
-
-  return DoEval(context, query_result, force_basis, wrt, R_WC);
+  return force_basis;
 }
 
 template <typename T>
