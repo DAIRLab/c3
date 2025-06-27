@@ -8,6 +8,7 @@
 
 #include "lcs.h"
 #include "solver_options_io.h"
+#include "configs/solve_options_default.hpp"
 
 #include "drake/common/text_logging.h"
 #include "drake/solvers/mathematical_program.h"
@@ -154,8 +155,7 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
 
   // Set default solver options
   drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
-          "core/configs/solver_options_default.yaml")
+      drake::yaml::LoadYamlString<c3::SolverOptionsFromYaml>(default_solver_options)
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
   SetSolverOptions(solver_options);
 }

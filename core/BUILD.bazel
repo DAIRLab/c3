@@ -29,12 +29,10 @@ cc_library(
         "c3.h",
         "c3_miqp.h",
         "c3_qp.h",
+        "configs/solve_options_default.hpp"
     ],
     copts = ["-fopenmp"],
     linkopts = ["-fopenmp"],
-    data = glob([
-        "configs/**",
-    ]),
     deps = [
         ":lcs",
         ":options",
