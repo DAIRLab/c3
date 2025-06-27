@@ -57,15 +57,21 @@ class SoftWallReactionForce final : public drake::systems::LeafSystem<double> {
   // cartpole
  public:
   explicit SoftWallReactionForce(
-      const MultibodyPlant<double>* cartpole_softwalls)
-      : cartpole_softwalls_(cartpole_softwalls) {
+      const MultibodyPlant<double>* cartpole_softwalls,
+      double wall_stiffness = 100, double left_wall_xpos = -0.35,
+      double right_wall_xpos = 0.35, double pole_length = 0.6)
+      : cartpole_softwalls_(cartpole_softwalls),
+        wall_stiffness_(wall_stiffness),
+        left_wall_xpos_(left_wall_xpos),
+        right_wall_xpos_(right_wall_xpos),
+        pole_length_(pole_length) {
     this->DeclareVectorInputPort("cartpole_state", 4);
     this->DeclareAbstractOutputPort(
         "spatial_forces", &SoftWallReactionForce::CalcSoftWallSpatialForce);
     pole_body_ = &cartpole_softwalls_->GetBodyByName("Pole");
   }
 
-  double wall_stiffness = 100;
+  double get_wall_stiffness() { return wall_stiffness_; }
 
  private:
   void CalcSoftWallSpatialForce(
@@ -79,18 +85,13 @@ class SoftWallReactionForce final : public drake::systems::LeafSystem<double> {
     // Get Input
     const auto& cartpole_state = get_input_port(0).Eval(context);
 
-    // Predefined values
-    double left_wall_xpos = -0.35;
-    double right_wall_xpos = 0.35;
-    double pole_length = 0.6;
-
     // Calculate wall force
     double pole_tip_xpos =
-        cartpole_state[0] - pole_length * sin(cartpole_state[1]);
+        cartpole_state[0] - pole_length_ * sin(cartpole_state[1]);
     double left_wall_force =
-        std::max(0.0, left_wall_xpos - pole_tip_xpos) * wall_stiffness;
+        std::max(0.0, left_wall_xpos_ - pole_tip_xpos) * wall_stiffness_;
     double right_wall_force =
-        std::min(0.0, right_wall_xpos - pole_tip_xpos) * wall_stiffness;
+        std::min(0.0, right_wall_xpos_ - pole_tip_xpos) * wall_stiffness_;
     double wall_force = 0.0;
     if (left_wall_force != 0)
       wall_force = left_wall_force;
@@ -104,10 +105,15 @@ class SoftWallReactionForce final : public drake::systems::LeafSystem<double> {
   }
   const MultibodyPlant<double>* cartpole_softwalls_{nullptr};
   const drake::multibody::RigidBody<double>* pole_body_;
+  double wall_stiffness_;
+  double left_wall_xpos_;
+  double right_wall_xpos_;
+  double pole_length_;
 };
 
 int RunCartpoleTest() {
-  // Initialize the C3 cartpole problem.
+  // Initialize the C3 cartpole problem. Assuming SDF matches default values in
+  // problem.
   auto c3_cartpole_problem = C3CartpoleProblem();
 
   DiagramBuilder<double> plant_builder;
@@ -216,8 +222,9 @@ int RunCartpoleTest() {
                   lcs_factory_system->get_input_port_lcs_input());
 
   // Add the SoftWallReactionForce system.
-  auto soft_wall_reaction_force =
-      builder.AddSystem<SoftWallReactionForce>(&plant_for_lcs);
+  auto soft_wall_reaction_force = builder.AddSystem<SoftWallReactionForce>(
+      &plant_for_lcs, c3_cartpole_problem.ks, c3_cartpole_problem.d2,
+      c3_cartpole_problem.d1, c3_cartpole_problem.len_p);
   // Connect the SoftWallReactionForce system to the LCSFactorySystem.
   builder.Connect(plant.get_state_output_port(),
                   soft_wall_reaction_force->get_input_port());
@@ -257,7 +264,7 @@ int RunCartpoleTest() {
   simulator.AdvanceTo(10.0);  // Run
   //   simulation for 10 seconds.
 
-  return 1;
+  return 0;
 }
 
 int RunPivotingTest() {
@@ -425,7 +432,7 @@ int RunPivotingTest() {
   simulator.Initialize();
   simulator.AdvanceTo(10.0);  // Run simulation for 10 seconds.
 
-  return 1;
+  return 0;
 }
 
 int main(int argc, char* argv[]) {

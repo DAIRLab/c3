@@ -38,14 +38,21 @@ class C3CartpoleProblem {
    */
   C3CartpoleProblem(float mp = 0.411, float mc = 0.978, float len_p = 0.6,
                     float len_com = 0.4267, float d1 = 0.35, float d2 = -0.35,
-                    float ks = 100, float g = 9.81, int N = 5,
-                    float dt = 0.01) {
+                    float ks = 100, float g = 9.81, int N = 5, float dt = 0.01)
+      : mp(mp),
+        mc(mc),
+        len_p(len_p),
+        len_com(len_com),
+        d1(d1),
+        d2(d2),
+        ks(ks),
+        g(g),
+        N(N),
+        dt(dt) {
     // Initialize dimensions
     n = 4;  // State dimension
     m = 2;  // Complementarity variable dimension
     k = 1;  // Input dimension
-    C3CartpoleProblem::N = N;
-    C3CartpoleProblem::dt = dt;
 
     // Load controller options from YAML file
     options = drake::yaml::LoadYamlFile<C3Options>(
@@ -121,6 +128,9 @@ class C3CartpoleProblem {
     VectorXd xdesiredinit = VectorXd::Zero(n);
     xdesired.resize(N + 1, xdesiredinit);
   }
+
+  // Cartpole problem parameters
+  float mp, mc, len_p, len_com, d1, d2, ks, g;
 
   // Dimensions (n: state, m: complementarity, k: input, N: MPC horizon)
   int n, m, k, N;
