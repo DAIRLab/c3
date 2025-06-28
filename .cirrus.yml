@@ -1,21 +1,20 @@
+registry_config: ENCRYPTED[0326a516b5938d38377c875f412dae3895e1d074f7ef17e0e562082d6af9ef1a19852f6c0926bfc70a00aac5d4fee664]
 jammy_task:
   timeout_in: 120m
   container:
-    dockerfile: tools/install/jammy/Dockerfile
+    image: ghcr.io/dairlab/jammy-c3:latest
     cpu: 8
     memory: 24
   test_script:
     - export CC=clang-15
     - export CXX=clang++-15
     - bazel build
-      --define=WITH_GUROBI=OFF
       --local_resources=ram=24000
       --local_resources=cpu=8
       --jobs=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
     - bazel test
-      --define=WITH_GUROBI=OFF
       --local_resources=ram=24000
       --local_resources=cpu=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
@@ -28,21 +27,19 @@ jammy_task:
 noble_task:
   timeout_in: 120m
   container:
-    dockerfile: tools/install/noble/Dockerfile
+    image: ghcr.io/dairlab/noble-c3:latest
     cpu: 8
     memory: 24
   test_script:
     - export CC=clang-15
     - export CXX=clang++-15
     - bazel build
-      --define=WITH_GUROBI=OFF
       --local_resources=ram=24000
       --local_resources=cpu=8
       --jobs=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
     - bazel test
-      --define=WITH_GUROBI=OFF
       --local_resources=ram=24000
       --local_resources=cpu=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
