@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "core/c3_qp.h"
+#include "core/c3_miqp.h"
 #include "core/test/c3_cartpole_problem.hpp"
 
 #include "drake/math/discrete_algebraic_riccati_equation.h"
@@ -57,9 +57,9 @@ class C3CartpoleTest : public testing::Test, public C3CartpoleProblem {
  protected:
   C3CartpoleTest() {
     C3CartpoleProblem(0.411, 0.978, 0.6, 0.4267, 0.35, -0.35, 100, 9.81);
-    pOpt = std::make_unique<C3QP>(*pSystem, cost, xdesired, options);
+    pOpt = std::make_unique<C3MIQP>(*pSystem, cost, xdesired, options);
   }
-  std::unique_ptr<C3QP> pOpt;
+  std::unique_ptr<C3MIQP> pOpt;
 };
 
 // Test constructor (maintain backward compatibility if constructor changed)
@@ -263,7 +263,7 @@ TEST_P(C3CartpoleTestParameterizedScalingLCSTest, ScalingLCSTest) {
   options.scale_lcs = std::get<0>(GetParam());
   bool use_update_lcs = std::get<1>(GetParam());
 
-  C3QP optimizer(*pSystem, cost, xdesired, options);
+  C3MIQP optimizer(*pSystem, cost, xdesired, options);
   if (use_update_lcs) {
     optimizer.UpdateLCS(*pSystem);
   }
