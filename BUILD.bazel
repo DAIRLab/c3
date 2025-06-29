@@ -1,0 +1,2 @@
+# This is an empty BUILD file, to ensure that the project's root directory is a
+# bazel package.

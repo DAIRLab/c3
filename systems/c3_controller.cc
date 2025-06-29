@@ -8,6 +8,8 @@
 #include "core/c3_qp.h"
 #include "multibody/lcs_factory.h"
 
+#include "drake/common/text_logging.h"
+
 namespace c3 {
 
 using drake::multibody::ModelInstanceIndex;
