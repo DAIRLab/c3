@@ -27,7 +27,7 @@ GeomGeomCollider<T>::GeomGeomCollider(
       geometry_id_B_(geometry_pair.second()) {}
 
 template <typename T>
-GeomGeomCollider<T>::GeometryQueryResult
+typename GeomGeomCollider<T>::GeometryQueryResult
 GeomGeomCollider<T>::GetGeometryQueryResult(const Context<T>& context) const {
   // Access the geometry query object from the plant's geometry query port.
   const auto& query_port = plant_.get_geometry_query_input_port();
