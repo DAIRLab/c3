@@ -2,6 +2,7 @@
 
 #include "systems/framework/c3_output.h"
 
+// Drake and Eigen namespace usages for convenience.
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::lcm::LcmPublisherSystem;
@@ -13,10 +14,14 @@ using Eigen::VectorXd;
 namespace c3 {
 namespace systems {
 namespace publishers {
+
+// Publishes contact force information to LCM for visualization and logging.
 ContactForcePublisher::ContactForcePublisher() {
+  // Declare input port for the C3 solution.
   c3_solution_port_ = this->DeclareAbstractInputPort(
                               "solution", drake::Value<C3Output::C3Solution>{})
                           .get_index();
+  // Declare input port for contact Jacobian and contact points.
   lcs_contact_info_port_ =
       this->DeclareAbstractInputPort(
               "J_lcs, p_lcs",
@@ -25,12 +30,14 @@ ContactForcePublisher::ContactForcePublisher() {
           .get_index();
 
   this->set_name("c3_contact_force_publisher");
+  // Declare output port for publishing contact forces.
   contact_force_output_port_ =
       this->DeclareAbstractOutputPort("lcmt_force", lcmt_forces(),
                                       &ContactForcePublisher::DoCalc)
           .get_index();
 }
 
+// Calculates and outputs the contact forces based on the current context.
 void ContactForcePublisher::DoCalc(const Context<double>& context,
                                    lcmt_forces* output) const {
   // Get Solution from C3
@@ -53,6 +60,7 @@ void ContactForcePublisher::DoCalc(const Context<double>& context,
 
   int contact_var_start;
   int force_index;
+  // Iterate over all contact points and compute forces.
   for (int contact_index = 0; contact_index < (int)contact_points.size();
        ++contact_index) {
     contact_var_start =
@@ -75,6 +83,7 @@ void ContactForcePublisher::DoCalc(const Context<double>& context,
         }
       }
       auto force = lcmt_contact_force();
+      // Set contact point position.
       force.contact_point[0] = contact_points.at(contact_index)[0];
       force.contact_point[1] = contact_points.at(contact_index)[1];
       force.contact_point[2] = contact_points.at(contact_index)[2];
@@ -82,6 +91,9 @@ void ContactForcePublisher::DoCalc(const Context<double>& context,
       // VISUALIZING FORCES FOR THE FIRST KNOT POINT
       // 6, 7, 8 are the indices for the x,y,z components of the tray
       // expressed in the world frame
+      // Compute force vector in world frame.
+      std::cout << J_c << std::endl;
+      exit(0);
       force.contact_force[0] = solution->lambda_sol_(contact_var_index, 0) *
                                J_c.row(contact_jacobian_row)(6);
       force.contact_force[1] = solution->lambda_sol_(contact_var_index, 0) *
@@ -91,9 +103,11 @@ void ContactForcePublisher::DoCalc(const Context<double>& context,
       output->forces[force_index + i] = force;
     }
   }
+  // Set output timestamp in microseconds.
   output->utime = context.get_time() * 1e6;
 }
 
+// Adds this publisher and an LCM publisher system to the diagram builder.
 LcmPublisherSystem* ContactForcePublisher::AddLcmPublisherToBuilder(
     DiagramBuilder<double>& builder,
     const drake::systems::OutputPort<double>& solution_port,
@@ -101,11 +115,13 @@ LcmPublisherSystem* ContactForcePublisher::AddLcmPublisherToBuilder(
     const std::string& channel, drake::lcm::DrakeLcmInterface* lcm,
     const drake::systems::TriggerTypeSet& publish_triggers,
     double publish_period, double publish_offset) {
+  // Add and connect the ContactForcePublisher system.
   auto force_publisher = builder.AddSystem<ContactForcePublisher>();
   builder.Connect(solution_port, force_publisher->get_input_port_c3_solution());
   builder.Connect(lcs_contact_info_port,
                   force_publisher->get_input_port_lcs_contact_info());
 
+  // Add and connect the LCM publisher system.
   auto lcm_force_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<c3::lcmt_forces>(
           channel, lcm, publish_triggers, publish_period, publish_offset));
