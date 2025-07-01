@@ -15,7 +15,7 @@ def make_plot(arr_list, name_list, title, ax=None, label="ADMM Iteration"):
     ax.set_xlabel(label)
     ax.set_ylabel("Value")
     ax.set_title(title)
-    ax.legend(fontsize=13)
+    ax.legend(fontsize=14)
     ax.grid()
 
 
@@ -73,7 +73,7 @@ def plot_QP(horizon, timestep, admm_num, delta, title, plot_horizon):
     make_plot([u3, u4], ["Gripper 1 normal force", "Gripper 2 normal force"], "Input normal force",ax=ax1[3], label=label)
     if plot_horizon:
         fig1.suptitle(f"Timestep {timestep} planned horizon", fontsize=16)
-    else:
+    else:    
         fig1.suptitle(f"{title} at timestep {timestep}, planning step {horizon}", fontsize=16)
 
     fig2, ax2 = plt.subplots(4, 1, figsize=(12, 16), constrained_layout=True)
@@ -153,9 +153,9 @@ def plot(original, projection, horizon, timestep, admm_num, plot_horizon):
         qp_data = np.load("/home/yufeiyang/Documents/c3/debug_output/original_z.npy")
         delta_data = np.load("/home/yufeiyang/Documents/c3/debug_output/original_delta.npy")
         if projection == 0:
-            plot_original(horizon, timestep, admm_num, qp_data, title_original_qp, plot_horizon)
-        elif projection == 1 or plot_horizon:
-            plot_original(horizon, timestep, admm_num, delta_data, title_original_delta, plot_horizon)
+            plot_QP(horizon, timestep, admm_num, qp_data, title_original_qp, plot_horizon)
+        elif projection == 1:
+            plot_QP(horizon, timestep, admm_num, delta_data, title_original_delta, plot_horizon)
     else:
         if projection == 0:  # before projection
             plot_QP(horizon, timestep, admm_num, qp_data, title_qp, plot_horizon)

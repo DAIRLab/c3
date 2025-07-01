@@ -154,6 +154,7 @@ int DoMain(int argc, char* argv[]) {
   std::ofstream outfile_gamma("/home/yufeiyang/Documents/c3/c3_gamma_output.txt");
   std::ofstream outfile_z("/home/yufeiyang/Documents/c3/c3_debug_z.txt");
   std::ofstream outfile_delta("/home/yufeiyang/Documents/c3/c3_debug_delta.txt");
+  std::ofstream outfile_x("/home/yufeiyang/Documents/c3/debug_output/original_c3_x.txt");
 
   for (int i = 0; i < timesteps - 1; i++) {
     if (options.delta_option == 1) {
@@ -235,10 +236,21 @@ int DoMain(int argc, char* argv[]) {
     }
     outfile_delta << "\n";
   }
+  
+  for (const auto& vec : x) {
+    for (int i = 0; i < vec.size(); ++i) {
+        outfile_x << vec(i);
+        if (i < vec.size() - 1)
+            outfile_x << " ";
+    }
+    outfile_x << "\n";
+  }
   outfile_z.flush();
   outfile_delta.flush();
   outfile_z.close();
   outfile_delta.close();
+  outfile_x.flush();
+  outfile_x.close();
   // if (outfile_z.is_open()) {
   //   outfile_z << opt.GetDebugInfo() << "\n";
   // }

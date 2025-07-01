@@ -1,7 +1,7 @@
 #include "improved_c3.h"
 
-#include <chrono>
 #include <cfenv>
+#include <chrono>
 #include <iostream>
 
 #include <Eigen/Core>
@@ -24,6 +24,7 @@ using drake::solvers::MathematicalProgram;
 using drake::solvers::MathematicalProgramResult;
 using drake::solvers::SolutionResult;
 using drake::solvers::SolverOptions;
+using drake::solvers::QuadraticCost;
 
 using drake::solvers::OsqpSolver;
 using drake::solvers::OsqpSolverDetails;
@@ -73,7 +74,7 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
     }
   }
 
-  // ScaleLCS();
+  //ScaleLCS();
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
@@ -151,6 +152,7 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
             .get();
   }
   input_costs_.resize(N_);
+  std::cout << "input_costs: " << std::endl;
   for (int i = 0; i < N_ + 1; ++i) {
     target_cost_[i] =
         prog_
@@ -159,6 +161,8 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
                               x_.at(i), 1)
             .evaluator()
             .get();
+    std::cout << "target_cost[" << i << "]: " << target_cost_[i];
+    std::cout << i << std::endl;
     if (i < N_) {
       input_costs_[i] = prog_
                             .AddQuadraticCost(2 * cost_matrices_.R.at(i),
@@ -181,7 +185,7 @@ void ImprovedC3::UpdateLCS(const LCS &lcs) {
 
   lcs_ = lcs;
   h_is_zero_ = lcs_.H()[0].isZero(0);
-  ScaleLCS();
+  // ScaleLCS();
 
   MatrixXd LinEq = MatrixXd::Zero(n_x_, 2 * n_x_ + n_lambda_ + n_u_);
   LinEq.block(0, n_x_ + n_u_ + n_lambda_, n_x_, n_x_) =
@@ -226,13 +230,13 @@ void ImprovedC3::Solve(const VectorXd &x0) {
                                          x_[0])
             .evaluator();
   }
-  VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_*2 + n_u_);
+  VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_ * 2 + n_u_);
   if (options_.delta_option == 1) {
     delta_init.head(n_x_) = x0;
   }
   std::vector<VectorXd> delta(N_, delta_init);
 
-  std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_*2 + n_u_));
+  std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ * 2 + n_u_));
   vector<MatrixXd> G = cost_matrices_.G;
 
   for (int i = 0; i < N_; ++i) {
@@ -287,9 +291,9 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
   for (int i = 0; i < N_; ++i) {
     WD.at(i) = delta->at(i) - w->at(i);
   }
-  vector<VectorXd> z = SolveQP(x0, *G, WD, admm_iteration, true); // z is 10 by 9
+  vector<VectorXd> z =
+      SolveQP(x0, *G, WD, admm_iteration, true); // z is 10 by 9
   debug_z->push_back(z);
-
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
   for (int i = 0; i < N_; ++i) {
@@ -303,17 +307,17 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
     *delta = SolveProjection(cost_matrices_.U, ZW, admm_iteration);
   }
   // print content in *delta
-  std::cout << "delta: " << std::endl;
-  int count = 0;
-  for (const auto &d : *delta) {
-    if (count < 10) {
-      std::cout << "delta[" << count << "]: " << d.transpose() << std::endl;
-    } else {
-      std::cout << "delta[" << count << "] is not printed" << std::endl;
-    }
-    count++;
+  // std::cout << "delta: " << std::endl;
+  // int count = 0;
+  // for (const auto &d : *delta) {
+  //   if (count < 10) {
+  //     std::cout << "delta[" << count << "]: " << d.transpose() << std::endl;
+  //   } else {
+  //     std::cout << "delta[" << count << "] is not printed" << std::endl;
+  //   }
+  //   count++;
 
-  }
+  // }
 
 
 
@@ -421,32 +425,40 @@ vector<VectorXd> ImprovedC3::SolveQP(const VectorXd &x0,
   // get the cost for each term
   // int index = 0;
   // for (const auto& binding : prog_.GetAllCosts()) {
+  //     auto* quad_cost = dynamic_cast<QuadraticCost*>(binding.evaluator().get());
+  //     const auto& Q = quad_cost->Q();
+  //     const auto& b = quad_cost->b();
+
   //     auto cost = binding.evaluator();
   //     const auto& vars = binding.variables();
 
   //     Eigen::VectorXd x(vars.size());
+  //     std::cout << vars.size() << std::endl;
   //     for (int i = 0; i < vars.size(); ++i) {
+  //         // std::cout << i << ": " << vars[i].get_name() << std::endl;
   //         x[i] = result.GetSolution(vars[i]);
   //     }
 
-  //     Eigen::VectorXd y;
-  //     cost->Eval(x, &y);  // Usually returns a 1D vector with a single value
+  //     // Eigen::VectorXd y;
+  //     // cost->Eval(x, &y);  // Usually returns a 1D vector with a single value
 
-  //     std::cout << "Term [" << index++ << "] Cost value: " << y[0] << std::endl;
-  // }
+  //     // std::cout << "Term [" << index++ << "] Cost value: " << y[0] << std::endl;
 
+  //     double total_cost = 0.5 * x.transpose() * Q * x + b.dot(x);
+  //     std::cout << "Cost for term [" << index << "]: " << std::endl;
+  //     std::cout << "Total cost: " << total_cost << std::endl;
 
-  // 
-  // // print z_sol_ for debugging
-  // std::cout << "z_sol_: ";
-  // for (int i = 0; i < z_sol_->size(); ++i) {
-  //   std::cout << "z_sol_[" << i << "]: ";
-  //   const auto &v = z_sol_->at(i);
-  //   for (int jp = 0; jp < v.size(); ++jp) {
-  //     std::cout << v(jp);
-  //     if (jp < v.size() - 1) std::cout << ", ";
-  //   }
-  //   std::cout << "\n";
+  //     // Show per-variable contribution (approximate / illustrative)
+  //     for (int i = 0; i < vars.size(); ++i) {
+  //         double quad_contrib = 0.5 * Q.row(i).dot(x) * x[i];
+  //         double lin_contrib = b[i] * x[i];
+  //         std::cout << vars[i].get_name()
+  //                   << ": quad = " << quad_contrib
+  //                   // << ", linear = " << lin_contrib
+  //                   << ", total ≈ " << (quad_contrib + lin_contrib)
+  //                   << std::endl;
+  //     }
+  //     index++;
   // }
 
   return *z_sol_;
@@ -463,7 +475,7 @@ vector<VectorXd> ImprovedC3::SolveProjection(const vector<MatrixXd> &U,
     omp_set_num_threads(options_.num_threads); // Set number of threads
     // omp_set_nested(1);
     omp_set_nested(0);
-    omp_set_schedule(omp_sched_static, 0);  
+    omp_set_schedule(omp_sched_static, 0);
   }
 #pragma omp parallel for num_threads(options_.num_threads)
   for (i = 0; i < N_; ++i) {
