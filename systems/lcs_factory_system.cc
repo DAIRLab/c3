@@ -9,6 +9,7 @@
 
 using c3::LCS;
 using c3::multibody::LCSFactory;
+using c3::multibody::LCSContactDescription;
 using c3::systems::TimestampedVector;
 using drake::multibody::ModelInstanceIndex;
 using drake::systems::BasicVector;
@@ -69,12 +70,11 @@ void LCSFactorySystem::InitializeSystem(
                                               &LCSFactorySystem::OutputLCS)
                   .get_index();
 
-  lcs_contact_jacobian_port_ =
+  lcs_contact_output_port_ =
       this->DeclareAbstractOutputPort(
-              "J_lcs, p_lcs",
-              std::pair(Eigen::MatrixXd(n_x_, n_lambda_),
-                        std::vector<Eigen::VectorXd>()),
-              &LCSFactorySystem::OutputLCSContactJacobian)
+              "contact_descriptions",
+              std::vector<LCSContactDescription>(),
+              &LCSFactorySystem::OutputLCSContactDescriptions)
           .get_index();
 }
 
@@ -91,9 +91,9 @@ void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
   *output_lcs = lcs_factory_->GenerateLCS();
 }
 
-void LCSFactorySystem::OutputLCSContactJacobian(
+void LCSFactorySystem::OutputLCSContactDescriptions(
     const drake::systems::Context<double>& context,
-    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>* output) const {
+    std::vector<LCSContactDescription>* output) const {
   const auto lcs_x = static_cast<const TimestampedVector<double>*>(
       this->EvalVectorInput(context, lcs_state_input_port_));
   const auto lcs_u = static_cast<const BasicVector<double>*>(
@@ -102,7 +102,7 @@ void LCSFactorySystem::OutputLCSContactJacobian(
   DRAKE_DEMAND(lcs_x->get_data().size() == n_x_);
   DRAKE_DEMAND(lcs_u->get_value().size() == n_u_);
   lcs_factory_->UpdateStateAndInput(lcs_x->get_data(), lcs_u->get_value());
-  *output = lcs_factory_->GetContactJacobianAndPoints();
+  *output = lcs_factory_->GetContactDescriptions();
 }
 
 }  // namespace systems

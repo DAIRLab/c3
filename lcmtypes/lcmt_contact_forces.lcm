@@ -2,7 +2,7 @@ package c3;
 
 /*  lcmtype containing information to visualize forces in meshcat
 */
-struct lcmt_forces
+struct lcmt_contact_forces
 {
   int64_t utime;
 
