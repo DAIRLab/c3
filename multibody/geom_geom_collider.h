@@ -99,15 +99,37 @@ class GeomGeomCollider {
    *         closest point on geometry B.
    */
   std::pair<drake::VectorX<double>, drake::VectorX<double>> CalcWitnessPoints(
-      const drake::systems::Context<double>& context);
+      const drake::systems::Context<T>& context);
+
+  /**
+   * @brief Computes a basis for contact forces in the world frame.
+   *
+   * Depending on the number of friction directions, this method constructs
+   * either a planar (2D) or polytope (3D) basis for the contact forces at the
+   * collision point, expressed in the world frame. For planar contact
+   * (num_friction_directions < 1), the basis is constructed from the contact
+   * normal and the provided planar normal. For 3D contact, a polytope basis is
+   * generated and rotated to align with the contact normal.
+   *
+   * @param context The context for the MultibodyPlant.
+   * @param num_friction_directions The number of friction directions for the
+   * polytope approximation. If less than 1, a planar basis is used.
+   * @param planar_normal The normal vector defining the plane for planar
+   * contact (default: {0, 1, 0}).
+   * @return A matrix whose rows form an orthonormal basis for the contact
+   * forces in the world frame.
+   */
+  Eigen::Matrix<double, Eigen::Dynamic, 3> CalcForceBasisInWorldFrame(
+      const drake::systems::Context<T>& context, int num_friction_directions,
+      const Eigen::Vector3d& planar_normal = {0, 1, 0}) const;
 
  private:
   /**
    * @brief A struct to hold the results of a geometry query.
    *
    * This struct contains the signed distance pair, the frame IDs of the two
-   * geometries, the frames themselves, and the positions of the closest points
-   * on each geometry, expressed in their respective frames.
+   * geometries, the frames themselves, and the positions of the closest
+   * points on each geometry, expressed in their respective frames.
    */
   struct GeometryQueryResult {
     /**
