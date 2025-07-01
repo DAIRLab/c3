@@ -99,10 +99,10 @@ PYBIND11_MODULE(systems, m) {
            &LCSFactorySystem::get_input_port_lcs_input,
            py::return_value_policy::reference)
       .def("get_output_port_lcs", &LCSFactorySystem::get_output_port_lcs,
-           py::return_value_policy::reference)
-      .def("get_output_port_lcs_contact_jacobian",
-           &LCSFactorySystem::get_output_port_lcs_contact_jacobian,
            py::return_value_policy::reference);
+     //  .def("get_output_port_lcs_contact_points_and_force_basis",
+     //       &LCSFactorySystem::get_output_port_lcs_contact_points_and_force_basis,
+     //       py::return_value_policy::reference);
 
   py::class_<C3Output::C3Solution>(m, "C3Solution")
       .def(py::init<>())
