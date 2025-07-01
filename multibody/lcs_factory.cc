@@ -172,21 +172,6 @@ void LCSFactory::ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn,
   }
 }
 
-std::pair<std::vector<VectorXd>, std::vector<VectorXd>>
-LCSFactory::FindWitnessPoints() {
-  std::vector<VectorXd> WCa;
-  std::vector<VectorXd> WCb;
-
-  for (int i = 0; i < n_contacts_; i++) {
-    multibody::GeomGeomCollider collider(plant_, contact_pairs_[i]);
-    auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context_);
-    WCa.push_back(p_WCa);
-    WCb.push_back(p_WCb);
-  }
-
-  return std::make_pair(WCa, WCb);
-}
-
 void LCSFactory::UpdateStateAndInput(
     const Eigen::Ref<const drake::VectorX<double>>& state,
     const Eigen::Ref<const drake::VectorX<double>>& input) {
@@ -459,53 +444,63 @@ LCS LCSFactory::LinearizePlantToLCS(
   return lcs_factory.GenerateLCS();
 }
 
-std::pair<MatrixXd, std::vector<VectorXd>>
-LCSFactory::GetContactJacobianAndPoints() {
-  VectorXd phi;  // Signed distance values for contacts
-  MatrixXd Jn;   // Normal contact Jacobian
-  MatrixXd Jt;   // Tangential contact Jacobian
-  ComputeContactJacobian(phi, Jn, Jt);
-  auto [_, contact_points] = FindWitnessPoints();
+std::vector<LCSContactDescription> LCSFactory::GetContactDescriptions() {
+  std::vector<LCSContactDescription> normal_contact_descriptions;
+  std::vector<LCSContactDescription> tangential_contact_descriptions;
 
-  if (frictionless_) {
-    // if frictionless_, we only need the normal jacobian
-    return std::make_pair(Jn, contact_points);
-  }
-
-  if (contact_model_ == ContactModel::kStewartAndTrinkle) {
-    // if Stewart and Trinkle model, concatenate the normal and tangential
-    // jacobian
-    MatrixXd J_c = MatrixXd::Zero(n_contacts_ + Jt_row_sizes_.sum(), n_v_);
-    J_c << Jn, Jt;
-    return std::make_pair(J_c, contact_points);
-  }
-
-  // Model is Anitescu
-  int n_lambda_ = Jt_row_sizes_.sum();
-
-  // Eₜ = blkdiag(e,.., e), e ∈ 1ⁿᵉ
-  MatrixXd E_t = MatrixXd::Zero(n_contacts_, n_lambda_);
   for (int i = 0; i < n_contacts_; i++) {
-    E_t.block(i, Jt_row_sizes_.segment(0, i).sum(), 1, Jt_row_sizes_(i)) =
-        MatrixXd::Ones(1, Jt_row_sizes_(i));
+    multibody::GeomGeomCollider collider(plant_, contact_pairs_[i]);
+    auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context_);
+    auto force_basis =
+        collider.CalcForceBasisInWorldFrame(context_, n_friction_directions_);
+
+    for (int j = 0; j < force_basis.rows(); j++) {
+      LCSContactDescription contact_description = {
+          .witness_point_A = p_WCa,
+          .witness_point_B = p_WCb,
+          .force_basis = force_basis.row(j)};
+      if (j == 0)
+        // Normal contact
+        normal_contact_descriptions.push_back(contact_description);
+      else
+        // Tangential contact
+        tangential_contact_descriptions.push_back(contact_description);
+    }
   }
 
-  // Apply same friction coefficients to each friction direction
-  // of the same contact
-  if (!frictionless_) DRAKE_DEMAND(mu_.size() == (size_t)n_contacts_);
-  VectorXd muXd =
-      Eigen::Map<const VectorXd, Eigen::Unaligned>(mu_.data(), mu_.size());
-
-  VectorXd mu_vector = VectorXd::Zero(n_lambda_);
-  for (int i = 0; i < muXd.rows(); i++) {
-    mu_vector.segment(Jt_row_sizes_.segment(0, i).sum(), Jt_row_sizes_(i)) =
-        muXd(i) * VectorXd::Ones(Jt_row_sizes_(i));
+  std::vector<LCSContactDescription> contact_descriptions;
+  if (contact_model_ == ContactModel::kFrictionlessSpring)
+    contact_descriptions.insert(contact_descriptions.end(),
+                                normal_contact_descriptions.begin(),
+                                normal_contact_descriptions.end());
+  else if (contact_model_ == ContactModel::kStewartAndTrinkle) {
+    for (int i = 0; i < n_contacts_; i++)
+      contact_descriptions.push_back(
+          LCSContactDescription::CreateSlackVariableDescription());
+    contact_descriptions.insert(contact_descriptions.end(),
+                                normal_contact_descriptions.begin(),
+                                normal_contact_descriptions.end());
+    contact_descriptions.insert(contact_descriptions.end(),
+                                tangential_contact_descriptions.begin(),
+                                tangential_contact_descriptions.end());
+  } else if (contact_model_ == ContactModel::kAnitescu) {
+    contact_descriptions.insert(contact_descriptions.end(),
+                                tangential_contact_descriptions.begin(),
+                                tangential_contact_descriptions.end());
+    DRAKE_ASSERT(n_friction_directions_ > 0);
+    for (int i = 0; i < tangential_contact_descriptions.size(); i++) {
+      int normal_index = i / (2 * n_friction_directions_);
+      DRAKE_ASSERT(
+          contact_descriptions.at(i).witness_point_A ==
+          normal_contact_descriptions.at(normal_index).witness_point_A);
+      contact_descriptions.at(i).force_basis =
+          - contact_descriptions.at(i).force_basis +
+          mu_[normal_index] *
+              normal_contact_descriptions.at(normal_index).force_basis;
+    }
   }
-  MatrixXd mu_matrix = mu_vector.asDiagonal();
 
-  // Constructing friction bases  Jc = EᵀJₙ + μJₜ
-  MatrixXd J_c = E_t.transpose() * Jn + mu_matrix * Jt;
-  return std::make_pair(J_c, contact_points);
+  return contact_descriptions;
 }
 
 LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,

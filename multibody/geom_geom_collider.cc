@@ -258,7 +258,7 @@ Eigen::Matrix3d GeomGeomCollider<T>::ComputePlanarForceBasis(
 
 template <typename T>
 std::pair<VectorX<double>, VectorX<double>>
-GeomGeomCollider<T>::CalcWitnessPoints(const Context<double>& context) {
+GeomGeomCollider<T>::CalcWitnessPoints(const Context<T>& context) {
   // Get common geometry query results
   const auto query_result = GetGeometryQueryResult(context);
 
@@ -270,6 +270,25 @@ GeomGeomCollider<T>::CalcWitnessPoints(const Context<double>& context) {
   plant_.CalcPointsPositions(context, query_result.frameB, query_result.p_BCb,
                              plant_.world_frame(), &p_WCb);
   return std::pair<VectorX<double>, VectorX<double>>(p_WCa, p_WCb);
+}
+
+template <typename T>
+Matrix<double, Eigen::Dynamic, 3>
+GeomGeomCollider<T>::CalcForceBasisInWorldFrame(
+    const Context<T>& context, int num_friction_directions,
+    const Vector3d& planar_normal) const {
+  const auto query_result = GetGeometryQueryResult(context);
+  if (num_friction_directions < 1) {
+    // Planar contact: basis is constructed from the contact and planar normals.
+    return ComputePlanarForceBasis(query_result.signed_distance_pair.nhat_BA_W,
+                                   planar_normal);
+  } else {
+    // 3D contact: build polytope basis and rotate using contact normal.
+    auto R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(
+        query_result.signed_distance_pair.nhat_BA_W, 0);
+    return ComputePolytopeForceBasis(num_friction_directions) *
+           R_WC.matrix().transpose();
+  }
 }
 
 }  // namespace multibody
