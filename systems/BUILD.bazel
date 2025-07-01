@@ -101,6 +101,7 @@ cc_library(
     ],
     deps = [
         ":c3_output",
+        "//multibody:lcs_factory",
         "//lcmtypes:lcmt_c3",
         "@drake//:drake_shared_library",
     ],
