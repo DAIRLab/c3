@@ -37,8 +37,8 @@ PYBIND11_MODULE(multibody, m) {
            py::arg("plant"), py::arg("context"), py::arg("plant_ad"),
            py::arg("context_ad"), py::arg("contact_geoms"), py::arg("options"))
       .def("GenerateLCS", &c3::multibody::LCSFactory::GenerateLCS)
-      .def("GetContactJacobianAndPoints",
-           &c3::multibody::LCSFactory::GetContactJacobianAndPoints)
+    //   .def("GetWitnessPointsAndForceBasisInWorldFrame",
+    //        &c3::multibody::LCSFactory::GetWitnessPointsAndForceBasisInWorldFrame)
       .def("UpdateStateAndInput",
            &c3::multibody::LCSFactory::UpdateStateAndInput, py::arg("state"),
            py::arg("input"))
