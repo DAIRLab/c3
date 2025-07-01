@@ -8,7 +8,7 @@
 #include <drake/systems/lcm/lcm_interface_system.h>
 #include <drake/systems/lcm/lcm_publisher_system.h>
 
-#include "c3/lcmt_forces.hpp"
+#include "c3/lcmt_contact_forces.hpp"
 
 namespace c3 {
 namespace systems {
@@ -95,7 +95,7 @@ class ContactForcePublisher : public drake::systems::LeafSystem<double> {
    * @param c3_forces_output Pointer to the output message to populate.
    */
   void DoCalc(const drake::systems::Context<double>& context,
-              c3::lcmt_forces* c3_forces_output) const;
+              c3::lcmt_contact_forces* c3_forces_output) const;
 
   drake::systems::InputPortIndex
       c3_solution_port_;  ///< Index of the c3 solution input port.
