@@ -1,8 +1,8 @@
-registry_config: ENCRYPTED[0326a516b5938d38377c875f412dae3895e1d074f7ef17e0e562082d6af9ef1a19852f6c0926bfc70a00aac5d4fee664]
+registry_config: ENCRYPTED[4331429b54bae5324a91929a67e694c6c9edf887aef7aa4650f3666dc01d5d6db3f7f772f6f95d9031346d073fde6c35]
 jammy_task:
   timeout_in: 120m
   container:
-    image: ghcr.io/dairlab/jammy-c3:latest
+    image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42
     cpu: 8
     memory: 24
   test_script:
@@ -27,7 +27,7 @@ jammy_task:
 noble_task:
   timeout_in: 120m
   container:
-    image: ghcr.io/dairlab/noble-c3:latest
+    image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
     cpu: 8
     memory: 24
   test_script:
