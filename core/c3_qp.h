@@ -45,8 +45,6 @@ class C3QP final : public C3 {
     solver_options->SetOption(drake::solvers::OsqpSolver::id(), "rho", 1e-4);
     solver_options->SetOption(drake::solvers::OsqpSolver::id(),
                               "scaled_termination", 1);
-    solver_options->SetOption(drake::solvers::OsqpSolver::id(), "linsys_solver",
-                              0);
   }
 };
 

@@ -1,0 +1,50 @@
+registry_config: ENCRYPTED[4331429b54bae5324a91929a67e694c6c9edf887aef7aa4650f3666dc01d5d6db3f7f772f6f95d9031346d073fde6c35]
+jammy_task:
+  timeout_in: 120m
+  container:
+    image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42
+    cpu: 8
+    memory: 24
+  test_script:
+    - export CC=clang-15
+    - export CXX=clang++-15
+    - bazel build
+      --local_resources=ram=24000
+      --local_resources=cpu=8
+      --jobs=8
+      --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
+    - bazel test
+      --local_resources=ram=24000
+      --local_resources=cpu=8
+      --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
+  always:
+    jammy_test_artifacts:
+      path: "bazel-testlogs/**/test.xml"
+      format: junit
+
+noble_task:
+  timeout_in: 120m
+  container:
+    image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
+    cpu: 8
+    memory: 24
+  test_script:
+    - export CC=clang-15
+    - export CXX=clang++-15
+    - bazel build
+      --local_resources=ram=24000
+      --local_resources=cpu=8
+      --jobs=8
+      --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
+    - bazel test
+      --local_resources=ram=24000
+      --local_resources=cpu=8
+      --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
+  always:
+    noble_test_artifacts:
+      path: "bazel-testlogs/**/test.xml"
+      format: junit

@@ -43,19 +43,22 @@ C3Controller::C3Controller(
   solve_time_filter_constant_ = controller_options_.solve_time_filter_alpha;
 
   // Initialize state prediction joints
-  for (auto joint_description : controller_options_.state_prediction_joints) {
-    const auto joint = &plant.GetJointByName(joint_description.name);
+  for (auto prediction_joint : controller_options_.state_prediction_joints) {
+    const auto joint = &plant.GetJointByName(prediction_joint.name);
     if (joint->num_positions() != 1 || joint->num_velocities() != 1) {
       throw std::runtime_error(
           fmt::format("Skipping joint {} for state prediction. Only joints "
                       "with a single position and velocity are currently "
                       "supported. Please update the MultibodyPlant.",
-                      joint_description.name));
+                      prediction_joint.name));
     }
-    state_prediction_joints_.push_back(
-        JointDescription(joint->position_start(), joint->num_positions(),
-                         joint->velocity_start(), joint->num_velocities(),
-                         joint_description.max_acceleration));
+    JointDescription joint_description = {
+        .q_start_index = joint->position_start(),
+        .q_size = joint->num_positions(),
+        .v_start_index = joint->velocity_start(),
+        .v_size = joint->num_velocities(),
+        .max_acceleration = prediction_joint.max_acceleration};
+    state_prediction_joints_.push_back(joint_description);
   }
 
   // Determine the size of lambda based on the contact model

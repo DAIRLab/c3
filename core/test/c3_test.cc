@@ -123,7 +123,7 @@ TEST_P(C3CartpoleTestParameterizedLinearConstraints, LinearConstraintsTest) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     LinearConstraintTests, C3CartpoleTestParameterizedLinearConstraints,
     ::testing::Values(std::make_tuple(false, c3::ConstraintVariable::STATE, 4),
                       std::make_tuple(false, c3::ConstraintVariable::INPUT, 1),
@@ -285,7 +285,7 @@ TEST_P(C3CartpoleTestParameterizedScalingLCSTest, ScalingLCSTest) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     ScalingLCSTests, C3CartpoleTestParameterizedScalingLCSTest,
     ::testing::Values(
         std::make_tuple(
@@ -342,7 +342,7 @@ TEST_F(C3CartpoleTest, End2EndCartpoleTest) {
   std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
 
-  int timesteps = 500;  // number of timesteps for the simulation
+  int timesteps = 1000;  // number of timesteps for the simulation
 
   /// create state and input arrays
   std::vector<VectorXd> x(timesteps, VectorXd::Zero(n));
