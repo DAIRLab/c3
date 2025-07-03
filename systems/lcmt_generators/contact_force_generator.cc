@@ -19,10 +19,10 @@ namespace c3 {
 using multibody::LCSContactDescription;
 
 namespace systems {
-namespace publishers {
+namespace lcmt_generators {
 
 // Publishes contact force information to LCM for visualization and logging.
-ContactForcePublisher::ContactForcePublisher() {
+ContactForceGenerator::ContactForceGenerator() {
   // Declare input port for the C3 solution.
   c3_solution_port_ = this->DeclareAbstractInputPort(
                               "solution", drake::Value<C3Output::C3Solution>{})
@@ -38,12 +38,12 @@ ContactForcePublisher::ContactForcePublisher() {
   // Declare output port for publishing contact forces.
   contact_force_output_port_ =
       this->DeclareAbstractOutputPort("lcmt_force", lcmt_contact_forces(),
-                                      &ContactForcePublisher::DoCalc)
+                                      &ContactForceGenerator::DoCalc)
           .get_index();
 }
 
 // Calculates and outputs the contact forces based on the current context.
-void ContactForcePublisher::DoCalc(const Context<double>& context,
+void ContactForceGenerator::DoCalc(const Context<double>& context,
                                    lcmt_contact_forces* output) const {
   // Get Solution from C3
   const auto& solution =
@@ -84,15 +84,15 @@ void ContactForcePublisher::DoCalc(const Context<double>& context,
 }
 
 // Adds this publisher and an LCM publisher system to the diagram builder.
-LcmPublisherSystem* ContactForcePublisher::AddLcmPublisherToBuilder(
+LcmPublisherSystem* ContactForceGenerator::AddLcmPublisherToBuilder(
     DiagramBuilder<double>& builder,
     const drake::systems::OutputPort<double>& solution_port,
     const drake::systems::OutputPort<double>& lcs_contact_info_port,
     const std::string& channel, drake::lcm::DrakeLcmInterface* lcm,
     const drake::systems::TriggerTypeSet& publish_triggers,
     double publish_period, double publish_offset) {
-  // Add and connect the ContactForcePublisher system.
-  auto force_publisher = builder.AddSystem<ContactForcePublisher>();
+  // Add and connect the ContactForceGenerator system.
+  auto force_publisher = builder.AddSystem<ContactForceGenerator>();
   builder.Connect(solution_port, force_publisher->get_input_port_c3_solution());
   builder.Connect(lcs_contact_info_port,
                   force_publisher->get_input_port_lcs_contact_info());
@@ -106,6 +106,6 @@ LcmPublisherSystem* ContactForcePublisher::AddLcmPublisherToBuilder(
   return lcm_force_publisher;
 }
 
-}  // namespace publishers
+}  // namespace lcmt_generators
 }  // namespace systems
 }  // namespace c3
