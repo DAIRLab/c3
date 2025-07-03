@@ -8,10 +8,10 @@ using drake::systems::lcm::LcmPublisherSystem;
 
 namespace c3 {
 namespace systems {
-namespace publishers {
+namespace lcmt_generators {
 
 // Publishes C3Output as an LCM message.
-C3OutputPublisher::C3OutputPublisher() {
+C3OutputGenerator::C3OutputGenerator() {
   // Declare input port for the C3 solution.
   c3_solution_port_ =
       this->DeclareAbstractInputPort("c3_solution",
@@ -27,12 +27,12 @@ C3OutputPublisher::C3OutputPublisher() {
   // Declare output port for the LCM message.
   c3_output_port_ =
       this->DeclareAbstractOutputPort("lcmt_c3_output", c3::lcmt_output(),
-                                      &C3OutputPublisher::DoCalc)
+                                      &C3OutputGenerator::DoCalc)
           .get_index();
 }
 
 // Calculates the LCM output message from the input ports.
-void C3OutputPublisher::DoCalc(const drake::systems::Context<double>& context,
+void C3OutputGenerator::DoCalc(const drake::systems::Context<double>& context,
                                c3::lcmt_output* output) const {
   // Retrieve input values.
   const auto& c3_solution =
@@ -47,15 +47,15 @@ void C3OutputPublisher::DoCalc(const drake::systems::Context<double>& context,
 }
 
 // Adds this publisher and an LCM publisher system to the diagram builder.
-LcmPublisherSystem* C3OutputPublisher::AddLcmPublisherToBuilder(
+LcmPublisherSystem* C3OutputGenerator::AddLcmPublisherToBuilder(
     DiagramBuilder<double>& builder,
     const drake::systems::OutputPort<double>& solution_port,
     const drake::systems::OutputPort<double>& intermediates_port,
     const std::string& channel, drake::lcm::DrakeLcmInterface* lcm,
     const drake::systems::TriggerTypeSet& publish_triggers,
     double publish_period, double publish_offset) {
-  // Add and connect the C3OutputPublisher system.
-  auto output_publisher = builder.AddSystem<C3OutputPublisher>();
+  // Add and connect the C3OutputGenerator system.
+  auto output_publisher = builder.AddSystem<C3OutputGenerator>();
   builder.Connect(solution_port,
                   output_publisher->get_input_port_c3_solution());
   builder.Connect(intermediates_port,
@@ -70,6 +70,6 @@ LcmPublisherSystem* C3OutputPublisher::AddLcmPublisherToBuilder(
   return lcm_output_publisher;
 }
 
-}  // namespace publishers
+}  // namespace lcmt_generators
 }  // namespace systems
 }  // namespace c3

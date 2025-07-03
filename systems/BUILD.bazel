@@ -40,7 +40,7 @@ cc_library( name = "c3_controller",
     deps = [
         ":options",
         ":framework",
-        ":publishers",
+        ":lcmt_generators",
         "//core:c3",
         "//core:options",
         "//multibody:lcs_factory",
@@ -90,14 +90,14 @@ cc_library(
 )
 
 cc_library(
-    name = "publishers",
+    name = "lcmt_generators",
     srcs = [
-        "publishers/output_publisher.cc",
-        "publishers/force_publisher.cc"
+        "lcmt_generators/output_publisher.cc",
+        "lcmt_generators/force_publisher.cc"
     ],
     hdrs = [
-        "publishers/output_publisher.h",
-        "publishers/force_publisher.h"
+        "lcmt_generators/output_publisher.h",
+        "lcmt_generators/force_publisher.h"
     ],
     deps = [
         ":c3_output",
