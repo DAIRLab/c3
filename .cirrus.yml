@@ -1,4 +1,4 @@
-registry_config: ENCRYPTED[4331429b54bae5324a91929a67e694c6c9edf887aef7aa4650f3666dc01d5d6db3f7f772f6f95d9031346d073fde6c35]
+registry_config: ENCRYPTED[!88cf0d757d2f8b93dca9e57dc166b65ddedef6378e7ac12a91a022ab3fb28dd47b10d452dc5c53a68e144e6bdbae999b!]
 jammy_task:
   timeout_in: 120m
   container:
