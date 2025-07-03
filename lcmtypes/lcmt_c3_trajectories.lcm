@@ -1,0 +1,7 @@
+package c3;
+
+struct lcmt_trajectories
+{
+  int32_t num_trajectories;
+  lcmt_trajectory trajectories[num_trajectories];
+}

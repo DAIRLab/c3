@@ -12,22 +12,22 @@
 
 namespace c3 {
 namespace systems {
-namespace publishers {
+namespace lcmt_generators {
 
 /**
- * @class C3OutputPublisher
+ * @class C3OutputGenerator
  * @brief Converts OutputVector objects to LCM type lcmt_output for publishing.
  * @details
  *   - Provides input ports for C3 solution and intermediates.
  *   - Provides an output port for the constructed lcmt_output message.
  *   - Can be connected to an LCM publisher system for message transmission.
  */
-class C3OutputPublisher : public drake::systems::LeafSystem<double> {
+class C3OutputGenerator : public drake::systems::LeafSystem<double> {
  public:
   /**
    * @brief Constructor. Declares input and output ports.
    */
-  C3OutputPublisher();
+  C3OutputGenerator();
 
   /**
    * @brief Returns the input port for the C3 solution vector.
@@ -88,6 +88,6 @@ class C3OutputPublisher : public drake::systems::LeafSystem<double> {
       c3_output_port_; /**< Index for output port. */
 };
 
-}  // namespace publishers
+}  // namespace lcmt_generators
 }  // namespace systems
 }  // namespace c3
