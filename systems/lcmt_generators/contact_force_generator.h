@@ -12,10 +12,10 @@
 
 namespace c3 {
 namespace systems {
-namespace publishers {
+namespace lcmt_generators {
 
 /**
- * @class ContactForcePublisher
+ * @class ContactForceGenerator
  * @brief Converts solution vectors and LCS contact information into LCM contact
  * force messages for publishing.
  * @details
@@ -26,15 +26,15 @@ namespace publishers {
  *   - Includes a static helper to add an LCM publisher system to a
  * DiagramBuilder for message transmission.
  */
-class ContactForcePublisher : public drake::systems::LeafSystem<double> {
+class ContactForceGenerator : public drake::systems::LeafSystem<double> {
  public:
   /**
-   * @brief Constructs a ContactForcePublisher system.
+   * @brief Constructs a ContactForceGenerator system.
    *
    * Declares input and output ports for the solution vector, LCS contact info,
    * and contact force output.
    */
-  ContactForcePublisher();
+  ContactForceGenerator();
 
   /**
    * @brief Returns the input port for the c3 solution vector.
@@ -105,6 +105,6 @@ class ContactForcePublisher : public drake::systems::LeafSystem<double> {
       contact_force_output_port_;  ///< Index of the contact force output port.
 };
 
-}  // namespace publishers
+}  // namespace lcmt_generators
 }  // namespace systems
 }  // namespace c3
