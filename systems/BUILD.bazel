@@ -57,12 +57,15 @@ cc_library(
 cc_library(
     name = "lcmt_generators",
     srcs = [
-        "lcmt_generators/output_publisher.cc",
-        "lcmt_generators/force_publisher.cc"
+        "lcmt_generators/c3_output_generator.cc",
+        "lcmt_generators/contact_force_generator.cc",
+        "lcmt_generators/c3_trajectory_generator.cc",
     ],
     hdrs = [
-        "lcmt_generators/output_publisher.h",
-        "lcmt_generators/force_publisher.h"
+        "lcmt_generators/c3_output_generator.h",
+        "lcmt_generators/contact_force_generator.h",
+        "lcmt_generators/c3_trajectory_generator.h",
+        "lcmt_generators/c3_trajectory_generator_config.h",
     ],
     deps = [
         ":c3_output",
