@@ -6,6 +6,6 @@ struct lcmt_trajectory
   
   int32_t num_timesteps;
   int32_t vector_dim;
-  double timestamps[num_timesteps];
-  double values[vector_dim][num_timesteps];
+  float timestamps[num_timesteps];
+  float values[vector_dim][num_timesteps];
 }
