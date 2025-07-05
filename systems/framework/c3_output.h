@@ -29,6 +29,22 @@ class C3Output {
       time_vector_ = VectorXf::Zero(N);
     };
 
+    Eigen::MatrixXf GetStateSolution() const {
+      return x_sol_;
+    }
+
+    Eigen::MatrixXf GetForceSolution() const {
+      return lambda_sol_;
+    }
+
+    Eigen::MatrixXf GetInputSolution() const {
+      return u_sol_;
+    }
+
+    Eigen::VectorXf GetTimeVector() const {
+      return time_vector_;
+    }
+
     // Shape is (variable_vector_size, knot_points)
     Eigen::VectorXf time_vector_;
     Eigen::MatrixXf x_sol_;
