@@ -1,4 +1,4 @@
-#include "output_publisher.h"
+#include "systems/lcmt_generators/c3_output_generator.h"
 
 #include "systems/framework/c3_output.h"
 
