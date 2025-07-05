@@ -8,18 +8,31 @@ namespace systems {
 namespace lcmt_generators {
 
 struct TrajectoryDescription {
+  struct index_range {
+    int start;  // Start index of the range
+    int end;    // End index of the range
+    template <typename Archive>
+    void Serialize(Archive* a) {
+      a->Visit(DRAKE_NVP(start));
+      a->Visit(DRAKE_NVP(end));
+    }
+  };
   std::string trajectory_name;  // Name of the trajectory
-  std::string variable_type;  // Type of C3 variable (e.g., "x", "u", "lambda")
-  std::vector<std::tuple<int, int>> indices;
+  std::string variable_type;  // Type of C3 variable ["state", "input", "force"]
+  std::vector<index_range> indices;
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(trajectory_name));
     a->Visit(DRAKE_NVP(variable_type));
+
+    DRAKE_ASSERT(variable_type == "state" || variable_type == "input" ||
+                 variable_type == "force");
+
     a->Visit(DRAKE_NVP(indices));
   }
 };
 
-struct TrajectoryGeneratorOptions {
+struct C3TrajectoryGeneratorConfig {
   std::vector<TrajectoryDescription>
       trajectories;  // List of trajectories to generate
   template <typename Archive>

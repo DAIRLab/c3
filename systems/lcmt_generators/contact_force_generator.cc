@@ -1,4 +1,4 @@
-#include "force_publisher.h"
+#include "systems/lcmt_generators/contact_force_generator.h"
 
 #include <algorithm>
 
@@ -34,7 +34,7 @@ ContactForceGenerator::ContactForceGenerator() {
               drake::Value<std::vector<LCSContactDescription>>())
           .get_index();
 
-  this->set_name("c3_contact_force_publisher");
+  this->set_name("c3_contact_force_generator");
   // Declare output port for publishing contact forces.
   contact_force_output_port_ =
       this->DeclareAbstractOutputPort("lcmt_force", lcmt_contact_forces(),
@@ -56,7 +56,7 @@ void ContactForceGenerator::DoCalc(const Context<double>& context,
   output->forces.clear();
   output->num_forces = 0;
   // Iterate over all contact points and compute forces.
-  for (int i = 0; i < contact_info->size()/4; ++i) {
+  for (int i = 0; i < contact_info->size(); ++i) {
     auto force = lcmt_contact_force();
 
     if (contact_info->at(i).is_slack)
