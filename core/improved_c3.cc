@@ -90,7 +90,7 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
 
   // debug vars
   debug_z = std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
-  debug_qp = std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
+  debug_projection = std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
   //
   for (int i = 0; i < N_; ++i) {
     z_sol_->push_back(Eigen::VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
@@ -319,10 +319,7 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
 
   // }
 
-
-
-
-  debug_qp->push_back(*delta);
+  debug_projection->push_back(*delta);
   for (int i = 0; i < N_; ++i) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);
     w->at(i) = w->at(i) / options_.rho_scale;
@@ -423,43 +420,38 @@ vector<VectorXd> ImprovedC3::SolveQP(const VectorXd &x0,
   }
 
   // get the cost for each term
-  // int index = 0;
-  // for (const auto& binding : prog_.GetAllCosts()) {
-  //     auto* quad_cost = dynamic_cast<QuadraticCost*>(binding.evaluator().get());
-  //     const auto& Q = quad_cost->Q();
-  //     const auto& b = quad_cost->b();
+  int index = 0;
+  for (const auto& binding : prog_.GetAllCosts()) {
+      auto* quad_cost = dynamic_cast<QuadraticCost*>(binding.evaluator().get());
+      const auto& Q = quad_cost->Q();
+      const auto& b = quad_cost->b();
 
-  //     auto cost = binding.evaluator();
-  //     const auto& vars = binding.variables();
+      auto cost = binding.evaluator();
+      const auto& vars = binding.variables();
 
-  //     Eigen::VectorXd x(vars.size());
-  //     std::cout << vars.size() << std::endl;
-  //     for (int i = 0; i < vars.size(); ++i) {
-  //         // std::cout << i << ": " << vars[i].get_name() << std::endl;
-  //         x[i] = result.GetSolution(vars[i]);
-  //     }
+      Eigen::VectorXd x(vars.size());
+      std::cout << vars.size() << std::endl;
+      for (int i = 0; i < vars.size(); ++i) {
+          // std::cout << i << ": " << vars[i].get_name() << std::endl;
+          x[i] = result.GetSolution(vars[i]);
+      }
 
-  //     // Eigen::VectorXd y;
-  //     // cost->Eval(x, &y);  // Usually returns a 1D vector with a single value
+      double total_cost = 0.5 * x.transpose() * Q * x + b.dot(x);
+      std::cout << "Cost for term [" << index << "]: " << std::endl;
+      std::cout << "Total cost: " << total_cost << std::endl;
 
-  //     // std::cout << "Term [" << index++ << "] Cost value: " << y[0] << std::endl;
-
-  //     double total_cost = 0.5 * x.transpose() * Q * x + b.dot(x);
-  //     std::cout << "Cost for term [" << index << "]: " << std::endl;
-  //     std::cout << "Total cost: " << total_cost << std::endl;
-
-  //     // Show per-variable contribution (approximate / illustrative)
-  //     for (int i = 0; i < vars.size(); ++i) {
-  //         double quad_contrib = 0.5 * Q.row(i).dot(x) * x[i];
-  //         double lin_contrib = b[i] * x[i];
-  //         std::cout << vars[i].get_name()
-  //                   << ": quad = " << quad_contrib
-  //                   // << ", linear = " << lin_contrib
-  //                   << ", total ≈ " << (quad_contrib + lin_contrib)
-  //                   << std::endl;
-  //     }
-  //     index++;
-  // }
+      // Show per-variable contribution (approximate / illustrative)
+      for (int i = 0; i < vars.size(); ++i) {
+          double quad_contrib = 0.5 * Q.row(i).dot(x) * x[i];
+          double lin_contrib = b[i] * x[i];
+          std::cout << vars[i].get_name()
+                    << ": quad = " << quad_contrib
+                    // << ", linear = " << lin_contrib
+                    << ", total ≈ " << (quad_contrib + lin_contrib)
+                    << std::endl;
+      }
+      index++;
+  }
 
   return *z_sol_;
 }
@@ -527,9 +519,9 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
       throw std::runtime_error("Numerical instability detected: u2 is very "
                                "close to zero in SolveSingleProjection");
     }
-    u_ratio = std::sqrt(u1 / u2);
+    u_ratio = std::sqrt(u2 / u1);
     // print u_ratio for debugging
-    // std::cout << "u_ratio: " << u_ratio << std::endl;
+    std::cout << "u_ratio: " << u_ratio << std::endl;
 
     // Get current lambda and gamma values
     double lambda_val = delta_c(n_x_ + i);

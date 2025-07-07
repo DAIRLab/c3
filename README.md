@@ -26,3 +26,7 @@ bazel build ...
 bazel-bin/bindings/test/c3_py_test
 ```
 6. You may delete the copy of Drake we cloned in step 3
+
+
+# Analyze the improved C3
+analyze.py plots the 

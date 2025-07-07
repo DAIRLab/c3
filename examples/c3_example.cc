@@ -195,8 +195,10 @@ int DoMain(int argc, char* argv[]) {
     x[i + 1] = system.Simulate(x[i], input[i]);
 
     const Eigen::VectorXd debug_lambda_i = opt.GetDualDeltaSolution()[0].segment(n, m);
-    const Eigen::VectorXd gamma = E[0] * x[0] + F[0] * debug_lambda_i + H[0] * input[0] + d[0];
-    
+    const Eigen::VectorXd state_x = opt.GetDualDeltaSolution()[0].segment(0, n);
+    const Eigen::VectorXd input_u = opt.GetDualDeltaSolution()[0].segment(n+m, k);
+    const Eigen::VectorXd gamma = E[0] * state_x + F[0] * debug_lambda_i + H[0] * input_u + c[0];
+
     outfile_gamma << gamma << "\n";
     outfile_gamma << "\n";
     

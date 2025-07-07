@@ -115,7 +115,7 @@ def make_fingergait_costs(lcs: LCS) -> ImprovedC3CostMatrices:
 
     U = np.zeros((n + 2 * m + k, n + 2 * m + k))
     U[n : n + m, n : n + m] = np.eye(m)
-    scale = 30**2
+    scale = 20**2
     # U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.diag(
     #     np.array([scale, 1 / scale, 1 / scale, scale, 1 / scale, 1 / scale])
     # )
@@ -250,7 +250,7 @@ def main():
     costs = make_fingergait_costs(finger)
 
     n = finger.num_states()
-    Xd0 = np.array([[0], [0], [0], [0], [3], [0]])
+    Xd0 = np.array([[0], [0], [0], [0], [6], [0]])
     xd = [Xd0 for _ in range(N + 1)]
     options = C3Options()
     options.admm_iter = 10
@@ -302,9 +302,8 @@ def main():
         u_sol.append(u_opt)
         x[:, i + 1] = prediction
         x_.append(opt.GetStateSolution())
-        # breakpoint()
-        # print(opt.GetStateSolution())
-
+        # if i == system_iter - 1:
+        #     breakpoint()
     sdf_sol = np.array(sdf_sol)
     delta_sol = np.array(delta_sol)
 
@@ -312,6 +311,7 @@ def main():
 
     debug_info = opt.GetDebugInfo()
     debug_proj = opt.GetQPInfo()
+    breakpoint()
     print(len(opt.GetDebugInfo()))
 
     debug_info = np.array(debug_info)
@@ -329,7 +329,7 @@ def main():
     np.save(f"{stored_folder}/debug.npy", debug_info)
     np.save(f"{stored_folder}/debug_projection.npy", debug_proj)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/z_sol.npy', z_sol)
-    # np.save('/home/yufeiyang/Documents/c3/debug_output/delta_sol.npy', delta_sol)
+    np.save('/home/yufeiyang/Documents/c3/debug_output/delta_sol.npy', delta_sol)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/x_.npy', x_)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/predict.npy', predict)
 
