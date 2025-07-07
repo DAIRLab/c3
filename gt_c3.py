@@ -100,7 +100,7 @@ def get_gamma(lambda_data):
                   [0, 0, 0, 0, -1, -1],
                   [0, h, -h, 1, 2 * h, -2 * h],
                   [0, -h, h, 1, -2 * h, 2 * h]])
-    d = np.array([[-g * h * h], [-g * h], [0], [0], [0], [0]])
+    c = np.array([[0], [-h * g], [h * g], [0], [-h * g], [h * g]])
     H = np.array([[0, 0, mu, 0], 
                   [-h, 0, 0, 0],
                   [h, 0, 0, 0],
@@ -114,7 +114,7 @@ def get_gamma(lambda_data):
     Ex = np.matmul(x_part, E.T)
     Fl = np.matmul(lambda_part, F.T)
     Hu = np.matmul(u_part, H.T)
-    gamma = Ex + Fl + Hu + d.reshape(1, 1, -1)   
+    gamma = Ex + Fl + Hu + c.reshape(1, 1, -1)   
     new_delta[:, :, 0:6] = x_part
     new_delta[:, :, 6:12] = lambda_part
     new_delta[:, :, 12:16] = u_part

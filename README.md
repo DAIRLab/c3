@@ -29,4 +29,12 @@ bazel-bin/bindings/test/c3_py_test
 
 
 # Analyze the improved C3
-analyze.py plots the 
+analyze.py plots the delta value before and after the projection step. There are several parameters:
+1. projection: 0 for z output before projection; 1 for delta output after projection (default 0)
+2. plot_horizon: True if you wish to plot the variable W.R.T to the horizon; False if you wish t plot the variable W.R.T the ADMM iteration (default False)
+3. plot_dual: True if you wish to plot the gamma V.S. lambda plots; False for otherwise (default False)
+4. horizon: an integer that chooses which horizon step you are interested in
+5. timestep: an integer that chooses which timestep you are interested in
+6. choose_admm: an integer that chooses which ADMM step you are interested in (only needed when plot_dual is True)
+7. original: True if you want to investigate original ADMM or planned horizon iterations
+8. admm_num: the number of total ADMM iterations (default 10)
