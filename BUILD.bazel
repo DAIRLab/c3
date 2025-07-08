@@ -1,2 +1,14 @@
-# This is an empty BUILD file, to ensure that the project's root directory is a
-# bazel package.
+LIBC3_COMPONENTS = [
+    "//core:core",
+    "//multibody:multibody",
+    "//systems:systems",
+    "//lcmtypes:lcmt_c3",
+]
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "c3_shared_library",
+    deps = LIBC3_COMPONENTS,
+    include_prefix = "c3"
+)

@@ -9,6 +9,9 @@
 #include "systems/c3_controller_options.h"
 #include "systems/framework/c3_output.h"
 #include "systems/framework/timestamped_vector.h"
+#include "systems/lcmt_generators/c3_output_generator.h"
+#include "systems/lcmt_generators/c3_trajectory_generator.h"
+#include "systems/lcmt_generators/contact_force_generator.h"
 #include "systems/lcs_factory_system.h"
 #include "systems/lcs_simulator.h"
 
@@ -99,10 +102,10 @@ PYBIND11_MODULE(systems, m) {
            &LCSFactorySystem::get_input_port_lcs_input,
            py::return_value_policy::reference)
       .def("get_output_port_lcs", &LCSFactorySystem::get_output_port_lcs,
+           py::return_value_policy::reference)
+      .def("get_output_port_lcs_contact_description",
+           &LCSFactorySystem::get_output_port_lcs_contact_description,
            py::return_value_policy::reference);
-     //  .def("get_output_port_lcs_contact_points_and_force_basis",
-     //       &LCSFactorySystem::get_output_port_lcs_contact_points_and_force_basis,
-     //       py::return_value_policy::reference);
 
   py::class_<C3Output::C3Solution>(m, "C3Solution")
       .def(py::init<>())
@@ -157,7 +160,7 @@ PYBIND11_MODULE(systems, m) {
   drake::pydrake::AddValueInstantiation<c3::LCS>(m);
   drake::pydrake::AddValueInstantiation<C3Output::C3Solution>(m);
   drake::pydrake::AddValueInstantiation<C3Output::C3Intermediates>(m);
-  
+
   py::class_<C3StatePredictionJoint>(m, "C3StatePredictionJoint")
       .def(py::init<>())
       .def_readwrite("name", &C3StatePredictionJoint::name)
@@ -178,6 +181,88 @@ PYBIND11_MODULE(systems, m) {
                      &C3ControllerOptions::state_prediction_joints);
 
   m.def("LoadC3ControllerOptions", &LoadC3ControllerOptions);
+
+  // C3OutputGenerator
+  py::class_<lcmt_generators::C3OutputGenerator,
+             drake::systems::LeafSystem<double>>(m, "C3OutputGenerator")
+      .def(py::init<>())
+      .def("get_input_port_c3_solution",
+           &lcmt_generators::C3OutputGenerator::get_input_port_c3_solution,
+           py::return_value_policy::reference)
+      .def("get_input_port_c3_intermediates",
+           &lcmt_generators::C3OutputGenerator::get_input_port_c3_intermediates,
+           py::return_value_policy::reference)
+      .def("get_output_port_c3_output",
+           &lcmt_generators::C3OutputGenerator::get_output_port_c3_output,
+           py::return_value_policy::reference)
+      .def_static("AddLcmPublisherToBuilder",
+                  &lcmt_generators::C3OutputGenerator::AddLcmPublisherToBuilder,
+                  py::arg("builder"), py::arg("solution_port"),
+                  py::arg("intermediates_port"), py::arg("channel"),
+                  py::arg("lcm"), py::arg("publish_triggers"),
+                  py::arg("publish_period"), py::arg("publish_offset"));
+
+  // C3TrajectoryGenerator
+  py::class_<lcmt_generators::TrajectoryDescription::index_range>(
+      m, "TrajectoryDescriptionIndexRange")
+      .def(py::init<>())
+      .def_readwrite(
+          "start", &lcmt_generators::TrajectoryDescription::index_range::start)
+      .def_readwrite("end",
+                     &lcmt_generators::TrajectoryDescription::index_range::end);
+  py::class_<lcmt_generators::TrajectoryDescription>(m, "TrajectoryDescription")
+      .def(py::init<>())
+      .def_readwrite("trajectory_name",
+                     &lcmt_generators::TrajectoryDescription::trajectory_name)
+      .def_readwrite("variable_type",
+                     &lcmt_generators::TrajectoryDescription::variable_type)
+      .def_readwrite("indices",
+                     &lcmt_generators::TrajectoryDescription::indices);
+  py::class_<lcmt_generators::C3TrajectoryGeneratorConfig>(
+      m, "C3TrajectoryGeneratorConfig")
+      .def(py::init<>())
+      .def_readwrite(
+          "trajectories",
+          &lcmt_generators::C3TrajectoryGeneratorConfig::trajectories);
+  py::class_<lcmt_generators::C3TrajectoryGenerator,
+             drake::systems::LeafSystem<double>>(m, "C3TrajectoryGenerator")
+      .def(py::init<lcmt_generators::C3TrajectoryGeneratorConfig>())
+      .def("get_input_port_c3_solution",
+           &lcmt_generators::C3TrajectoryGenerator::get_input_port_c3_solution,
+           py::return_value_policy::reference)
+      .def("get_output_port_lcmt_c3_trajectory",
+           &lcmt_generators::C3TrajectoryGenerator::
+               get_output_port_lcmt_c3_trajectory,
+           py::return_value_policy::reference)
+      .def_static(
+          "AddLcmPublisherToBuilder",
+          &lcmt_generators::C3TrajectoryGenerator::AddLcmPublisherToBuilder,
+          py::arg("builder"), py::arg("config"), py::arg("solution_port"),
+          py::arg("channel"), py::arg("lcm"), py::arg("publish_triggers"),
+          py::arg("publish_period"), py::arg("publish_offset"));
+
+  // ContactForceGenerator
+  py::class_<lcmt_generators::ContactForceGenerator,
+             drake::systems::LeafSystem<double>>(m, "ContactForceGenerator")
+      .def(py::init<>())
+      .def("get_input_port_c3_solution",
+           &lcmt_generators::ContactForceGenerator::get_input_port_c3_solution,
+           py::return_value_policy::reference)
+      .def("get_input_port_lcs_contact_info",
+           &lcmt_generators::ContactForceGenerator::
+               get_input_port_lcs_contact_info,
+           py::return_value_policy::reference)
+      .def("get_output_port_contact_force",
+           &lcmt_generators::ContactForceGenerator::
+               get_output_port_contact_force,
+           py::return_value_policy::reference)
+      .def_static(
+          "AddLcmPublisherToBuilder",
+          &lcmt_generators::ContactForceGenerator::AddLcmPublisherToBuilder,
+          py::arg("builder"), py::arg("solution_port"),
+          py::arg("lcs_contact_info_port"), py::arg("channel"), py::arg("lcm"),
+          py::arg("publish_triggers"), py::arg("publish_period"),
+          py::arg("publish_offset"));
 }
 }  // namespace pyc3
 }  // namespace systems

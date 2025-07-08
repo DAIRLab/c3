@@ -4,6 +4,16 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "core",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":c3",
+        ":options",
+        ":lcs",
+    ],
+)
+
+cc_library(
     name = "options",
     hdrs = ["c3_options.h",
             "solver_options_io.h"],

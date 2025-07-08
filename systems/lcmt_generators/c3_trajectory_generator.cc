@@ -65,7 +65,7 @@ void C3TrajectoryGenerator::GenerateTrajectory(
     auto indices = traj_desc.indices;
     if (indices.empty()) {
       TrajectoryDescription::index_range default_indices = {
-          .start = 0, .end = solution_values.rows() - 1};
+          .start = 0, .end = (int)solution_values.rows() - 1};
       indices.push_back(default_indices);
     }
 

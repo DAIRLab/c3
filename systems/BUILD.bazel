@@ -4,39 +4,74 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "vector",
+    name = "systems",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":framework",
+        ":c3_controller",
+        ":lcs_simulator",
+        ":lcs_factory_system",
+        ":lcmt_generators",
+    ]
+)
+
+cc_library(
+    name = "framework",
     srcs = [
+        "framework/c3_output.cc",
         "framework/timestamped_vector.cc",
     ],
     hdrs = [
+        "framework/c3_output.h",
         "framework/timestamped_vector.h",
     ],
     deps = [
+        "//lcmtypes:lcmt_c3",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library( name = "c3_controller",
+    srcs = [
+        "c3_controller.cc",
+    ],
+    hdrs = [
+        "c3_controller.h",
+    ],
+    deps = [
+        ":options",
+        ":framework",
+        "//core:c3",
+        "//core:options",
+        "//multibody:lcs_factory",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library( name = "lcs_simulator",
+    srcs = [
+        "lcs_simulator.cc",
+    ],
+    hdrs = [
+        "lcs_simulator.h",
+    ],
+    deps = [
+        "//core:lcs",
         "@drake//:drake_shared_library",
     ],
 )
 
 cc_library(
-    name = "systems",
+    name = "lcs_factory_system",
     srcs = [
-        "c3_controller.cc",
-        "lcs_simulator.cc",
-        "framework/c3_output.cc",
         "lcs_factory_system.cc",
     ],
     hdrs = [
-        "c3_controller.h",
-        "lcs_simulator.h",
-        "framework/c3_output.h",
         "lcs_factory_system.h",
-        
-        ],
+    ],
     deps = [
-        ":vector",
-        ":options",
-        ":c3_output",
-        ":lcmt_generators",
-        "//core:c3",
+        ":framework",
+        "//core:lcs",
         "//core:options",
         "//multibody:lcs_factory",
         "@drake//:drake_shared_library",
@@ -68,26 +103,13 @@ cc_library(
         "lcmt_generators/c3_trajectory_generator_config.h",
     ],
     deps = [
-        ":c3_output",
+        ":framework",
         "//multibody:lcs_factory",
         "//lcmtypes:lcmt_c3",
         "@drake//:drake_shared_library",
     ],
 )
 
-cc_library(
-    name = "c3_output",
-        srcs = [
-        "framework/c3_output.cc",
-    ],
-    hdrs = [
-        "framework/c3_output.h",
-        ],
-    deps = [
-        "//lcmtypes:lcmt_c3",
-        "@drake//:drake_shared_library",
-    ]
-)
 
 filegroup(
     name = 'test_data',
@@ -135,4 +157,8 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
     ],
+)
+
+exports_files(glob(["**/*.h", "**/*.hpp"]),
+    visibility = ["//visibility:public"],
 )
