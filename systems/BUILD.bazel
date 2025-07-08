@@ -12,6 +12,7 @@ cc_library(
         ":c3_controller",
         ":lcs_simulator",
         ":lcs_factory_system",
+        ":lcmt_generators",
     ]
 )
 
@@ -26,6 +27,7 @@ cc_library(
         "framework/timestamped_vector.h",
     ],
     deps = [
+        "//lcmtypes:lcmt_c3",
         "@drake//:drake_shared_library",
     ],
 )
@@ -40,8 +42,37 @@ cc_library( name = "c3_controller",
     deps = [
         ":options",
         ":framework",
-        ":lcmt_generators",
         "//core:c3",
+        "//core:options",
+        "//multibody:lcs_factory",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library( name = "lcs_simulator",
+    srcs = [
+        "lcs_simulator.cc",
+    ],
+    hdrs = [
+        "lcs_simulator.h",
+    ],
+    deps = [
+        "//core:lcs",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "lcs_factory_system",
+    srcs = [
+        "lcs_factory_system.cc",
+    ],
+    hdrs = [
+        "lcs_factory_system.h",
+    ],
+    deps = [
+        ":framework",
+        "//core:lcs",
         "//core:options",
         "//multibody:lcs_factory",
         "@drake//:drake_shared_library",
@@ -103,26 +134,13 @@ cc_library(
         "lcmt_generators/c3_trajectory_generator_config.h",
     ],
     deps = [
-        ":c3_output",
+        ":framework",
         "//multibody:lcs_factory",
         "//lcmtypes:lcmt_c3",
         "@drake//:drake_shared_library",
     ],
 )
 
-cc_library(
-    name = "c3_output",
-        srcs = [
-        "framework/c3_output.cc",
-    ],
-    hdrs = [
-        "framework/c3_output.h",
-        ],
-    deps = [
-        "//lcmtypes:lcmt_c3",
-        "@drake//:drake_shared_library",
-    ]
-)
 
 
 
@@ -172,5 +190,9 @@ filegroup(
         "*.h",
         "**/*.h",
     ]),
+)
+
+exports_files(
+    glob(["**/*.h", "**/*.hpp"]),
     visibility = ["//visibility:public"],
 )
