@@ -56,7 +56,7 @@ void ContactForceGenerator::DoCalc(const Context<double>& context,
   output->forces.clear();
   output->num_forces = 0;
   // Iterate over all contact points and compute forces.
-  for (int i = 0; i < contact_info->size(); ++i) {
+  for (size_t i = 0; i < contact_info->size(); ++i) {
     auto force = lcmt_contact_force();
 
     if (contact_info->at(i).is_slack)
