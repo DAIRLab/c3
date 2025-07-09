@@ -78,8 +78,8 @@ def make_cartpole_costs(lcs: LCS) -> ImprovedC3CostMatrices:
     G = [Ginit for _ in range(N)]
 
     U = np.zeros((n + 2 * m + k, n + 2 * m + k))
-    U[n : n + m, n : n + m] = np.eye(m)
-    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = 10000 * np.eye(m)
+    U[n : n + m, n : n + m] = 10**2 *np.eye(m)
+    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.eye(m)
     U = [U for _ in range(N)]
 
     return ImprovedC3CostMatrices(Q, R, G, U)
@@ -217,17 +217,17 @@ def main():
     debug_info = np.array(debug_info)
     print(debug_info.shape)
     # save debug info to file
-    with open('/home/yufeiyang/Documents/c3/debug_output/debug_info.txt', 'a') as f:
+    with open('/home/hienbui/git/c3/debug_output/debug_info.txt', 'a') as f:
         f.write('\n')
         np.savetxt(f, debug_info[1], fmt='%s')
 
     z_sol = np.array(z_sol)
     print(z_sol.shape)
     # Save the results to a file
-    np.save('/home/yufeiyang/Documents/c3/debug_output/debug.npy', debug_info)
-    np.save('/home/yufeiyang/Documents/c3/debug_output/z_sol.npy', z_sol)
-    np.save('/home/yufeiyang/Documents/c3/debug_output/delta_sol.npy', delta_sol)
-    np.save('/home/yufeiyang/Documents/c3/debug_output/x_.npy', x_)
+    np.save('/home/hienbui/git/c3/debug_output/debug.npy', debug_info)
+    np.save('/home/hienbui/git/c3/debug_output/z_sol.npy', z_sol)
+    np.save('/home/hienbui/git/c3/debug_output/delta_sol.npy', delta_sol)
+    np.save('/home/hienbui/git/c3/debug_output/x_.npy', x_)
 
     # Create animation if necessary
     len_p = 0.6  # pole length

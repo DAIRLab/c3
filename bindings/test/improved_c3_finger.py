@@ -97,8 +97,8 @@ def make_fingergait_costs(lcs: LCS) -> ImprovedC3CostMatrices:
     R = [np.eye(k) for _ in range(N)]
     Q_init = np.array(
         [
-            [600, 0, 0, 0, 0, 0],
-            [0, 10, 0, 0, 0, 0],
+            [1000, 0, 0, 0, 0, 0],
+            [0, 20, 0, 0, 0, 0],
             [0, 0, 10, 0, 0, 0],
             [0, 0, 0, 10, 0, 0],
             [0, 0, 0, 0, 10, 0],
@@ -113,15 +113,12 @@ def make_fingergait_costs(lcs: LCS) -> ImprovedC3CostMatrices:
     Ginit[n : n + m, n : n + m] = np.diag(np.array([50, 50, 50, 50, 50, 50]))
     G = [Ginit for _ in range(N)]
 
+    scale = 6**2
     U = np.zeros((n + 2 * m + k, n + 2 * m + k))
-    U[n : n + m, n : n + m] = np.eye(m)
-    scale = 20**2
-    # U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.diag(
-    #     np.array([scale, 1 / scale, 1 / scale, scale, 1 / scale, 1 / scale])
-    # )
-    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.diag(
+    U[n : n + m, n : n + m] = np.diag(
         np.array([scale, scale, scale, scale, scale, scale])
     )
+    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.eye(m)
     U = [U for _ in range(N)]
 
     return ImprovedC3CostMatrices(Q, R, G, U)
@@ -239,7 +236,7 @@ def animate_fingergait(x, dt, len_rod, width_rod):
 
     # Save animation
     writer = animation.PillowWriter(fps=60)
-    anim.save("/home/yufeiyang/Documents/c3/fingerGait_animation.gif", writer=writer)
+    anim.save("/home/hienbui/git/c3/fingerGait_animation.gif", writer=writer)
 
     return anim
 
@@ -262,7 +259,7 @@ def main():
 
     x0 = np.array([[-8], [0], [1], [0], [5], [0]])
 
-    system_iter = 300
+    system_iter = 100
 
     x = np.zeros((n, system_iter + 1))
 
@@ -311,8 +308,6 @@ def main():
 
     debug_info = opt.GetDebugInfo()
     debug_proj = opt.GetQPInfo()
-    breakpoint()
-    print(len(opt.GetDebugInfo()))
 
     debug_info = np.array(debug_info)
     debug_proj = np.array(debug_proj)
@@ -325,11 +320,11 @@ def main():
     # print(predict.shape)
     # print(x.shape)
     # Save the results to a file
-    stored_folder = "/home/yufeiyang/Documents/c3/debug_output"
+    stored_folder = "/home/hienbui/git/c3/debug_output"
     np.save(f"{stored_folder}/debug.npy", debug_info)
     np.save(f"{stored_folder}/debug_projection.npy", debug_proj)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/z_sol.npy', z_sol)
-    np.save('/home/yufeiyang/Documents/c3/debug_output/delta_sol.npy', delta_sol)
+    np.save(f"{stored_folder}/delta_sol.npy", delta_sol)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/x_.npy', x_)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/predict.npy', predict)
 
@@ -468,7 +463,7 @@ def main():
 
     plt.tight_layout()
     plt.grid(True)
-    plt.savefig("/home/yufeiyang/Documents/c3/debug_output/finger_gait.png", dpi=600)
+    plt.savefig("/home/hienbui/git/c3/debug_output/finger_gait.png", dpi=600)
 
 
 if __name__ == "__main__":

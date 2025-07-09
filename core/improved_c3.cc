@@ -152,7 +152,7 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
             .get();
   }
   input_costs_.resize(N_);
-  std::cout << "input_costs: " << std::endl;
+  // std::cout << "input_costs: " << std::endl;
   for (int i = 0; i < N_ + 1; ++i) {
     target_cost_[i] =
         prog_
@@ -161,8 +161,8 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
                               x_.at(i), 1)
             .evaluator()
             .get();
-    std::cout << "target_cost[" << i << "]: " << target_cost_[i];
-    std::cout << i << std::endl;
+    // std::cout << "target_cost[" << i << "]: " << target_cost_[i];
+    // std::cout << i << std::endl;
     if (i < N_) {
       input_costs_[i] = prog_
                             .AddQuadraticCost(2 * cost_matrices_.R.at(i),
@@ -430,25 +430,25 @@ vector<VectorXd> ImprovedC3::SolveQP(const VectorXd &x0,
       const auto& vars = binding.variables();
 
       Eigen::VectorXd x(vars.size());
-      std::cout << vars.size() << std::endl;
+      // std::cout << vars.size() << std::endl;
       for (int i = 0; i < vars.size(); ++i) {
           // std::cout << i << ": " << vars[i].get_name() << std::endl;
           x[i] = result.GetSolution(vars[i]);
       }
 
       double total_cost = 0.5 * x.transpose() * Q * x + b.dot(x);
-      std::cout << "Cost for term [" << index << "]: " << std::endl;
-      std::cout << "Total cost: " << total_cost << std::endl;
+      // std::cout << "Cost for term [" << index << "]: " << std::endl;
+      // std::cout << "Total cost: " << total_cost << std::endl;
 
       // Show per-variable contribution (approximate / illustrative)
       for (int i = 0; i < vars.size(); ++i) {
           double quad_contrib = 0.5 * Q.row(i).dot(x) * x[i];
           double lin_contrib = b[i] * x[i];
-          std::cout << vars[i].get_name()
-                    << ": quad = " << quad_contrib
-                    // << ", linear = " << lin_contrib
-                    << ", total ≈ " << (quad_contrib + lin_contrib)
-                    << std::endl;
+          // std::cout << vars[i].get_name()
+          //           << ": quad = " << quad_contrib
+          //           // << ", linear = " << lin_contrib
+          //           << ", total ≈ " << (quad_contrib + lin_contrib)
+          //           << std::endl;
       }
       index++;
   }
@@ -519,9 +519,9 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
       throw std::runtime_error("Numerical instability detected: u2 is very "
                                "close to zero in SolveSingleProjection");
     }
-    u_ratio = std::sqrt(u2 / u1);
+    u_ratio = std::sqrt(u1 / u2);
     // print u_ratio for debugging
-    std::cout << "u_ratio: " << u_ratio << std::endl;
+    // std::cout << "u_ratio: " << u_ratio << std::endl;
 
     // Get current lambda and gamma values
     double lambda_val = delta_c(n_x_ + i);
@@ -563,12 +563,12 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
         // If gamma is positive, compare with u_ratio * lambda
         if (gamma_val > u_ratio * lambda_val + EPSILON) {
           // If gamma is significantly larger, keep lambda and set gamma to 0
-          delta_proj(n_x_ + i) = lambda_val;
-          delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-        } else {
-          // Otherwise, set lambda to 0 and keep gamma
           delta_proj(n_x_ + i) = 0;
           delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
+        } else {
+          // Otherwise, set lambda to 0 and keep gamma
+          delta_proj(n_x_ + i) = lambda_val;
+          delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
         }
       }
     }
