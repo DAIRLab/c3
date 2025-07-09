@@ -22,6 +22,13 @@ cc_library(
     ],
 )
 
+filegroup(
+    name = "default_solver_options",
+    srcs = [
+        "configs/solver_options_default.yaml",
+    ],
+)
+
 cc_library(
     name = "c3",
     srcs = [
@@ -39,7 +46,9 @@ cc_library(
         "c3.h",
         "c3_miqp.h",
         "c3_qp.h",
-        "configs/solve_options_default.hpp"
+    ],
+    data = [
+        ":default_solver_options",
     ],
     copts = ["-fopenmp"],
     linkopts = ["-fopenmp"],

@@ -4,11 +4,11 @@
 #include <iostream>
 
 #include <Eigen/Core>
+#include <drake/common/find_runfiles.h>
 #include <omp.h>
 
 #include "lcs.h"
 #include "solver_options_io.h"
-#include "configs/solve_options_default.hpp"
 
 #include "drake/common/text_logging.h"
 #include "drake/solvers/mathematical_program.h"
@@ -154,8 +154,24 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
   }
 
   // Set default solver options
+  SetDefaultSolverOptions();
+}
+
+void C3::SetDefaultSolverOptions() {
+  // Set default solver options
+  auto main_runfile =
+      drake::FindRunfile("_main/core/configs/solver_options_default.yaml");
+  auto external_runfile =
+      drake::FindRunfile("c3/core/configs/solver_options_default.yaml");
+  if (main_runfile.abspath.empty() && external_runfile.abspath.empty()) {
+    throw std::runtime_error(fmt::format(
+        "Could not find the default solver options YAML file. {}, {}",
+        main_runfile.error, external_runfile.error));
+  }
   drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlString<c3::SolverOptionsFromYaml>(default_solver_options)
+      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
+          main_runfile.abspath.empty() ? external_runfile.abspath
+                                       : main_runfile.abspath)
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
   SetSolverOptions(solver_options);
 }

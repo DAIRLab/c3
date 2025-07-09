@@ -164,7 +164,8 @@ class C3 {
    * @param options The C3Options object containing configuration values.
    * @return CostMatrices The initialized cost matrices.
    */
-  static CostMatrices CreateCostMatricesFromC3Options(const C3Options& options, int N);
+  static CostMatrices CreateCostMatricesFromC3Options(const C3Options& options,
+                                                      int N);
 
   /**
    * @brief Get a vector of user defined linear constraints.
@@ -227,6 +228,12 @@ class C3 {
    * This only scales the lambdas.
    */
   void ScaleLCS();
+
+  /*!
+   * Set the default solver options for the MathematicalProgram
+   * This is called in the constructor, and can be overridden by the user
+   */
+  void SetDefaultSolverOptions();
 
   /*!
    * Solve the projection problem for all time-steps
