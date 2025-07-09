@@ -9,7 +9,6 @@
 
 #include "lcs.h"
 #include "solver_options_io.h"
-#include "configs/solve_options_default.hpp"
 
 #include "drake/common/text_logging.h"
 #include "drake/solvers/mathematical_program.h"
