@@ -311,6 +311,7 @@ def main():
 
     debug_info = np.array(debug_info)
     debug_proj = np.array(debug_proj)
+
     print("debug qp shape: ", debug_proj.shape)
     print("debug info shape: ", debug_info.shape)
     # print(debug_info.shape)
