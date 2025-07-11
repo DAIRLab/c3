@@ -1,6 +1,5 @@
 # -*- mode: python -*-
 # vi: set ft=python :
-
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -36,8 +35,8 @@ cc_library(
         ":lcs",
         "@drake//:drake_shared_library",
     ] + select({
-         "//tools:with_gurobi": ["@gurobi//:gurobi_cxx"],
-         "//conditions:default": [],
+        "//tools:with_gurobi": ["@gurobi//:gurobi_cxx"],
+        "//conditions:default": [],
     }),
 )
 
@@ -50,28 +49,28 @@ cc_library(
     ],
 )
 
-
 cc_test(
     name = "c3_test",
     srcs = ["test/c3_test.cc"],
+    env_inherit = [
+        "GUROBI_HOME",
+        "GRB_LICENSE_FILE",
+    ],
     deps = [
         ":c3",
         "@gtest//:main",
-    ],
-    env_inherit = [
-        "GUROBI_HOME",
-        "GRB_LICENSE_FILE"
     ],
 )
 
 cc_library(
     name = "improved_c3",
     srcs = ["improved_c3.cc"],
-    hdrs = ["improved_c3.h", "c3_options.h"],
+    hdrs = [
+        "c3_options.h",
+        "improved_c3.h",
+    ],
     deps = [
         ":lcs",
         "@drake//:drake_shared_library",
     ],
-    copts = ["-fopenmp"],
-    linkopts = ["-fopenmp"],
 )

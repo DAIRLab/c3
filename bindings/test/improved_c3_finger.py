@@ -247,12 +247,12 @@ def main():
     costs = make_fingergait_costs(finger)
 
     n = finger.num_states()
-    Xd0 = np.array([[0], [0], [0], [0], [6], [0]])
+    Xd0 = np.array([[0], [0], [1], [0], [3], [0]])
     xd = [Xd0 for _ in range(N + 1)]
     options = C3Options()
     options.admm_iter = 10
     options.rho_scale = 1.2
-    options.num_threads = 10
+    options.num_threads = 5
     options.delta_option = 0
 
     opt = ImprovedC3(finger, costs, xd, options)
@@ -311,7 +311,6 @@ def main():
 
     debug_info = np.array(debug_info)
     debug_proj = np.array(debug_proj)
-
     print("debug qp shape: ", debug_proj.shape)
     print("debug info shape: ", debug_info.shape)
     # print(debug_info.shape)

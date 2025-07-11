@@ -5,7 +5,6 @@
 #include <iostream>
 
 #include <Eigen/Core>
-#include <omp.h>
 
 #include "lcs.h"
 
@@ -22,9 +21,9 @@ using std::vector;
 
 using drake::solvers::MathematicalProgram;
 using drake::solvers::MathematicalProgramResult;
+using drake::solvers::QuadraticCost;
 using drake::solvers::SolutionResult;
 using drake::solvers::SolverOptions;
-using drake::solvers::QuadraticCost;
 
 using drake::solvers::OsqpSolver;
 using drake::solvers::OsqpSolverDetails;
@@ -74,7 +73,7 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
     }
   }
 
-  //ScaleLCS();
+  // ScaleLCS();
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
@@ -90,7 +89,8 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
 
   // debug vars
   debug_z = std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
-  debug_projection = std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
+  debug_projection =
+      std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
   //
   for (int i = 0; i < N_; ++i) {
     z_sol_->push_back(Eigen::VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
@@ -421,36 +421,36 @@ vector<VectorXd> ImprovedC3::SolveQP(const VectorXd &x0,
 
   // get the cost for each term
   int index = 0;
-  for (const auto& binding : prog_.GetAllCosts()) {
-      auto* quad_cost = dynamic_cast<QuadraticCost*>(binding.evaluator().get());
-      const auto& Q = quad_cost->Q();
-      const auto& b = quad_cost->b();
+  for (const auto &binding : prog_.GetAllCosts()) {
+    auto *quad_cost = dynamic_cast<QuadraticCost *>(binding.evaluator().get());
+    const auto &Q = quad_cost->Q();
+    const auto &b = quad_cost->b();
 
-      auto cost = binding.evaluator();
-      const auto& vars = binding.variables();
+    auto cost = binding.evaluator();
+    const auto &vars = binding.variables();
 
-      Eigen::VectorXd x(vars.size());
-      // std::cout << vars.size() << std::endl;
-      for (int i = 0; i < vars.size(); ++i) {
-          // std::cout << i << ": " << vars[i].get_name() << std::endl;
-          x[i] = result.GetSolution(vars[i]);
-      }
+    Eigen::VectorXd x(vars.size());
+    // std::cout << vars.size() << std::endl;
+    for (int i = 0; i < vars.size(); ++i) {
+      // std::cout << i << ": " << vars[i].get_name() << std::endl;
+      x[i] = result.GetSolution(vars[i]);
+    }
 
-      double total_cost = 0.5 * x.transpose() * Q * x + b.dot(x);
-      // std::cout << "Cost for term [" << index << "]: " << std::endl;
-      // std::cout << "Total cost: " << total_cost << std::endl;
+    double total_cost = 0.5 * x.transpose() * Q * x + b.dot(x);
+    // std::cout << "Cost for term [" << index << "]: " << std::endl;
+    // std::cout << "Total cost: " << total_cost << std::endl;
 
-      // Show per-variable contribution (approximate / illustrative)
-      for (int i = 0; i < vars.size(); ++i) {
-          double quad_contrib = 0.5 * Q.row(i).dot(x) * x[i];
-          double lin_contrib = b[i] * x[i];
-          // std::cout << vars[i].get_name()
-          //           << ": quad = " << quad_contrib
-          //           // << ", linear = " << lin_contrib
-          //           << ", total ≈ " << (quad_contrib + lin_contrib)
-          //           << std::endl;
-      }
-      index++;
+    // Show per-variable contribution (approximate / illustrative)
+    for (int i = 0; i < vars.size(); ++i) {
+      double quad_contrib = 0.5 * Q.row(i).dot(x) * x[i];
+      double lin_contrib = b[i] * x[i];
+      // std::cout << vars[i].get_name()
+      //           << ": quad = " << quad_contrib
+      //           // << ", linear = " << lin_contrib
+      //           << ", total ≈ " << (quad_contrib + lin_contrib)
+      //           << std::endl;
+    }
+    index++;
   }
 
   return *z_sol_;
@@ -460,17 +460,7 @@ vector<VectorXd> ImprovedC3::SolveProjection(const vector<MatrixXd> &U,
                                              vector<VectorXd> &WZ,
                                              int admm_iteration) {
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
-  int i;
-
-  if (options_.num_threads > 0) {
-    omp_set_dynamic(0); // Explicitly disable dynamic teams
-    omp_set_num_threads(options_.num_threads); // Set number of threads
-    // omp_set_nested(1);
-    omp_set_nested(0);
-    omp_set_schedule(omp_sched_static, 0);
-  }
-#pragma omp parallel for num_threads(options_.num_threads)
-  for (i = 0; i < N_; ++i) {
+  for (int i = 0; i < N_; ++i) {
     if (warm_start_) {
       if (i == N_ - 1) {
         deltaProj[i] =
