@@ -21,6 +21,7 @@ cc_library(
     name = "libc3",
     hdrs = [":c3_headers"],  # Changed from srcs to hdrs for headers
     deps = LIBC3_COMPONENTS + [
+        "//lcmtypes:lcmt_c3",
         "@drake//:drake_shared_library",
     ],
     include_prefix = "c3",
