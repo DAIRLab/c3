@@ -56,5 +56,12 @@ cc_test(
         ":lcs_factory",
         "@gtest//:main",
     ],
+)
 
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+    ]),
+    visibility = ["//visibility:public"],
 )

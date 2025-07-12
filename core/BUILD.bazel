@@ -60,6 +60,7 @@ cc_library(
          "//tools:with_gurobi": ["@gurobi//:gurobi_cxx"],
          "//conditions:default": [],
     }),
+    includes = ['.']
 )
 
 cc_library(
@@ -100,4 +101,11 @@ cc_test(
     ],
 )
 
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+    ]),
+    visibility = ["//visibility:public"],
+)
 

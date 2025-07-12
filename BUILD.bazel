@@ -2,13 +2,28 @@ LIBC3_COMPONENTS = [
     "//core:core",
     "//multibody:multibody",
     "//systems:systems",
-    "//lcmtypes:lcmt_c3",
 ]
 
 package(default_visibility = ["//visibility:public"])
 
+# Filegroup collecting all headers
+filegroup(
+    name = "c3_headers",
+    srcs = [
+        "//core:headers",
+        "//multibody:headers",
+        "//systems:headers",
+    ],
+)
+
+# Combined target that provides both the shared library and headers
 cc_library(
-    name = "c3_shared_library",
-    deps = LIBC3_COMPONENTS,
-    include_prefix = "c3"
+    name = "libc3",
+    hdrs = [":c3_headers"],  # Changed from srcs to hdrs for headers
+    deps = LIBC3_COMPONENTS + [
+        "//lcmtypes:lcmt_c3",
+        "@drake//:drake_shared_library",
+    ],
+    include_prefix = "c3",
+    visibility = ["//visibility:public"],
 )

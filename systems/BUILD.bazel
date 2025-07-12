@@ -160,6 +160,11 @@ cc_library(
     ],
 )
 
-exports_files(glob(["**/*.h", "**/*.hpp"]),
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
     visibility = ["//visibility:public"],
 )
