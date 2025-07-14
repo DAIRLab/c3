@@ -74,11 +74,10 @@ def make_cartpole_costs(lcs: LCS) -> ImprovedC3CostMatrices:
     Ginit = np.zeros((n + 2 * m + k, n + 2 * m + k))
     Ginit[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.eye(m)
     Ginit[n : n + m, n : n + m] = np.eye(m)
-    # Ginit = np.eye(n + 2 * m + k)
     G = [Ginit for _ in range(N)]
 
     U = np.zeros((n + 2 * m + k, n + 2 * m + k))
-    U[n : n + m, n : n + m] = 10**2 *np.eye(m)
+    U[n : n + m, n : n + m] = 10**2 * np.eye(m)
     U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.eye(m)
     U = [U for _ in range(N)]
 
@@ -157,7 +156,7 @@ def animate_cartpole(x, dt, len_p, len_com):
 
     # Save animation
     writer = animation.PillowWriter(fps=60)
-    anim.save("/home/yufeiyang/Documents/c3/cartpole_animation.gif", writer=writer)
+    anim.save("/home/hienbui/git/c3/cartpole_animation.gif", writer=writer)
 
     return anim
 
@@ -174,7 +173,7 @@ def main():
     options = C3Options()
     options.admm_iter = 10
     options.rho_scale = 2
-    options.num_threads = 10
+    options.num_threads = 5
     options.delta_option = 0
 
     opt = ImprovedC3(cartpole, costs, xd, options)
@@ -207,7 +206,6 @@ def main():
         x[:, i + 1] = prediction
         x_.append(opt.GetStateSolution())
 
-
     sdf_sol = np.array(sdf_sol)
     delta_sol = np.array(delta_sol)
     print(delta_sol.shape)
@@ -215,19 +213,19 @@ def main():
     dt = cartpole.dt()
 
     debug_info = np.array(debug_info)
-    print(debug_info.shape)
+    stored_path = "/home/hienbui/git/c3/debug_output"
     # save debug info to file
-    with open('/home/hienbui/git/c3/debug_output/debug_info.txt', 'a') as f:
-        f.write('\n')
-        np.savetxt(f, debug_info[1], fmt='%s')
+    with open(f"{stored_path}/debug_info.txt", "a") as f:
+        f.write("\n")
+        np.savetxt(f, debug_info[1], fmt="%s")
 
     z_sol = np.array(z_sol)
     print(z_sol.shape)
     # Save the results to a file
-    np.save('/home/hienbui/git/c3/debug_output/debug.npy', debug_info)
-    np.save('/home/hienbui/git/c3/debug_output/z_sol.npy', z_sol)
-    np.save('/home/hienbui/git/c3/debug_output/delta_sol.npy', delta_sol)
-    np.save('/home/hienbui/git/c3/debug_output/x_.npy', x_)
+    np.save(f"{stored_path}/debug.npy", debug_info)
+    np.save(f"{stored_path}/z_sol.npy", z_sol)
+    np.save(f"{stored_path}/delta_sol.npy", delta_sol)
+    np.save(f"{stored_path}/x_.npy", x_)
 
     # Create animation if necessary
     len_p = 0.6  # pole length
