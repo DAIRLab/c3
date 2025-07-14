@@ -246,6 +246,7 @@ void ImprovedC3::Solve(const VectorXd &x0) {
   }
   for (int iter = 0; iter < options_.admm_iter; iter++) {
     ADMMStep(x0, &delta, &w, &G, iter);
+    std::cout << "ADMM iteration: " << iter << std::endl;
   }
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
@@ -460,7 +461,7 @@ vector<VectorXd> ImprovedC3::SolveProjection(const vector<MatrixXd> &U,
                                              vector<VectorXd> &WZ,
                                              int admm_iteration) {
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
-  int i;
+  // int i;
 
   if (options_.num_threads > 0) {
     omp_set_dynamic(0); // Explicitly disable dynamic teams
@@ -470,7 +471,11 @@ vector<VectorXd> ImprovedC3::SolveProjection(const vector<MatrixXd> &U,
     omp_set_schedule(omp_sched_static, 0);
   }
 #pragma omp parallel for num_threads(options_.num_threads)
-  for (i = 0; i < N_; ++i) {
+  for (int i = 0; i < N_; ++i) {
+    #pragma omp critical
+    {
+      std::cout << "horizon for " << i << std::endl;
+    }  
     if (warm_start_) {
       if (i == N_ - 1) {
         deltaProj[i] =
@@ -486,6 +491,7 @@ vector<VectorXd> ImprovedC3::SolveProjection(const vector<MatrixXd> &U,
           SolveSingleProjection(U[i], WZ[i], lcs_.E()[i], lcs_.F()[i],
                                 lcs_.H()[i], lcs_.c()[i], admm_iteration, -1);
     }
+
   }
 
   return deltaProj;
@@ -532,6 +538,11 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
     if (lambda_val < -EPSILON) {
       delta_proj(n_x_ + i) = 0;
       delta_proj(n_x_ + n_lambda_ + n_u_ + i) = std::max(EPSILON, gamma_val);
+      #pragma omp critical
+        {
+          std::cout << "lambda less than 0" << std::endl;
+        }
+
     }
     // Case 2: -EPSILON ≤ lambda ≤ EPSILON (lambda is very close to zero)
     else if (std::abs(lambda_val) <= EPSILON) {
@@ -539,36 +550,63 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
         // If gamma is negative, set lambda to EPSILON and gamma to 0
         delta_proj(n_x_ + i) = EPSILON;
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
+        #pragma omp critical
+        {
+          std::cout << "projected to 0" << std::endl;
+        }
       } else if (std::abs(gamma_val) <= EPSILON) {
         // If both are close to zero, set both to 0
         delta_proj(n_x_ + i) = 0;
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
+        #pragma omp critical
+        {
+          std::cout << "projected to 0" << std::endl;
+        }
       } else {
         // If gamma is positive, set lambda to 0 and keep gamma
         delta_proj(n_x_ + i) = 0;
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
+        #pragma omp critical
+        {
+          std::cout << "projected to gamma" << std::endl;
+        }
       }
     }
     // Case 3: lambda > EPSILON
     else {
-      if (gamma_val < -EPSILON) {
+      if (gamma_val < -EPSILON) { 
+        // potentially bug here
         // If gamma is negative, keep lambda and set gamma to 0
         delta_proj(n_x_ + i) = lambda_val;
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
+        #pragma omp critical
+        {
+          std::cout << "projected to lambda" << std::endl;
+        }
       } else if (std::abs(gamma_val) <= EPSILON) {
         // If gamma is close to zero, keep lambda and set gamma to 0
         delta_proj(n_x_ + i) = lambda_val;
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
+        #pragma omp critical
+        {
+          std::cout << "projected to lambda" << std::endl;
+        }
       } else {
         // If gamma is positive, compare with u_ratio * lambda
         if (gamma_val > u_ratio * lambda_val + EPSILON) {
-          // If gamma is significantly larger, keep lambda and set gamma to 0
           delta_proj(n_x_ + i) = 0;
           delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
+          #pragma omp critical
+          {
+            std::cout << "projected to gamma" << std::endl;
+          }
         } else {
-          // Otherwise, set lambda to 0 and keep gamma
           delta_proj(n_x_ + i) = lambda_val;
           delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
+          #pragma omp critical
+          {
+            std::cout << "projected to lambda" << std::endl;
+          }
         }
       }
     }

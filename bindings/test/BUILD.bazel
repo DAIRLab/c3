@@ -33,3 +33,11 @@ py_binary(
         "//bindings/pyc3:c3_py",
     ],
 )
+
+py_binary(
+    name = "improved_c3_finger_debug",
+    srcs = ["improved_c3_finger_debug.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+    ],
+)

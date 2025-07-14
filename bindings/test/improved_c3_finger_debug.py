@@ -256,10 +256,13 @@ def main():
     options.delta_option = 0
 
     opt = ImprovedC3(finger, costs, xd, options)
+    all_x = np.load("/home/yufeiyang/Documents/c3/debug_output/c4_x_.npy")
+    print("x shape", all_x.shape)
+    curr_x = all_x[-1, 0, :]
+    x0 = curr_x.reshape(-1, 1)
+    # x0 = np.array([[-8], [0], [1], [0], [5], [0]])
 
-    x0 = np.array([[-8], [0], [1], [0], [5], [0]])
-
-    system_iter = 100
+    system_iter = 1
 
     x = np.zeros((n, system_iter + 1))
 
@@ -326,7 +329,7 @@ def main():
     np.save(f"{stored_folder}/debug_projection.npy", debug_proj)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/z_sol.npy', z_sol)
     np.save(f"{stored_folder}/delta_sol.npy", delta_sol)
-    np.save('/home/yufeiyang/Documents/c3/debug_output/c4_x_.npy', x_)
+    # np.save('/home/yufeiyang/Documents/c3/debug_output/x_.npy', x_)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/predict.npy', predict)
 
     # regular data
