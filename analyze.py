@@ -134,17 +134,21 @@ def plot_original(horizon, timestep, admm_num, delta, title, plot_horizon):
     make_plot([lambda_12, lambda_13, lambda_22, lambda_23], ["Gripper 1 pos tangential force", "Gripper 1 neg tangential force", "gripper 2 pos tangential force", "gripper 2 neg tangential force"], "Grippers lambda friction forces",ax=ax2[1])
     fig2.suptitle(f"{title} at timestep {timestep}, planning step {horizon}", fontsize=16)
 
-def plot_lambda_gamma(qp_data, delta_data, admm_num, timestep, choose_admm):
+def plot_lambda_gamma(qp_data, delta_data, admm_num, timestep, choose_admm, projection_info):
     k = 1/6
     admm_iter = admm_num
     admm_time, N, num_var = qp_data.shape
     qp_d = qp_data.reshape(-1, admm_iter, N, num_var)   # system iter, ADMM, N, num_var
     delta_d = delta_data.reshape(-1, admm_iter, N, num_var)   # system iter, ADMM, N, num_var
+    proj_info = projection_info.reshape(admm_iter, N, num_var)
     planning = 1
     qp_lambda = qp_d[timestep, :, planning, 6:12]
     qp_gamma = qp_d[timestep, :, planning, 16:22]
     delta_lambda = delta_d[timestep, :, planning, 6:12]
     delta_gamma = delta_d[timestep, :, planning, 16:22]
+    breakpoint()
+
+    proj_info = proj_info[:, planning, 6:12]
     # breakpoint()
     # make scatter plot. y axis is gamma, x axis is lambda
     # there should be 20 points, 10 for before projection, 10 for after projection. one lambda at a time. there should 6 subplots
@@ -163,12 +167,13 @@ def plot_lambda_gamma(qp_data, delta_data, admm_num, timestep, choose_admm):
             y_vals = [qp_gamma[j, i], delta_gamma[j, i]]
             x_vals = [qp_lambda[j, i], delta_lambda[j, i]]
             ax[i].plot(x_vals, y_vals, color='green', linestyle='--', linewidth=1)
-            ax[i].text(qp_lambda[j, i], qp_gamma[j, i], str(j), color='red', fontsize=10, ha='right', va='bottom')
-            ax[i].text(delta_lambda[j, i], delta_gamma[j, i], str(j), color='orange', fontsize=10, ha='right', va='bottom')
+            mark = str(j) + "," + str(round(qp_gamma[j, i], 2))   # gamma should only keep 2 decimal places
+            ax[i].text(qp_lambda[j, i], qp_gamma[j, i], mark, color='red', fontsize=15, ha='right', va='bottom')
+            ax[i].text(delta_lambda[j, i], delta_gamma[j, i], str(j), color='orange', fontsize=15, ha='right', va='bottom')
         x_line = np.array(ax[i].get_xlim())  # get current x-axis range
         y_line = k * x_line
         ax[i].plot(x_line, y_line, color='blue', linestyle='-', linewidth=1.5, label=f"Slope {k}")
-        ax[i].set_title(f"{labels[i]}")
+        ax[i].set_title(f"{labels[i]}", fontsize=16)
         ax[i].set_xlabel("Lambda")
         ax[i].set_ylabel("Gamma")
         ax[i].legend()
@@ -189,12 +194,13 @@ def plot(original, projection, horizon, timestep, admm_num, plot_horizon, plot_d
     delta_data = np.load('/home/yufeiyang/Documents/c3/debug_output/debug_projection.npy')  # after projection
     title_qp = "ADMM QP output before projection"
     title_delta = "ADMM projection output"
+    projection_info = np.load("/home/yufeiyang/Documents/c3/debug_output/debug_proj_step.npy")
 
 
     # delta_sol = np.load('/home/yufeiyang/Documents/c3/debug_output/delta_sol.npy')
 
     if plot_dual:
-        plot_lambda_gamma(qp_data, delta_data, admm_num, timestep, choose_admm)
+        plot_lambda_gamma(qp_data, delta_data, admm_num, timestep, choose_admm, projection_info)
         # plt.show()
         # return
     if original:

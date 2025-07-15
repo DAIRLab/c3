@@ -252,6 +252,7 @@ PYBIND11_MODULE(c3, m) {
       .def("GetDualDeltaSolution", &ImprovedC3::GetDualDeltaSolution)
       .def("GetDebugInfo", &ImprovedC3::GetDebugInfo)
       .def("GetQPInfo", &ImprovedC3::GetQPInfo)
+      .def("GetProjectionInfo", &ImprovedC3::GetProjectionInfo)
       .def("GetDualWSolution", &ImprovedC3::GetDualWSolution);
 }
 } // namespace pyc3

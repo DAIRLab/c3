@@ -258,7 +258,7 @@ def main():
     opt = ImprovedC3(finger, costs, xd, options)
     all_x = np.load("/home/yufeiyang/Documents/c3/debug_output/c4_x_.npy")
     print("x shape", all_x.shape)
-    curr_x = all_x[-1, 0, :]
+    curr_x = all_x[1, 0, :]
     x0 = curr_x.reshape(-1, 1)
     # x0 = np.array([[-8], [0], [1], [0], [5], [0]])
 
@@ -311,9 +311,12 @@ def main():
 
     debug_info = opt.GetDebugInfo()
     debug_proj = opt.GetQPInfo()
+    debug_proj_step = opt.GetProjectionInfo()
+    print("debug_proj_stepshape: ", np.array(debug_proj_step).shape)
 
     debug_info = np.array(debug_info)
     debug_proj = np.array(debug_proj)
+    debug_proj_step = np.array(debug_proj_step)
 
     print("debug qp shape: ", debug_proj.shape)
     print("debug info shape: ", debug_info.shape)
@@ -327,6 +330,7 @@ def main():
     stored_folder = "/home/yufeiyang/Documents/c3/debug_output"
     np.save(f"{stored_folder}/debug.npy", debug_info)
     np.save(f"{stored_folder}/debug_projection.npy", debug_proj)
+    np.save(f"{stored_folder}/debug_proj_step.npy", debug_proj_step)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/z_sol.npy', z_sol)
     np.save(f"{stored_folder}/delta_sol.npy", delta_sol)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/x_.npy', x_)

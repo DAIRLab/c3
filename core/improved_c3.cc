@@ -91,6 +91,7 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
   debug_z = std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
   debug_projection =
       std::make_unique<std::vector<std::vector<Eigen::VectorXd>>>();
+  debug_proj_step = std::make_unique<std::vector<Eigen::VectorXd>>();
   //
   for (int i = 0; i < N_; ++i) {
     z_sol_->push_back(Eigen::VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
@@ -294,6 +295,7 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
   }
   vector<VectorXd> z =
       SolveQP(x0, *G, WD, admm_iteration, true); // z is 10 by 9
+  
   debug_z->push_back(z);
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
@@ -462,6 +464,7 @@ vector<VectorXd> ImprovedC3::SolveProjection(const vector<MatrixXd> &U,
                                              int admm_iteration) {
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
   for (int i = 0; i < N_; ++i) {
+    std::cout << "Solving projection for horizon step " << i << std::endl;
     if (warm_start_) {
       if (i == N_ - 1) {
         deltaProj[i] =
@@ -491,6 +494,8 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
                                            const int &warm_start_index) {
   // Initialize result vector with input values
   VectorXd delta_proj = delta_c;
+  VectorXd proj_case_ = delta_c;
+
 
   // Set epsilon for floating point comparisons
   const double EPSILON = 1e-8;
@@ -499,6 +504,8 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
   std::fesetround(FE_TONEAREST);
 
   // Handle complementarity constraints for each lambda-gamma pair
+  std::cout << "Solving single projection for admm iteration "
+            << admm_iteration << std::endl;
   for (int i = 0; i < n_lambda_; ++i) {
     // Calculate ratio of U matrix elements for scaling with more stable
     // computation
@@ -523,39 +530,41 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
     // In this case, we always set lambda to 0 and keep gamma if it's positive
     if (lambda_val < -EPSILON) {
       delta_proj(n_x_ + i) = 0;
-      delta_proj(n_x_ + n_lambda_ + n_u_ + i) = std::max(EPSILON, gamma_val);
-      #pragma omp critical
-        {
-          std::cout << "lambda less than 0" << std::endl;
-        }
+      if (i == 2) {
+        std::cout << gamma_val << std::endl;
+        std::cout << std::max(EPSILON, gamma_val) << std::endl;
+
+      }
+      auto tmp = std::max(EPSILON, gamma_val);
+      delta_proj(n_x_ + n_lambda_ + n_u_ + i) = tmp;
+      
+      proj_case_(n_x_ + i) = -1;
+      proj_case_(n_x_ + n_lambda_ + n_u_ + i) = -1;
+      // std::cout << "lambda less than 0" << std::endl;
 
     }
     // Case 2: -EPSILON ≤ lambda ≤ EPSILON (lambda is very close to zero)
     else if (std::abs(lambda_val) <= EPSILON) {
       if (gamma_val < -EPSILON) {
-        // If gamma is negative, set lambda to EPSILON and gamma to 0
         delta_proj(n_x_ + i) = EPSILON;
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-        #pragma omp critical
-        {
-          std::cout << "projected to 0" << std::endl;
-        }
+        proj_case_(n_x_ + i) = 0;
+        proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 0;
+        std::cout << "projected to 0" << std::endl;
       } else if (std::abs(gamma_val) <= EPSILON) {
         // If both are close to zero, set both to 0
         delta_proj(n_x_ + i) = 0;
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-        #pragma omp critical
-        {
-          std::cout << "projected to 0" << std::endl;
-        }
+        proj_case_(n_x_ + i) = 1;
+        proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 0;
+        std::cout << "projected to 0" << std::endl;
       } else {
         // If gamma is positive, set lambda to 0 and keep gamma
         delta_proj(n_x_ + i) = 0;
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
-        #pragma omp critical
-        {
-          std::cout << "projected to gamma" << std::endl;
-        }
+        proj_case_(n_x_ + i) = 2;
+        proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 1;
+        std::cout << "projected to gamma" << std::endl;
       }
     }
     // Case 3: lambda > EPSILON
@@ -565,39 +574,35 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
         // If gamma is negative, keep lambda and set gamma to 0
         delta_proj(n_x_ + i) = lambda_val;
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-        #pragma omp critical
-        {
-          std::cout << "projected to lambda" << std::endl;
-        }
+        proj_case_(n_x_ + i) = 3;
+        proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 0;
+        std::cout << "projected to lambda" << std::endl;
       } else if (std::abs(gamma_val) <= EPSILON) {
         // If gamma is close to zero, keep lambda and set gamma to 0
         delta_proj(n_x_ + i) = lambda_val;
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-        #pragma omp critical
-        {
-          std::cout << "projected to lambda" << std::endl;
-        }
+        proj_case_(n_x_ + i) = 4;
+        proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 0;
+        std::cout << "projected to lambda" << std::endl;
       } else {
         // If gamma is positive, compare with u_ratio * lambda
         if (gamma_val > u_ratio * lambda_val + EPSILON) {
           delta_proj(n_x_ + i) = 0;
           delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
-          #pragma omp critical
-          {
-            std::cout << "projected to gamma" << std::endl;
-          }
+          proj_case_(n_x_ + i) = 5;
+          proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 1;
+          std::cout << "projected to gamma" << std::endl;
         } else {
           delta_proj(n_x_ + i) = lambda_val;
           delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-          #pragma omp critical
-          {
-            std::cout << "projected to lambda" << std::endl;
-          }
+          proj_case_(n_x_ + i) = 6;
+          proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 0;
+          std::cout << "projected to lambda" << std::endl;
         }
       }
     }
   }
-
+  debug_proj_step->push_back(proj_case_);
   return delta_proj;
 }
 

@@ -146,6 +146,7 @@ public:
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
   std::vector<std::vector<Eigen::VectorXd>> GetDebugInfo() { return *debug_z; }
   std::vector<std::vector<Eigen::VectorXd>> GetQPInfo() { return *debug_projection; }
+  std::vector<Eigen::VectorXd> GetProjectionInfo() { return *debug_proj_step; }
 
 
 protected:
@@ -239,6 +240,7 @@ private:
   // debug vars
   std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> debug_z;
   std::unique_ptr<std::vector<std::vector<Eigen::VectorXd>>> debug_projection;
+  std::unique_ptr<std::vector<Eigen::VectorXd>> debug_proj_step;
   // 
 
   // QP step constraints
