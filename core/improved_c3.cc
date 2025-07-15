@@ -492,101 +492,42 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
                                            const MatrixXd &H, const VectorXd &c,
                                            const int admm_iteration,
                                            const int &warm_start_index) {
-  // Initialize result vector with input values
   VectorXd delta_proj = delta_c;
   VectorXd proj_case_ = delta_c;
 
 
   // Set epsilon for floating point comparisons
-  const double EPSILON = 1e-8;
+  // const double EPSILON = 1e-8;
 
   // Set rounding mode to nearest
-  std::fesetround(FE_TONEAREST);
+  // std::fesetround(FE_TONEAREST);
 
   // Handle complementarity constraints for each lambda-gamma pair
   std::cout << "Solving single projection for admm iteration "
             << admm_iteration << std::endl;
   for (int i = 0; i < n_lambda_; ++i) {
-    // Calculate ratio of U matrix elements for scaling with more stable
-    // computation
-    double u_ratio = 0.0;
-    double u1 =
+    double w_gamma =
         std::abs(U(n_x_ + n_lambda_ + n_u_ + i, n_x_ + n_lambda_ + n_u_ + i));
-    double u2 = std::abs(U(n_x_ + i, n_x_ + i));
+    double w_lambda = std::abs(U(n_x_ + i, n_x_ + i));
 
-    if (u2 < EPSILON) {
-      throw std::runtime_error("Numerical instability detected: u2 is very "
-                               "close to zero in SolveSingleProjection");
-    }
-    u_ratio = std::sqrt(u1 / u2);
-    // print u_ratio for debugging
-    // std::cout << "u_ratio: " << u_ratio << std::endl;
-
-    // Get current lambda and gamma values
     double lambda_val = delta_c(n_x_ + i);
     double gamma_val = delta_c(n_x_ + n_lambda_ + n_u_ + i);
 
-    // Case 1: lambda < -EPSILON
-    // In this case, we always set lambda to 0 and keep gamma if it's positive
-    if (lambda_val < -EPSILON) {
+    if (lambda_val <= 0) {
       delta_proj(n_x_ + i) = 0;
-      if (i == 2) {
-        std::cout << gamma_val << std::endl;
-        std::cout << std::max(EPSILON, gamma_val) << std::endl;
-
-      }
-      auto tmp = std::max(EPSILON, gamma_val);
-      delta_proj(n_x_ + n_lambda_ + n_u_ + i) = tmp;
-      
-      proj_case_(n_x_ + i) = -1;
-      proj_case_(n_x_ + n_lambda_ + n_u_ + i) = -1;
-      // std::cout << "lambda less than 0" << std::endl;
-
+      delta_proj(n_x_ + n_lambda_ + n_u_ + i) = std::max(0.0, gamma_val);
     }
-    // Case 2: -EPSILON ≤ lambda ≤ EPSILON (lambda is very close to zero)
-    else if (std::abs(lambda_val) <= EPSILON) {
-      if (gamma_val < -EPSILON) {
-        delta_proj(n_x_ + i) = EPSILON;
-        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-        proj_case_(n_x_ + i) = 0;
-        proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 0;
-        std::cout << "projected to 0" << std::endl;
-      } else if (std::abs(gamma_val) <= EPSILON) {
-        // If both are close to zero, set both to 0
-        delta_proj(n_x_ + i) = 0;
-        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-        proj_case_(n_x_ + i) = 1;
-        proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 0;
-        std::cout << "projected to 0" << std::endl;
-      } else {
-        // If gamma is positive, set lambda to 0 and keep gamma
-        delta_proj(n_x_ + i) = 0;
-        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
-        proj_case_(n_x_ + i) = 2;
-        proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 1;
-        std::cout << "projected to gamma" << std::endl;
-      }
-    }
-    // Case 3: lambda > EPSILON
     else {
-      if (gamma_val < -EPSILON) { 
-        // potentially bug here
-        // If gamma is negative, keep lambda and set gamma to 0
-        delta_proj(n_x_ + i) = lambda_val;
-        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-        proj_case_(n_x_ + i) = 3;
-        proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 0;
-        std::cout << "projected to lambda" << std::endl;
-      } else if (std::abs(gamma_val) <= EPSILON) {
-        // If gamma is close to zero, keep lambda and set gamma to 0
+      if (gamma_val <= 0) {
         delta_proj(n_x_ + i) = lambda_val;
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
         proj_case_(n_x_ + i) = 4;
         proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 0;
         std::cout << "projected to lambda" << std::endl;
       } else {
-        // If gamma is positive, compare with u_ratio * lambda
-        if (gamma_val > u_ratio * lambda_val + EPSILON) {
+        // If point (lambda, gamma) is above the slope, set lambda to 0 and keep gamma
+        // Otherwise, set lambda to lambda and set gamma to 0
+        if (gamma_val * std::sqrt(w_gamma) > lambda_val * std::sqrt(w_lambda)) {
           delta_proj(n_x_ + i) = 0;
           delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
           proj_case_(n_x_ + i) = 5;
