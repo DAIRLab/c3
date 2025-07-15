@@ -77,8 +77,8 @@ def make_cartpole_costs(lcs: LCS) -> ImprovedC3CostMatrices:
     G = [Ginit for _ in range(N)]
 
     U = np.zeros((n + 2 * m + k, n + 2 * m + k))
-    U[n : n + m, n : n + m] = 10**2 * np.eye(m)
-    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.eye(m)
+    U[n : n + m, n : n + m] = np.eye(m)
+    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = 5**2 * np.eye(m)
     U = [U for _ in range(N)]
 
     return ImprovedC3CostMatrices(Q, R, G, U)

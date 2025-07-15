@@ -113,12 +113,12 @@ def make_fingergait_costs(lcs: LCS) -> ImprovedC3CostMatrices:
     Ginit[n : n + m, n : n + m] = np.diag(np.array([50, 50, 50, 50, 50, 50]))
     G = [Ginit for _ in range(N)]
 
-    scale = 6**2
+    scale = 2**2
     U = np.zeros((n + 2 * m + k, n + 2 * m + k))
-    U[n : n + m, n : n + m] = np.diag(
+    U[n : n + m, n : n + m] = np.eye(m)
+    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.diag(
         np.array([scale, scale, scale, scale, scale, scale])
     )
-    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.eye(m)
     U = [U for _ in range(N)]
 
     return ImprovedC3CostMatrices(Q, R, G, U)
