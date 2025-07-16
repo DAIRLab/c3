@@ -113,12 +113,12 @@ def make_fingergait_costs(lcs: LCS) -> ImprovedC3CostMatrices:
     Ginit[n : n + m, n : n + m] = np.diag(np.array([50, 50, 50, 50, 50, 50]))
     G = [Ginit for _ in range(N)]
 
-    scale = 6**2
+    scale = 2**2
     U = np.zeros((n + 2 * m + k, n + 2 * m + k))
-    U[n : n + m, n : n + m] = np.diag(
+    U[n : n + m, n : n + m] = np.eye(m)
+    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.diag(
         np.array([scale, scale, scale, scale, scale, scale])
     )
-    U[n + m + k : n + 2 * m + k, n + m + k : n + 2 * m + k] = np.eye(m)
     U = [U for _ in range(N)]
 
     return ImprovedC3CostMatrices(Q, R, G, U)
@@ -247,18 +247,18 @@ def main():
     costs = make_fingergait_costs(finger)
 
     n = finger.num_states()
-    Xd0 = np.array([[0], [0], [0], [0], [6], [0]])
+    Xd0 = np.array([[0], [0], [1], [0], [3], [0]])
     xd = [Xd0 for _ in range(N + 1)]
     options = C3Options()
     options.admm_iter = 10
     options.rho_scale = 1.2
-    options.num_threads = 10
+    options.num_threads = 5
     options.delta_option = 0
 
     opt = ImprovedC3(finger, costs, xd, options)
     all_x = np.load("/home/yufeiyang/Documents/c3/debug_output/c4_x_.npy")
     print("x shape", all_x.shape)
-    curr_x = all_x[1, 0, :]
+    curr_x = all_x[0, 0, :]
     x0 = curr_x.reshape(-1, 1)
     # x0 = np.array([[-8], [0], [1], [0], [5], [0]])
 
@@ -280,7 +280,7 @@ def main():
 
     u1 = np.array([0, 0, 1, 0])
     u2 = np.array([0, 0, 0, 1])
-    debug_info = []
+    debug_qp = []
     debug_proj = []
     opt.AddLinearConstraint(a1, 1, 3, 1)
     opt.AddLinearConstraint(a2, 3, 5, 1)
@@ -290,7 +290,6 @@ def main():
     for i in range(system_iter):
         # whe i = 0; get result from SolveQP
         start_time = time.perf_counter()
-
         opt.Solve(x[:, i])
         solve_times.append(time.perf_counter() - start_time)
         sdf_sol.append(opt.GetSDFSolution())
@@ -302,44 +301,33 @@ def main():
         u_sol.append(u_opt)
         x[:, i + 1] = prediction
         x_.append(opt.GetStateSolution())
-        # if i == system_iter - 1:
-        #     breakpoint()
+
+        debug_qp.append(opt.GetDebugInfo())
+        debug_proj.append(opt.GetQPInfo())
+        
     sdf_sol = np.array(sdf_sol)
     delta_sol = np.array(delta_sol)
 
     dt = finger.dt()
 
-    debug_info = opt.GetDebugInfo()
-    debug_proj = opt.GetQPInfo()
-    debug_proj_step = opt.GetProjectionInfo()
-    print("debug_proj_stepshape: ", np.array(debug_proj_step).shape)
+    # debug_info = opt.GetDebugInfo()
+    # debug_proj = opt.GetQPInfo()
 
-    debug_info = np.array(debug_info)
+    debug_qp = np.array(debug_qp)
     debug_proj = np.array(debug_proj)
-    debug_proj_step = np.array(debug_proj_step)
-
     print("debug qp shape: ", debug_proj.shape)
-    print("debug info shape: ", debug_info.shape)
+    print("debug info shape: ", debug_qp.shape)
     # print(debug_info.shape)
     # # save debug info to file
     z_sol = np.array(z_sol)
     predict = np.array(predict)
-    # print(predict.shape)
-    # print(x.shape)
     # Save the results to a file
     stored_folder = "/home/yufeiyang/Documents/c3/debug_output"
-    np.save(f"{stored_folder}/debug.npy", debug_info)
+    np.save(f"{stored_folder}/debug.npy", debug_qp)
     np.save(f"{stored_folder}/debug_projection.npy", debug_proj)
-    np.save(f"{stored_folder}/debug_proj_step.npy", debug_proj_step)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/z_sol.npy', z_sol)
     np.save(f"{stored_folder}/delta_sol.npy", delta_sol)
-    # np.save('/home/yufeiyang/Documents/c3/debug_output/x_.npy', x_)
-    # np.save('/home/yufeiyang/Documents/c3/debug_output/predict.npy', predict)
-
-    # regular data
-    # np.save("/home/yufeiyang/Documents/c3/debug_output/finger_x.npy", x)
-    # np.save("/home/yufeiyang/Documents/c3/debug_output/finger_delta.npy", delta_sol)
-    # np.save("/home/yufeiyang/Documents/c3/debug_output/finger_u.npy", u_sol)
+    # np.save('/home/yufeiyang/Documents/c3/debug_output/c4_x_.npy', x_)
 
     time_x = np.arange(0, system_iter * dt + dt, dt)
 

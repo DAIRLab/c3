@@ -277,7 +277,7 @@ def main():
 
     u1 = np.array([0, 0, 1, 0])
     u2 = np.array([0, 0, 0, 1])
-    debug_info = []
+    debug_qp = []
     debug_proj = []
     opt.AddLinearConstraint(a1, 1, 3, 1)
     opt.AddLinearConstraint(a2, 3, 5, 1)
@@ -287,7 +287,6 @@ def main():
     for i in range(system_iter):
         # whe i = 0; get result from SolveQP
         start_time = time.perf_counter()
-
         opt.Solve(x[:, i])
         solve_times.append(time.perf_counter() - start_time)
         sdf_sol.append(opt.GetSDFSolution())
@@ -299,39 +298,33 @@ def main():
         u_sol.append(u_opt)
         x[:, i + 1] = prediction
         x_.append(opt.GetStateSolution())
-        # if i == system_iter - 1:
-        #     breakpoint()
+
+        debug_qp.append(opt.GetDebugInfo())
+        debug_proj.append(opt.GetQPInfo())
+        
     sdf_sol = np.array(sdf_sol)
     delta_sol = np.array(delta_sol)
 
     dt = finger.dt()
 
-    debug_info = opt.GetDebugInfo()
-    debug_proj = opt.GetQPInfo()
+    # debug_info = opt.GetDebugInfo()
+    # debug_proj = opt.GetQPInfo()
 
-    debug_info = np.array(debug_info)
+    debug_qp = np.array(debug_qp)
     debug_proj = np.array(debug_proj)
     print("debug qp shape: ", debug_proj.shape)
-    print("debug info shape: ", debug_info.shape)
+    print("debug info shape: ", debug_qp.shape)
     # print(debug_info.shape)
     # # save debug info to file
     z_sol = np.array(z_sol)
     predict = np.array(predict)
-    # print(predict.shape)
-    # print(x.shape)
     # Save the results to a file
     stored_folder = "/home/yufeiyang/Documents/c3/debug_output"
-    np.save(f"{stored_folder}/debug.npy", debug_info)
+    np.save(f"{stored_folder}/debug.npy", debug_qp)
     np.save(f"{stored_folder}/debug_projection.npy", debug_proj)
     # np.save('/home/yufeiyang/Documents/c3/debug_output/z_sol.npy', z_sol)
     np.save(f"{stored_folder}/delta_sol.npy", delta_sol)
     np.save('/home/yufeiyang/Documents/c3/debug_output/c4_x_.npy', x_)
-    # np.save('/home/yufeiyang/Documents/c3/debug_output/predict.npy', predict)
-
-    # regular data
-    # np.save("/home/yufeiyang/Documents/c3/debug_output/finger_x.npy", x)
-    # np.save("/home/yufeiyang/Documents/c3/debug_output/finger_delta.npy", delta_sol)
-    # np.save("/home/yufeiyang/Documents/c3/debug_output/finger_u.npy", u_sol)
 
     time_x = np.arange(0, system_iter * dt + dt, dt)
 

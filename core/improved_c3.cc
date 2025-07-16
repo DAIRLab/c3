@@ -114,6 +114,19 @@ ImprovedC3::ImprovedC3(const LCS &lcs, const ImprovedC3::CostMatrices &costs,
     }
   }
 
+  for (int i = 0; i < options_.admm_iter; i++) {
+    std::vector<VectorXd> debug_z_iter_i;
+    std::vector<VectorXd> debug_proj_iter_i;
+    for (int j = 0; j < N_; j++) {
+      debug_z_iter_i.emplace_back(
+          Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+      debug_proj_iter_i.emplace_back(
+          Eigen::VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+    }
+    debug_z->push_back(debug_z_iter_i);
+    debug_projection->push_back(debug_proj_iter_i);
+  }
+
   // initialize the constraint bindings
   initial_state_constraint_ = nullptr;
   initial_force_constraint_ = nullptr;
@@ -296,33 +309,26 @@ void ImprovedC3::ADMMStep(const VectorXd &x0, vector<VectorXd> *delta,
   vector<VectorXd> z =
       SolveQP(x0, *G, WD, admm_iteration, true); // z is 10 by 9
   
-  debug_z->push_back(z);
+  // debug_z->push_back(z);
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_x_ + 2 * n_lambda_ + n_u_));
   for (int i = 0; i < N_; ++i) {
     ZW[i] = w->at(i) + z[i];
   }
-
+  for (auto i = 0; i < N_; i++) {
+    debug_z->at(admm_iteration).at(i) = ZW.at(i);
+  }
   if (cost_matrices_.U[0].isZero(0)) {
     *delta = SolveProjection(*G, ZW, admm_iteration);
 
   } else {
     *delta = SolveProjection(cost_matrices_.U, ZW, admm_iteration);
   }
-  // print content in *delta
-  // std::cout << "delta: " << std::endl;
-  // int count = 0;
-  // for (const auto &d : *delta) {
-  //   if (count < 10) {
-  //     std::cout << "delta[" << count << "]: " << d.transpose() << std::endl;
-  //   } else {
-  //     std::cout << "delta[" << count << "] is not printed" << std::endl;
-  //   }
-  //   count++;
 
-  // }
-
-  debug_projection->push_back(*delta);
+  for (auto i = 0; i < N_; i++) {
+    debug_projection->at(admm_iteration).at(i) = (*delta)[i];
+  }
+  // debug_projection->push_back(*delta);
   for (int i = 0; i < N_; ++i) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);
     w->at(i) = w->at(i) / options_.rho_scale;
@@ -495,13 +501,6 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
   VectorXd delta_proj = delta_c;
   VectorXd proj_case_ = delta_c;
 
-
-  // Set epsilon for floating point comparisons
-  // const double EPSILON = 1e-8;
-
-  // Set rounding mode to nearest
-  // std::fesetround(FE_TONEAREST);
-
   // Handle complementarity constraints for each lambda-gamma pair
   std::cout << "Solving single projection for admm iteration "
             << admm_iteration << std::endl;
@@ -512,7 +511,8 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
 
     double lambda_val = delta_c(n_x_ + i);
     double gamma_val = delta_c(n_x_ + n_lambda_ + n_u_ + i);
-
+    std::cout << "Before projection lambda_val: " << lambda_val << ", gamma_val: " << gamma_val
+              << std::endl;
     if (lambda_val <= 0) {
       delta_proj(n_x_ + i) = 0;
       delta_proj(n_x_ + n_lambda_ + n_u_ + i) = std::max(0.0, gamma_val);
@@ -523,7 +523,7 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
         delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
         proj_case_(n_x_ + i) = 4;
         proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 0;
-        std::cout << "projected to lambda" << std::endl;
+        // std::cout << "projected to lambda" << std::endl;
       } else {
         // If point (lambda, gamma) is above the slope, set lambda to 0 and keep gamma
         // Otherwise, set lambda to lambda and set gamma to 0
@@ -532,18 +532,22 @@ VectorXd ImprovedC3::SolveSingleProjection(const MatrixXd &U,
           delta_proj(n_x_ + n_lambda_ + n_u_ + i) = gamma_val;
           proj_case_(n_x_ + i) = 5;
           proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 1;
-          std::cout << "projected to gamma" << std::endl;
+          // std::cout << "projected to gamma" << std::endl;
         } else {
           delta_proj(n_x_ + i) = lambda_val;
           delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
           proj_case_(n_x_ + i) = 6;
           proj_case_(n_x_ + n_lambda_ + n_u_ + i) = 0;
-          std::cout << "projected to lambda" << std::endl;
+          // std::cout << "projected to lambda" << std::endl;
         }
       }
     }
+    std::cout << "After projection lambda_val: " << delta_proj(n_x_ + i)
+            << ", gamma_val: " << delta_proj(n_x_ + n_lambda_ + n_u_ + i)
+            << std::endl;
+
   }
-  debug_proj_step->push_back(proj_case_);
+  // debug_proj_step->push_back(proj_case_);
   return delta_proj;
 }
 

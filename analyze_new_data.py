@@ -18,13 +18,12 @@ def make_plot(arr_list, name_list, title, ax=None, label="ADMM Iteration"):
     ax.legend(fontsize=14)
     ax.grid()
 
-
 def plot_QP(horizon, timestep, admm_num, delta, title, plot_horizon):
     #  This is for the QP output before projection step in each ADMM
     # delta = np.load('/home/yufeiyang/Documents/c3/debug_output/debug.npy')
     admm_iter = admm_num
-    admm_time, N, num_var = delta.shape
-    delta = delta.reshape(-1, admm_iter, N, num_var)   # system iter, ADMM, N, num_var
+    # admm_time, N, num_var = delta.shape
+    # delta = delta.reshape(-1, admm_iter, N, num_var)   # system iter, ADMM, N, num_var
 
     print(delta.shape)
     if plot_horizon:
@@ -90,8 +89,8 @@ def plot_original(horizon, timestep, admm_num, delta, title, plot_horizon):
     #  This is for the QP output before projection step in each ADMM
     # delta = np.load('/home/yufeiyang/Documents/c3/debug_output/debug.npy')
     admm_iter = admm_num
-    admm_time, N, num_var = delta.shape
-    delta = delta.reshape(-1, admm_iter, N, num_var)   # system iter, ADMM, N, num_var
+    # admm_time, N, num_var = delta.shape
+    # delta = delta.reshape(-1, admm_iter, N, num_var)   # system iter, ADMM, N, num_var
 
     print(delta.shape)
     
@@ -135,24 +134,16 @@ def plot_original(horizon, timestep, admm_num, delta, title, plot_horizon):
     fig2.suptitle(f"{title} at timestep {timestep}, planning step {horizon}", fontsize=16)
 
 def plot_lambda_gamma(qp_data, delta_data, admm_num, timestep, choose_admm, projection_info):
-    k = 1/6
+    k = 1/2
     admm_iter = admm_num
-    admm_time, N, num_var = qp_data.shape
-    qp_d = qp_data.reshape(-1, admm_iter, N, num_var)   # system iter, ADMM, N, num_var
-    delta_d = delta_data.reshape(-1, admm_iter, N, num_var)   # system iter, ADMM, N, num_var
-    proj_info = projection_info.reshape(admm_iter, N, num_var)
+    # admm_time, N, num_var = qp_data.shape
     planning = 1
-    # qp_lambda = qp_d[timestep, :, planning, 6:12]
-    # qp_gamma = qp_d[timestep, :, planning, 16:22]
-    # delta_lambda = delta_d[timestep, :, planning, 6:12]
-    # delta_gamma = delta_d[timestep, :, planning, 16:22]
-    qp_lambda = qp_d[timestep, choose_admm, :, 6:12]
-    qp_gamma = qp_d[timestep, choose_admm, :, 16:22]
-    delta_lambda = delta_d[timestep, choose_admm, :, 6:12]
-    delta_gamma = delta_d[timestep, choose_admm, :, 16:22]
+    qp_lambda = qp_data[timestep, :, planning, 6:12]
+    qp_gamma = qp_data[timestep, :, planning, 16:22]
+    delta_lambda = delta_data[timestep, :, planning, 6:12]
+    delta_gamma = delta_data[timestep, :, planning, 16:22]
     breakpoint()
-
-    proj_info = proj_info[:, planning, 6:12]
+    # proj_info = proj_info[:, planning, 6:12]
     # breakpoint()
     # make scatter plot. y axis is gamma, x axis is lambda
     # there should be 20 points, 10 for before projection, 10 for after projection. one lambda at a time. there should 6 subplots
