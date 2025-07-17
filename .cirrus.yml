@@ -14,13 +14,10 @@ jammy_task:
       --jobs=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
-    - bazel test
-      --local_resources=ram=24000
-      --local_resources=cpu=8
-      --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
-      //...
     - apt update && apt install -y lcov
+    # Coverage will run tests, as well as coverage for the code.
     - bazel coverage
+      --combined_report=lcov
       --local_resources=ram=24000
       --local_resources=cpu=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
@@ -51,13 +48,10 @@ noble_task:
       --jobs=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
-    - bazel test
-      --local_resources=ram=24000
-      --local_resources=cpu=8
-      --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
-      //...
     - apt update && apt install -y lcov
+    # Coverage will run tests, as well as coverage for the code.
     - bazel coverage
+      --combined_report=lcov
       --local_resources=ram=24000
       --local_resources=cpu=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST

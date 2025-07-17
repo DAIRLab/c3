@@ -79,7 +79,8 @@ GTEST_TEST(LCSFactoryTest, GetNumContactVariables) {
   EXPECT_THROW(LCSFactory::GetNumContactVariables(options), std::out_of_range);
 }
 
-class LCSFactoryPivotingTest : public ::testing::TestWithParam<std::string> {
+class LCSFactoryPivotingTest
+    : public ::testing::TestWithParam<std::tuple<std::string, int>> {
  protected:
   void SetUp() override {
     std::tie(plant, scene_graph) =
@@ -135,8 +136,9 @@ class LCSFactoryPivotingTest : public ::testing::TestWithParam<std::string> {
         VectorXd::Zero(plant->num_positions() + plant->num_velocities());
     drake::VectorX<double> input = VectorXd::Zero(plant->num_actuators());
 
-    options.contact_model = GetParam();
-    contact_model = GetContactModelMap().at(GetParam());
+    options.contact_model = std::get<0>(GetParam());
+    contact_model = GetContactModelMap().at(options.contact_model);
+    options.num_friction_directions = std::get<1>(GetParam());
     lcs_factory = std::make_unique<LCSFactory>(
         *plant, plant_context, *plant_autodiff, *plant_context_autodiff,
         contact_pairs, options);
@@ -256,8 +258,11 @@ TEST_P(LCSFactoryPivotingTest, FixSomeModes) {
 }
 
 INSTANTIATE_TEST_SUITE_P(ContactModelTests, LCSFactoryPivotingTest,
-                         ::testing::Values("frictionless_spring",
-                                           "stewart_and_trinkle", "anitescu"));
+                         ::testing::Values(std::tuple("frictionless_spring", 0),
+                                           std::tuple("stewart_and_trinkle", 1),
+                                           std::tuple("stewart_and_trinkle", 2),
+                                           std::tuple("anitescu", 1),
+                                           std::tuple("anitescu", 2)));
 
 }  // namespace test
 }  // namespace multibody
