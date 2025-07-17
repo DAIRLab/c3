@@ -5,6 +5,9 @@ jammy_task:
     image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42
     cpu: 8
     memory: 24
+  format_script:
+    - apt update && apt install -y clang-format
+    - ./tools/scripts/check_format.sh
   test_script:
     - export CC=clang-15
     - export CXX=clang++-15
@@ -14,6 +17,13 @@ jammy_task:
       --jobs=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
+    - bazel test
+      --local_resources=ram=24000
+      --local_resources=cpu=8
+      --jobs=8
+      --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
+  coverage_script:
     - apt update && apt install -y lcov
     # Coverage will run tests, as well as coverage for the code.
     - bazel coverage
@@ -22,16 +32,14 @@ jammy_task:
       --local_resources=cpu=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       --remote_download_minimal
+      --strategy=CoverageReport=local
+      --experimental_split_coverage_postprocessing
+      --experimental_fetch_all_coverage_outputs
       //...
+    - ls -R
     - genhtml --branch-coverage
       --output genhtml
       "bazel-out/_coverage/_coverage_report.dat"
-  format_script:
-    - apt update && apt install -y clang-format-15
-    - find . 
-      -name "*.cc" -o -name "*.h" -o -name "*.hpp" | 
-      xargs clang-format-15 --dry-run --Werror 
-      --output-replacements-xml > replacements.xml  2>&1
   always:
     jammy_test_artifacts:
       path: "bazel-testlogs/**/test.xml"
@@ -39,9 +47,6 @@ jammy_task:
     jammy_coverage_artifacts:
       path: "genhtml/index.html"
       type: text/html
-    jammy_format_artifacts:
-      path: "replacements.xml"
-      type: text/xml
 
 noble_task:
   timeout_in: 120m
@@ -49,6 +54,9 @@ noble_task:
     image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
     cpu: 8
     memory: 24
+  format_script:
+    - apt update && apt install -y clang-format
+    - ./tools/scripts/check_format.sh
   test_script:
     - export CC=clang-15
     - export CXX=clang++-15
@@ -58,24 +66,29 @@ noble_task:
       --jobs=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
+    - bazel test
+      --local_resources=ram=24000
+      --local_resources=cpu=8
+      --jobs=8
+      --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
+  coverage_script:
     - apt update && apt install -y lcov
-    # Coverage will run tests, as well as coverage for the code.
     - bazel coverage
       --combined_report=lcov
       --local_resources=ram=24000
       --local_resources=cpu=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       --remote_download_minimal
+            --remote_download_minimal
+      --strategy=CoverageReport=local
+      --experimental_split_coverage_postprocessing
+      --experimental_fetch_all_coverage_outputs
       //...
+    - ls -R
     - genhtml --branch-coverage
       --output genhtml
       "bazel-out/_coverage/_coverage_report.dat"
-  format_script:
-    - apt update && apt install -y clang-format-15
-    - find . 
-      -name "*.cc" -o -name "*.h" -o -name "*.hpp" | 
-      xargs clang-format-15 --dry-run --Werror 
-      --output-replacements-xml > replacements.xml  2>&1
   always:
     noble_test_artifacts:
       path: "bazel-testlogs/**/test.xml"
@@ -83,6 +96,3 @@ noble_task:
     noble_coverage_artifacts:
       path: "genhtml/index.html"
       type: text/html
-    noble_format_artifacts:
-      path: "replacements.xml"
-      type: text/xml
