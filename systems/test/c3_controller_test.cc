@@ -45,7 +45,8 @@ std::unique_ptr<MultibodyPlant<double>> AddVisualizer(
   Parser parser(plant.get(), scene_graph);
 
   // Load the Cartpole model from an SDF file.
-  const std::string file = "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf";
+  const std::string file =
+      "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf";
   parser.AddModels(file);
   plant->Finalize();
 
@@ -82,7 +83,8 @@ int DoMain() {
       builder.AddSystem<LCSSimulator>(*(c3_cartpole_problem.pSystem));
 
   C3ControllerOptions options = drake::yaml::LoadYamlFile<C3ControllerOptions>(
-      "systems/test/resources/cartpole_softwalls/c3_controller_cartpole_options.yaml");
+      "systems/test/resources/cartpole_softwalls/"
+      "c3_controller_cartpole_options.yaml");
 
   // Add a ZeroOrderHold system for state updates.
   auto state_zero_order_hold =

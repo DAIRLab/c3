@@ -136,7 +136,8 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
   int N_;         ///< Number of time steps for the LCS.
   double dt_;     ///< Time step size for the LCS.
 
-  std::unique_ptr<multibody::LCSFactory> lcs_factory_;  ///< Factory for creating LCS objects.
+  std::unique_ptr<multibody::LCSFactory>
+      lcs_factory_;  ///< Factory for creating LCS objects.
 };
 
 }  // namespace systems

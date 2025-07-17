@@ -22,9 +22,14 @@ jammy_task:
       --local_resources=cpu=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
-    - genhtml --branch-coverage 
-      --output genhtml 
-      "$(bazel info output_path)/_coverage/_coverage_report.dat"
+    # - genhtml --branch-coverage
+    #   --output genhtml
+    #   "$(bazel info output_path)/_coverage/_coverage_report.dat"
+  format_script:
+    - find . 
+      -name "*.cc" -o -name "*.h" -o -name "*.hpp" | 
+      xargs clang-format --dry-run --Werror 
+      --output-replacements-xml > replacements.xml  2>&1
   always:
     jammy_test_artifacts:
       path: "bazel-testlogs/**/test.xml"
@@ -32,6 +37,9 @@ jammy_task:
     jammy_coverage_artifacts:
       path: "genhtml/index.html"
       type: text/html
+    jammy_format_artifacts:
+      path: "replacements.xml"
+      type: text/xml
 
 noble_task:
   timeout_in: 120m
@@ -56,10 +64,14 @@ noble_task:
       --local_resources=cpu=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
-    - ls -aux
-    - genhtml --branch-coverage 
-      --output genhtml 
-      "bazel-out/_coverage/_coverage_report.dat"
+    # - genhtml --branch-coverage
+    #   --output genhtml
+    #   "bazel-out/_coverage/_coverage_report.dat"
+  format_script:
+    - find . 
+      -name "*.cc" -o -name "*.h" -o -name "*.hpp" | 
+      xargs clang-format --dry-run --Werror 
+      --output-replacements-xml > replacements.xml  2>&1
   always:
     noble_test_artifacts:
       path: "bazel-testlogs/**/test.xml"
@@ -67,3 +79,6 @@ noble_task:
     noble_coverage_artifacts:
       path: "genhtml/index.html"
       type: text/html
+    noble_format_artifacts:
+      path: "replacements.xml"
+      type: text/xml

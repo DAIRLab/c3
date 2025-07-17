@@ -155,7 +155,8 @@ int RunCartpoleTest() {
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, 0.01);
   Parser parser(&plant, &scene_graph);
   const std::string file =
-      "systems/test/resources/cartpole_softwalls/cartpole_softwalls_no_collision_walls.sdf";
+      "systems/test/resources/cartpole_softwalls/"
+      "cartpole_softwalls_no_collision_walls.sdf";
   parser.AddModels(file);
   plant.Finalize();
 

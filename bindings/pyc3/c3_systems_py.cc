@@ -157,7 +157,7 @@ PYBIND11_MODULE(systems, m) {
   drake::pydrake::AddValueInstantiation<c3::LCS>(m);
   drake::pydrake::AddValueInstantiation<C3Output::C3Solution>(m);
   drake::pydrake::AddValueInstantiation<C3Output::C3Intermediates>(m);
-  
+
   py::class_<C3StatePredictionJoint>(m, "C3StatePredictionJoint")
       .def(py::init<>())
       .def_readwrite("name", &C3StatePredictionJoint::name)

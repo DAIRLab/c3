@@ -18,8 +18,8 @@ namespace c3 {
 class C3QP final : public C3 {
  public:
   /// Default constructor for time-varying LCS
-  C3QP(const LCS& LCS, const CostMatrices& costs, const std::vector<Eigen::VectorXd>& xdesired,
-       const C3Options& options);
+  C3QP(const LCS& LCS, const CostMatrices& costs,
+       const std::vector<Eigen::VectorXd>& xdesired, const C3Options& options);
 
   ~C3QP() override = default;
 
