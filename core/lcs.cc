@@ -80,7 +80,7 @@ LCS LCS::CreatePlaceholderLCS(int n_x, int n_u, int n_lambda, int N,
   return placeholder;
 }
 
-std::ostream& operator<<(std::ostream& os, const LCS& m){
+std::ostream& operator<<(std::ostream& os, const LCS& m) {
   os << "LCS with dimensions: " << m.n_ << " states, " << m.m_ << " forces, "
      << m.k_ << " inputs, timestep of " << m.dt_ << "  and horizon of " << m.N_
      << ".";

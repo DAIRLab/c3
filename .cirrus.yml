@@ -56,9 +56,10 @@ noble_task:
       --local_resources=cpu=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
+    - ls -aux
     - genhtml --branch-coverage 
       --output genhtml 
-      "$(bazel info output_path)/_coverage/_coverage_report.dat"
+      "bazel-out/_coverage/_coverage_report.dat"
   always:
     noble_test_artifacts:
       path: "bazel-testlogs/**/test.xml"
