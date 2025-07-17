@@ -7,3 +7,4 @@ MODULE.bazel.lock
 **/__pycache__/** 
 .vscode
 *.ps
+genhtml/*
