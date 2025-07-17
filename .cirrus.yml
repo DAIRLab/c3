@@ -21,14 +21,16 @@ jammy_task:
       --local_resources=ram=24000
       --local_resources=cpu=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      --remote_download_minimal
       //...
-    # - genhtml --branch-coverage
-    #   --output genhtml
-    #   "$(bazel info output_path)/_coverage/_coverage_report.dat"
+    - genhtml --branch-coverage
+      --output genhtml
+      "bazel-out/_coverage/_coverage_report.dat"
   format_script:
+    - apt update && apt install -y clang-format-15
     - find . 
       -name "*.cc" -o -name "*.h" -o -name "*.hpp" | 
-      xargs clang-format --dry-run --Werror 
+      xargs clang-format-15 --dry-run --Werror 
       --output-replacements-xml > replacements.xml  2>&1
   always:
     jammy_test_artifacts:
@@ -63,14 +65,16 @@ noble_task:
       --local_resources=ram=24000
       --local_resources=cpu=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      --remote_download_minimal
       //...
-    # - genhtml --branch-coverage
-    #   --output genhtml
-    #   "bazel-out/_coverage/_coverage_report.dat"
+    - genhtml --branch-coverage
+      --output genhtml
+      "bazel-out/_coverage/_coverage_report.dat"
   format_script:
+    - apt update && apt install -y clang-format-15
     - find . 
       -name "*.cc" -o -name "*.h" -o -name "*.hpp" | 
-      xargs clang-format --dry-run --Werror 
+      xargs clang-format-15 --dry-run --Werror 
       --output-replacements-xml > replacements.xml  2>&1
   always:
     noble_test_artifacts:
