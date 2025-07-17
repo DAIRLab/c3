@@ -16,9 +16,9 @@ for file in $FILES; do
 done
 
 if [ ${#NOT_FORMATTED[@]} -eq 0 ]; then
-    echo "All files are properly formatted. Good job!"
+    echo "🌟 All files are properly formatted. Good job! 🌟"
 else
-    echo "The following files are not properly formatted:"
+    echo "The following files are not properly formatted: 😟"
     for f in "${NOT_FORMATTED[@]}"; do
         echo "$f"
     done

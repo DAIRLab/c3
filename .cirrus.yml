@@ -21,11 +21,14 @@ jammy_task:
       --local_resources=ram=24000
       --local_resources=cpu=8
       --jobs=8
+      --test_output=all
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
+  jammy_test_artifacts:
+    path: "bazel-testlogs/**/test.xml"
+    format: junit
   coverage_script:
     - apt update && apt install -y lcov
-    # Coverage will run tests, as well as coverage for the code.
     - bazel coverage
       --combined_report=lcov
       --local_resources=ram=24000
@@ -33,20 +36,14 @@ jammy_task:
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       --remote_download_minimal
       --strategy=CoverageReport=local
-      --experimental_split_coverage_postprocessing
       --experimental_fetch_all_coverage_outputs
       //...
-    - ls -R
     - genhtml --branch-coverage
-      --output genhtml
+      --output coverage_report
       "bazel-out/_coverage/_coverage_report.dat"
-  always:
-    jammy_test_artifacts:
-      path: "bazel-testlogs/**/test.xml"
-      format: junit
-    jammy_coverage_artifacts:
-      path: "genhtml/index.html"
-      type: text/html
+  jammy_coverage_artifacts:
+    path: "coverage_report/**/*"
+    type: text/html
 
 noble_task:
   timeout_in: 120m
@@ -70,8 +67,12 @@ noble_task:
       --local_resources=ram=24000
       --local_resources=cpu=8
       --jobs=8
+      --test_output=all
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
+  noble_test_artifacts:
+    path: "bazel-testlogs/**/test.xml"
+    format: junit
   coverage_script:
     - apt update && apt install -y lcov
     - bazel coverage
@@ -80,19 +81,12 @@ noble_task:
       --local_resources=cpu=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       --remote_download_minimal
-            --remote_download_minimal
       --strategy=CoverageReport=local
-      --experimental_split_coverage_postprocessing
       --experimental_fetch_all_coverage_outputs
       //...
-    - ls -R
     - genhtml --branch-coverage
-      --output genhtml
+      --output coverage_report
       "bazel-out/_coverage/_coverage_report.dat"
-  always:
-    noble_test_artifacts:
-      path: "bazel-testlogs/**/test.xml"
-      format: junit
-    noble_coverage_artifacts:
-      path: "genhtml/index.html"
-      type: text/html
+  noble_coverage_artifacts:
+    path: "coverage_report/**/*"
+    type: text/html
