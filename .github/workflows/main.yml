@@ -45,6 +45,6 @@ jobs:
       - name: Test Summary
         uses: test-summary/action@v2
         with:
-          paths: "bazel-out/**/*.xml"
+          paths: "bazel-testlogs/**/*.xml"
         if: always()
       - run: echo "🍏 This job's status is ${{ job.status }}."
