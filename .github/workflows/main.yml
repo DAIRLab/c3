@@ -3,7 +3,12 @@ on: [push]
 jobs:
   Check-Code-Formatting:
     runs-on: ubuntu-latest
-    container: ${{ matrix.image }}
+    container: 
+      image: ${{ matrix.image }}
+      credentials:
+       username: ${{ github.actor }}
+       password: ${{ secrets.github_token }}
+      options: --cpus 8
     strategy:
       matrix:
         image: [ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42, ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42]
