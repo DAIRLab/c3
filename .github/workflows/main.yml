@@ -1,4 +1,4 @@
-name: C3 Pipeline
+name: C3 CI Pipeline
 on: [push]
 jobs:
   Noble:
