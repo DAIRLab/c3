@@ -42,9 +42,9 @@ jobs:
               --jobs=8
               --test_output=all
               //...
-      - uses: dorny/test-reporter@v2
+      - name: Test Summary
+        uses: test-summary/action@v2
         with:
-          name: C3 Tests                  # Name of the check run which will be created
-          path: '*.xml'                     # Path to test results (inside artifact .zip)
-          reporter: java-junit              # Format of test results
+          paths: "bazel-out/**/*.xml"
+        if: always()
       - run: echo "🍏 This job's status is ${{ job.status }}."
