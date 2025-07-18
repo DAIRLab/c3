@@ -7,7 +7,7 @@ jobs:
       image: ${{ matrix.image }}
       credentials:
        username: ${{ github.actor }}
-       password: ${{ secrets.github_token }}
+       password: ${{ secrets.GITHUB_TOKEN }}
       options: --cpus 8
     strategy:
       matrix:
