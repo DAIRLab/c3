@@ -2,7 +2,8 @@ name: C3 CI
 on: [push]
 jobs:
   Check-Code-Formatting:
-    runs-on: ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
     strategy:
       matrix:
         image: [ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42, ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42]
