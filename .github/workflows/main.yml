@@ -8,7 +8,7 @@ jobs:
       credentials:
        username: ${{ github.actor }}
        password: ${{ secrets.GITHUB_TOKEN }}
-      options: --cpus 8
+      options: --cpus 4
     strategy:
       matrix:
         image: [ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42, ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42]
