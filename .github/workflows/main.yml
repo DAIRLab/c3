@@ -49,3 +49,17 @@ jobs:
           path: bazel-testlogs/**/test.xml
         if: ${{ always() }}
       - run: echo "🍏 This job's status is ${{ job.status }}."
+    name: Test Report
+  test-report:
+    needs: Noble
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: c3-results-noble
+    - uses: dorny/test-reporter@v2
+      with:
+        name: C3 Tests                  # Name of the check run which will be created
+        path: '*.xml'                     # Path to test results (inside artifact .zip)
+        reporter: java-junit              # Format of test results
