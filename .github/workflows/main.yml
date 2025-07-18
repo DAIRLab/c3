@@ -63,7 +63,7 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
       - name: Setup LCOV
-        uses: hrishikesh-kadam/setup-lcov@v1
+        run: apt update && apt install -y lcov
       - name: Setting correct clang version
         run: export CC=clang-15 && export CXX=clang++-15
       - name: Cache coverage artifacts
