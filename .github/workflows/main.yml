@@ -1,7 +1,7 @@
 name: C3 Pipeline
 on: [push]
 jobs:
-  noble:
+  Noble:
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
