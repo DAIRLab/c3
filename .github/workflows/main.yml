@@ -21,4 +21,25 @@ jobs:
         run: apt update && apt install -y clang-format
       - name: Checking code formatting ...
         run: ./tools/scripts/check_format.sh
+      - name: Setting correct clang version
+        run: export CC=clang-15 && export CXX=clang++-15
+      - name: Cache build artifacts
+        id: cache-bazel
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bazel
+          key: c3-noble-bazel-build-cache-${{ github.ref }}
+      - name: Build 
+        run: bazel build
+              --local_resources=ram=24000
+              --local_resources=cpu=8
+              --jobs=8
+              //...
+      - name: Test
+        run: bazel test
+              --local_resources=ram=24000
+              --local_resources=cpu=8
+              --jobs=8
+              --test_output=all
+              //...
       - run: echo "🍏 This job's status is ${{ job.status }}."
