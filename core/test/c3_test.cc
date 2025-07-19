@@ -6,6 +6,7 @@
 
 #include "core/c3_miqp.h"
 #include "core/c3_qp.h"
+#include "core/lcs.h"
 #include "core/test/c3_cartpole_problem.hpp"
 
 #include "drake/math/discrete_algebraic_riccati_equation.h"
@@ -38,6 +39,7 @@ using namespace c3;
  * | UpdateCostMatrix       |   DONE  |
  * | Solve                  |    -    |
  * | SetOsqpSolverOptions   |    -    |
+ * | CreatePlaceholderLCS   |   DONE  |
  * | # of regression tests  |    2    |
  *
  * It also has an E2E test for ensuring the "Solve()" function and other
@@ -330,6 +332,14 @@ TEST_F(C3CartpoleTest, ZSolStaleTest) {
                       // full solution (The assumption is the full solution is
                       // not updated when the QP fails)
   }
+}
+
+// Test if CreatePlaceholderLCS works as expected
+TEST_F(C3CartpoleTest, CreatePlaceholder) {
+  // Create a placeholder LCS object
+  LCS placeholder = LCS::CreatePlaceholderLCS(n, k, m, N, dt);
+  // Ensure the object is created without any issues
+  ASSERT_TRUE(placeholder.HasSameDimensionsAs(*pSystem));
 }
 
 template <typename T>
