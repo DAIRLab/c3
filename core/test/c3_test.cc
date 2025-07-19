@@ -9,8 +9,6 @@
 #include "core/lcs.h"
 #include "core/test/c3_cartpole_problem.hpp"
 
-#include "core/lcs.h"
-
 #include "drake/math/discrete_algebraic_riccati_equation.h"
 
 using Eigen::MatrixXd;

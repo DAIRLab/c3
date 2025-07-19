@@ -81,7 +81,7 @@ jobs:
               --jobs=4
               //...
       - name: Report code coverage
-        uses: zgosalvez/github-actions-report-lcov@v4
+        uses: zgosalvez/github-actions-report-lcov@v4.1.26
         with:
           coverage-files: bazel-out/_coverage/_coverage_report.dat
           minimum-coverage: 90
