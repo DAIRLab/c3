@@ -3,6 +3,9 @@ on: [push]
 jobs:
   noble:
     runs-on: ubuntu-latest
+    concurrency:
+      group: ci-${{ github.ref }}
+      cancel-in-progress: true
     container: 
       image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
       credentials:
