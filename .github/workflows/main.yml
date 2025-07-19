@@ -1,7 +1,7 @@
 name: C3 CI Pipeline
 on: [push]
 jobs:
-  noble-build:
+  noble:
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
@@ -18,14 +18,14 @@ jobs:
       - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
       - run: echo "🖥️ The workflow is now ready to test your code on the runner."
       - name: Install required dependencies
-        run: apt update && apt install -y clang-format
+        run: apt update && apt install -y clang-format lcov
       - name: Checking code formatting ...
         run: ./tools/scripts/check_format.sh
       - name: Setting correct clang version
         run: export CC=clang-15 && export CXX=clang++-15
-      - name: Cache build artifacts
-        id: cache-bazel
-        uses: actions/cache@v4
+      - name: Restore build cache
+        id: c3-build-cache-restore
+        uses: actions/cache/restore@v4
         with:
           path: ~/.cache/bazel
           key: c3-noble-bazel-build-cache-${{ github.ref }}
@@ -49,25 +49,16 @@ jobs:
         with:
           paths: "bazel-testlogs/**/*.xml"
         if: always()
-      - run: echo "🍏 This job's status is ${{ job.status }}."
-  noble-coverage:
-    needs: noble-build
-    runs-on: ubuntu-latest
-    container: 
-      image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
-      credentials:
-       username: ${{ github.actor }}
-       password: ${{ secrets.GITHUB_TOKEN }}
-      options: --cpus 4
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-      - name: Setup LCOV
-        run: apt update && apt install -y lcov
-      - name: Setting correct clang version
-        run: export CC=clang-15 && export CXX=clang++-15
-      - name: Cache coverage artifacts
-        uses: actions/cache@v4
+      - name: Save build cache
+        id: c3-build-cache-save
+        if: always() && steps.c3-build-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.c3-build-cache-restore.outputs.cache-primary-key }}
+          path: ~/.cache/bazel
+      - name: Restore coverage cache
+        id: c3-cov-cache-restore
+        uses: actions/cache/restore@v4
         with:
           path: ~/.cache/bazel
           key: c3-noble-bazel-cov-cache-${{ github.ref }}
@@ -88,3 +79,11 @@ jobs:
           artifact-name: noble-code-coverage-report
           github-token: ${{ secrets.GITHUB_TOKEN }}
           update-comment: true
+      - name: Save coverage cache
+        id: c3-cov-cache-save
+        if: always() && steps.c3-cov-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.c3-cov-cache-restore.outputs.cache-primary-key }}
+          path: ~/.cache/bazel
+      - run: echo "🍏 This job's status is ${{ job.status }}."
