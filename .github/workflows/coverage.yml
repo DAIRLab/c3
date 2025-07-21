@@ -1,0 +1,51 @@
+name: C3 Coverage
+on: [pull_request]
+jobs:
+  # Only run coverage on Noble
+  coverage:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ci-${{ github.ref }}
+      cancel-in-progress: true
+    container: 
+      image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
+      credentials:
+       username: ${{ github.actor }}
+       password: ${{ secrets.GITHUB_TOKEN }}
+      options: --cpus 4
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Install required dependencies
+        run: apt update && apt install -y lcov
+      - name: Restore coverage cache
+        id: c3-cov-cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/bazel
+          key: c3-noble-bazel-cov-cache-${{ github.ref_name }}
+          restore-keys: |
+            c3-noble-bazel-cov-cache-
+      - name: Generate Coverage 
+        run: bazel coverage
+              --combined_report=lcov
+              --local_resources=ram=24000
+              --local_resources=cpu=4
+              --jobs=4
+              //...
+      - name: Report code coverage
+        uses: zgosalvez/github-actions-report-lcov@v4.1.26
+        with:
+          coverage-files: bazel-out/_coverage/_coverage_report.dat
+          minimum-coverage: 90
+          artifact-name: noble-code-coverage-report
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          update-comment: true
+      - name: Save coverage cache
+        id: c3-cov-cache-save
+        if: always() && !cancelled() && steps.c3-cov-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.c3-cov-cache-restore.outputs.cache-primary-key }}
+          path: ~/.cache/bazel
+      - run: echo "🍏 This job's status is ${{ job.status }}."

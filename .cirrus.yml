@@ -27,23 +27,6 @@ jammy_task:
   jammy_test_artifacts:
     path: "bazel-testlogs/**/test.xml"
     format: junit
-  coverage_script:
-    - apt update && apt install -y lcov
-    - bazel coverage
-      --combined_report=lcov
-      --local_resources=ram=24000
-      --local_resources=cpu=8
-      --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
-      --remote_download_minimal
-      --strategy=CoverageReport=local
-      --experimental_fetch_all_coverage_outputs
-      //...
-    - genhtml --branch-coverage
-      --output coverage_report
-      "bazel-out/_coverage/_coverage_report.dat"
-  jammy_coverage_artifacts:
-    path: "coverage_report/**/*"
-    type: text/html
 
 noble_task:
   timeout_in: 120m
@@ -73,20 +56,3 @@ noble_task:
   noble_test_artifacts:
     path: "bazel-testlogs/**/test.xml"
     format: junit
-  coverage_script:
-    - apt update && apt install -y lcov
-    - bazel coverage
-      --combined_report=lcov
-      --local_resources=ram=24000
-      --local_resources=cpu=8
-      --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
-      --remote_download_minimal
-      --strategy=CoverageReport=local
-      --experimental_fetch_all_coverage_outputs
-      //...
-    - genhtml --branch-coverage
-      --output coverage_report
-      "bazel-out/_coverage/_coverage_report.dat"
-  noble_coverage_artifacts:
-    path: "coverage_report/**/*"
-    type: text/html
