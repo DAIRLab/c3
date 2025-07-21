@@ -20,12 +20,12 @@ jobs:
         run: apt update && apt install -y lcov
       - name: Restore coverage cache
         id: c3-cov-cache-restore
-        uses: actions/cache/restore@v4
+        uses: actions/cache@v4
         with:
           path: ~/.cache/bazel
-          key: c3-noble-bazel-cov-cache-${{ github.ref_name }}
+          key: c3-bazel-cov-cache-${{ hashFiles('**/BUILD.bazel') }}
           restore-keys: |
-            c3-noble-bazel-cov-cache-
+            c3-bazel-cov-cache-
       - name: Generate Coverage 
         run: bazel coverage
               --combined_report=lcov
@@ -41,11 +41,4 @@ jobs:
           artifact-name: noble-code-coverage-report
           github-token: ${{ secrets.GITHUB_TOKEN }}
           update-comment: true
-      - name: Save coverage cache
-        id: c3-cov-cache-save
-        if: always() && !cancelled() && steps.c3-cov-cache-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          key: ${{ steps.c3-cov-cache-restore.outputs.cache-primary-key }}
-          path: ~/.cache/bazel
       - run: echo "🍏 This job's status is ${{ job.status }}."
