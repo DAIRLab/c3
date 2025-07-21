@@ -25,7 +25,7 @@ jobs:
           path: ~/.cache/bazel
           key: c3-noble-bazel-cov-cache-${{ github.ref_name }}
           restore-keys: |
-            c3-noble-bazel-cov-cache-${{ github.base_ref }}
+            c3-noble-bazel-cov-cache-
       - name: Generate Coverage 
         run: bazel coverage
               --combined_report=lcov
