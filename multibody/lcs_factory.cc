@@ -419,7 +419,7 @@ std::vector<LCSContactDescription> LCSFactory::GetContactDescriptions() {
           contact_descriptions.at(i).witness_point_A ==
           normal_contact_descriptions.at(normal_index).witness_point_A);
       contact_descriptions.at(i).force_basis =
-          - contact_descriptions.at(i).force_basis +
+          contact_descriptions.at(i).force_basis +
           mu_[normal_index] *
               normal_contact_descriptions.at(normal_index).force_basis;
     }

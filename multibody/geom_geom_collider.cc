@@ -194,12 +194,12 @@ GeomGeomCollider<T>::CalcForceBasisInWorldFrame(
   const auto query_result = GetGeometryQueryResult(context);
   if (num_friction_directions < 1) {
     // Planar contact: basis is constructed from the contact and planar normals.
-    return ComputePlanarForceBasis(query_result.signed_distance_pair.nhat_BA_W,
+    return ComputePlanarForceBasis(-query_result.signed_distance_pair.nhat_BA_W,
                                    planar_normal);
   } else {
     // 3D contact: build polytope basis and rotate using contact normal.
     auto R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(
-        query_result.signed_distance_pair.nhat_BA_W, 0);
+        -query_result.signed_distance_pair.nhat_BA_W, 0);
     return ComputePolytopeForceBasis(num_friction_directions) *
            R_WC.matrix().transpose();
   }
