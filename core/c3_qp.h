@@ -30,9 +30,6 @@ class C3QP final : public C3 {
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index = -1) override;
 
-  std::vector<Eigen::VectorXd> GetWarmStartDelta() const;
-  std::vector<Eigen::VectorXd> GetWarmStartBinary() const;
-
  private:
   inline static void SetC3QPDefaultOsqpOptions(
       drake::solvers::SolverOptions* solver_options) {

@@ -100,3 +100,34 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_test(
+    name = "systems_test",
+    srcs = [
+        "test/systems_test.cc",
+    ],
+    data = [
+        ":test_data",
+    ],
+    deps = [
+        ":systems",
+        "//core:c3_cartpole_problem",
+        "@gtest//:main",
+    ],
+    env_inherit = [
+        "GUROBI_HOME",
+        "GRB_LICENSE_FILE"
+    ],
+)
+
+cc_test(
+    name = "framework_test",
+    srcs = [
+        "test/framework_test.cc"
+    ],
+    deps = [
+        ":systems",
+        ":vector",
+        "@gtest//:main",
+    ],
+)

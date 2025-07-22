@@ -70,8 +70,8 @@ cc_library(
 )
 
 cc_test(
-    name = "c3_test",
-    srcs = ["test/c3_test.cc"],
+    name = "core_test",
+    srcs = ["test/core_test.cc"],
     deps = [
         ":c3",
         ":c3_cartpole_problem",

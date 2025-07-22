@@ -194,6 +194,26 @@ class C3 {
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
 
+  /**
+   * @brief Get the warm start delta variables for the first trajectory.
+   *
+   * Returns the vector of delta variables used for warm starting the ADMM algorithm
+   * for the first trajectory (index 0).
+   */
+  std::vector<Eigen::VectorXd> GetWarmStartDelta() const {
+    return warm_start_delta_[0];
+  }
+
+  /**
+   * @brief Get the warm start binary variables for the first trajectory.
+   *
+   * Returns the vector of binary variables used for warm starting the ADMM algorithm
+   * for the first trajectory (index 0).
+   */
+  std::vector<Eigen::VectorXd> GetWarmStartBinary() const {
+    return warm_start_binary_[0];
+  }
+
  protected:
   std::vector<std::vector<Eigen::VectorXd>> warm_start_delta_;
   std::vector<std::vector<Eigen::VectorXd>> warm_start_binary_;

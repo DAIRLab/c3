@@ -1,12 +1,13 @@
-#include "multibody/lcs_factory.h"
 
-#include <drake/multibody/parsing/parser.h>
+
 #include <gtest/gtest.h>
 
 #include "multibody/geom_geom_collider.h"
+#include "multibody/lcs_factory.h"
 #include "multibody/multibody_utils.h"
 
 #include "drake/common/sorted_pair.h"
+#include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/context.h"
 

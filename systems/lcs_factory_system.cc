@@ -1,5 +1,6 @@
 #include "lcs_factory_system.h"
 
+#include <iostream>
 #include <utility>
 
 #include "core/lcs.h"
