@@ -33,8 +33,6 @@ jobs:
       - name: Generate Coverage 
         run: bazel coverage
               --combined_report=lcov
-              --instrument_test_targets
-              --instrumentation_filter="^//core[/:],-//core:test_data,^//multibody[/:],-//multibody:test_data"
               --local_resources=ram=24000
               --local_resources=cpu=4
               --jobs=4

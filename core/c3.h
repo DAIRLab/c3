@@ -197,8 +197,8 @@ class C3 {
   /**
    * @brief Get the warm start delta variables for the first trajectory.
    *
-   * Returns the vector of delta variables used for warm starting the ADMM algorithm
-   * for the first trajectory (index 0).
+   * Returns the vector of delta variables used for warm starting the ADMM
+   * algorithm for the first trajectory (index 0).
    */
   std::vector<Eigen::VectorXd> GetWarmStartDelta() const {
     return warm_start_delta_[0];
@@ -207,8 +207,8 @@ class C3 {
   /**
    * @brief Get the warm start binary variables for the first trajectory.
    *
-   * Returns the vector of binary variables used for warm starting the ADMM algorithm
-   * for the first trajectory (index 0).
+   * Returns the vector of binary variables used for warm starting the ADMM
+   * algorithm for the first trajectory (index 0).
    */
   std::vector<Eigen::VectorXd> GetWarmStartBinary() const {
     return warm_start_binary_[0];
