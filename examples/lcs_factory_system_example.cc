@@ -315,8 +315,7 @@ int RunPivotingTest() {
   DiagramBuilder<double> builder;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, 0.01);
   Parser parser(&plant, &scene_graph);
-  const std::string file =
-      "examples/resources/cube_pivoting/cube_pivoting.sdf";
+  const std::string file = "examples/resources/cube_pivoting/cube_pivoting.sdf";
   parser.AddModels(file);
   plant.Finalize();
 
