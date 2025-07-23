@@ -22,7 +22,7 @@ def make_cube_pivoting_lcs_plant():
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
     parser = Parser(plant, scene_graph)
-    parser.AddModels("systems/test/resources/cube_pivoting/cube_pivoting.sdf")
+    parser.AddModels("examples/resources/cube_pivoting/cube_pivoting.sdf")
     plant.Finalize()
 
     # Build the plant diagram.
@@ -66,7 +66,7 @@ def make_cube_pivoting_lcs_plant():
 
 
 def main():
-    c3_controller_options = LoadC3ControllerOptions("systems/test/resources/cube_pivoting/c3_controller_pivoting_options.yaml")
+    c3_controller_options = LoadC3ControllerOptions("examples/resources/cube_pivoting/c3_controller_pivoting_options.yaml")
     c3_options = c3_controller_options.c3_options
     lcs_factory_options = c3_controller_options.lcs_factory_options
     _, diagram, diagram_context, plant, contact_pairs = make_cube_pivoting_lcs_plant()

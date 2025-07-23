@@ -2,8 +2,8 @@ package(default_visibility = ["//visibility:public"])
 
 
 py_binary(
-    name = "c3_core_py_test",
-    srcs = ["c3_core_py_test.py"],
+    name = "c3_example",
+    srcs = ["c3_example.py"],
     deps = [
         "//bindings/pyc3:pyc3",
     ],
@@ -13,38 +13,38 @@ py_binary(
 )
 
 py_binary(
-    name = "c3_controller_py_test",
-    srcs = ["c3_controller_py_test.py"],
+    name = "c3_controller_example",
+    srcs = ["c3_controller_example.py"],
     deps = [
         "//bindings/pyc3:pyc3",
-        ":c3_core_py_test",
+        ":c3_example",
     ],
     data = [
-        "//systems:test_data"
+        "//examples:example_data"
     ],
 )
 
 py_binary(
-    name = "lcs_factory_py_test",
-    srcs = ["lcs_factory_py_test.py"],
+    name = "lcs_factory_example",
+    srcs = ["lcs_factory_example.py"],
     deps = [
         "//bindings/pyc3:pyc3",
     ],
     data = [
         "//core:test_data",
-        "//systems:test_data",
         "//multibody:test_data",
+        "//examples:example_data"
     ],
 )
 
 py_binary(
-    name = "lcs_factory_system_py_test",
-    srcs = ["lcs_factory_system_py_test.py"],
+    name = "lcs_factory_system_example",
+    srcs = ["lcs_factory_system_example.py"],
     deps = [
         "//bindings/pyc3:pyc3",
-        ":c3_core_py_test",
+        ":c3_example",
     ],
     data = [
-        "//systems:test_data"
+        "//examples:example_data"
     ],
 )

@@ -41,7 +41,7 @@ cc_test(
     srcs = ["test/multibody_test.cc"],
     data = [
         ":test_data",
-        "//systems:test_data",
+        "//examples:example_data",
     ],
     deps = [
         ":lcs_factory",

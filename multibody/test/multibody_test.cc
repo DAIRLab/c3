@@ -87,7 +87,7 @@ class LCSFactoryPivotingTest
     std::tie(plant, scene_graph) =
         AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
     Parser parser(plant, scene_graph);
-    parser.AddModels("systems/test/resources/cube_pivoting/cube_pivoting.sdf");
+    parser.AddModels("examples/resources/cube_pivoting/cube_pivoting.sdf");
     plant->Finalize();
 
     // Load controller options from YAML file.

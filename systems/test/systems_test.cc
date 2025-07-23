@@ -102,7 +102,7 @@ class C3ControllerTest : public ::testing::Test, public C3CartpoleProblem {
     // Load controller options from YAML
     C3ControllerOptions controller_options =
         drake::yaml::LoadYamlFile<C3ControllerOptions>(
-            "systems/test/resources/cartpole_softwalls/"
+            "examples/resources/cartpole_softwalls/"
             "c3_controller_cartpole_options.yaml");
     controller_options.publish_frequency = 0;  // Forced Update
 
@@ -117,7 +117,7 @@ class C3ControllerTest : public ::testing::Test, public C3CartpoleProblem {
         AddMultibodyPlantSceneGraph(&plant_builder_, 0.0);
     Parser parser(plant, scene_graph);
     parser.AddModels(
-        "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf");
+        "examples/resources/cartpole_softwalls/cartpole_softwalls.sdf");
     plant->Finalize();
 
     controller_ =
@@ -239,7 +239,7 @@ class LCSFactorySystemTest : public ::testing::Test, public C3CartpoleProblem {
     std::tie(plant, scene_graph) = AddMultibodyPlantSceneGraph(&builder, 0.0);
     Parser parser(plant, scene_graph);
     parser.AddModels(
-        "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf");
+        "examples/resources/cartpole_softwalls/cartpole_softwalls.sdf");
     plant->Finalize();
 
     plant_ad = drake::systems::System<double>::ToAutoDiffXd(*plant);
@@ -262,7 +262,7 @@ class LCSFactorySystemTest : public ::testing::Test, public C3CartpoleProblem {
 
     // Load controller options
     controller_options = drake::yaml::LoadYamlFile<C3ControllerOptions>(
-        "systems/test/resources/cartpole_softwalls/"
+        "examples/resources/cartpole_softwalls/"
         "c3_controller_cartpole_options.yaml");
 
     // Construct LCSFactorySystem

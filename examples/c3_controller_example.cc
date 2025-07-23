@@ -1,11 +1,10 @@
 // Includes for core controllers, simulators, and test problems.
-#include "systems/c3_controller.h"
-
 #include "core/test/c3_cartpole_problem.hpp"
+#include "examples/common_systems.hpp"
+#include "systems/c3_controller.h"
 #include "systems/c3_controller_options.h"
 #include "systems/common/system_utils.hpp"
 #include "systems/lcs_simulator.h"
-#include "systems/test/test_utils.hpp"
 
 // Includes for Drake systems and primitives.
 #include <drake/geometry/drake_visualizer.h>
@@ -46,7 +45,7 @@ std::unique_ptr<MultibodyPlant<double>> AddVisualizer(
 
   // Load the Cartpole model from an SDF file.
   const std::string file =
-      "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf";
+      "examples/resources/cartpole_softwalls/cartpole_softwalls.sdf";
   parser.AddModels(file);
   plant->Finalize();
 
@@ -83,7 +82,7 @@ int DoMain() {
       builder.AddSystem<LCSSimulator>(*(c3_cartpole_problem.pSystem));
 
   C3ControllerOptions options = drake::yaml::LoadYamlFile<C3ControllerOptions>(
-      "systems/test/resources/cartpole_softwalls/"
+      "examples/resources/cartpole_softwalls/"
       "c3_controller_cartpole_options.yaml");
 
   // Add a ZeroOrderHold system for state updates.
