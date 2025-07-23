@@ -1,2 +1,28 @@
-# This is an empty BUILD file, to ensure that the project's root directory is a
-# bazel package.
+LIBC3_COMPONENTS = [
+    "//core:core",
+    "//multibody:multibody",
+    "//systems:systems",
+]
+
+package(default_visibility = ["//visibility:public"])
+
+# Filegroup collecting all headers
+filegroup(
+    name = "c3_headers",
+    srcs = [
+        "//core:headers",
+        "//multibody:headers",
+        "//systems:headers",
+    ],
+)
+
+# Combined target that provides both the shared library and headers
+cc_library(
+    name = "libc3",
+    hdrs = [":c3_headers"],  # Changed from srcs to hdrs for headers
+    deps = LIBC3_COMPONENTS + [
+        "@drake//:drake_shared_library",
+    ],
+    include_prefix = "c3",
+    visibility = ["//visibility:public"],
+)

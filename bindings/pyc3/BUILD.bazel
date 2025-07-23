@@ -35,7 +35,6 @@ pybind_py_library(
     cc_srcs = ["c3_multibody_py.cc"],
     py_deps = [
         ":module_py",
-        "@drake//bindings/pydrake"
     ],
     py_imports = ["."],
 )
@@ -53,7 +52,6 @@ pybind_py_library(
     cc_srcs = ["c3_systems_py.cc"],
     py_deps = [
         ":module_py",
-        "@drake//bindings/pydrake"
     ],
     py_imports = ["."],
 )
@@ -100,12 +98,16 @@ py_package(
 
 py_wheel(
     name = "pyc3_wheel",
+    author = "DAIRLab",
     # Package data. We're building "example_minimal_package-0.0.1-py3-none-any.whl"
     distribution = "pyc3",
     license = "MIT",
     platform = "linux_x86_64",
     python_tag = "py3",
     strip_path_prefixes = ["bindings/"],
+    requires_file = "//bindings/pyc3:requirements.txt",
     version = "0.0.2",
-    deps = [":c3_pkg"],
+    deps = [
+        ":c3_pkg",
+    ],
 )

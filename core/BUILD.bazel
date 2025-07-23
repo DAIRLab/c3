@@ -4,11 +4,28 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "core",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":c3",
+        ":options",
+        ":lcs",
+    ],
+)
+
+cc_library(
     name = "options",
     hdrs = ["c3_options.h",
             "solver_options_io.h"],
     deps = [
         "@drake//:drake_shared_library",
+    ],
+)
+
+filegroup(
+    name = "default_solver_options",
+    srcs = [
+        "configs/solver_options_default.yaml",
     ],
 )
 
@@ -30,11 +47,11 @@ cc_library(
         "c3_miqp.h",
         "c3_qp.h",
     ],
+    data = [
+        ":default_solver_options",
+    ],
     copts = ["-fopenmp"],
     linkopts = ["-fopenmp"],
-    data = glob([
-        "configs/**",
-    ]),
     deps = [
         ":lcs",
         ":options",
@@ -43,6 +60,7 @@ cc_library(
          "//tools:with_gurobi": ["@gurobi//:gurobi_cxx"],
          "//conditions:default": [],
     }),
+    includes = ['.']
 )
 
 cc_library(
@@ -83,4 +101,11 @@ cc_test(
     ],
 )
 
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+    ]),
+    visibility = ["//visibility:public"],
+)
 
