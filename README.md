@@ -143,13 +143,15 @@ For a detailed explanation of the C3 algorithm, please refer to the [main paper]
 If you use C3 in your research, please cite:
 
 ```bibtex
-@misc{aydinoglu2024consensuscomplementaritycontrolmulticontact,
-      title={Consensus Complementarity Control for Multi-Contact MPC}, 
-      author={Alp Aydinoglu and Adam Wei and Wei-Cheng Huang and Michael Posa},
-      year={2024},
-      eprint={2304.11259},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2304.11259}, 
+@article{Aydinoglu2024,
+  title = {Consensus Complementarity Control for Multi-Contact MPC},
+  author = {Aydinoglu, Alp and Wei, Adam and Huang, Wei-Cheng and Posa, Michael},
+  year = {2024},
+  month = jul,
+  journal = {IEEE Transactions on Robotics (TRO)},
+  youtube = {L57Jz3dPwO8},
+  arxiv = {2304.11259},
+  doi = {10.1109/TRO.2024.3435423},
+  url = {https://ieeexplore.ieee.org/document/10614849}
 }
 ```
