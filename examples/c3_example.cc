@@ -2,6 +2,8 @@
 #include <iostream>
 #include <string>
 
+#include <gflags/gflags.h>
+
 #include "core/c3_miqp.h"
 
 #include "drake/math/discrete_algebraic_riccati_equation.h"
@@ -13,6 +15,8 @@ using std::vector;
 
 using c3::C3Options;
 using c3::ConstraintVariable;
+
+DEFINE_bool(verbose, false, "Print verbose output during the example run");
 
 void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_,
                    vector<MatrixXd>* B_, vector<MatrixXd>* D_,
@@ -184,7 +188,10 @@ int DoMain(int argc, char* argv[]) {
     x[i + 1] = system.Simulate(x[i], input[i]);
 
     /// print the state
-    // std::cout << "state: " << x[i + 1] << std::endl;
+    if (FLAGS_verbose) {
+      std::cout << "Step: " << i << ", State: " << x[i + 1].transpose()
+                << ", Input: " << input[i].transpose() << std::endl;
+    }
   }
   std::cout << "Average time: " << total_time / (timesteps - 1) << std::endl;
   return 0;
@@ -192,7 +199,10 @@ int DoMain(int argc, char* argv[]) {
 
 }  // namespace c3
 
-int main(int argc, char* argv[]) { return c3::DoMain(argc, argv); }
+int main(int argc, char* argv[]) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  return c3::DoMain(argc, argv);
+}
 
 /// initialize LCS parameters for cartpole
 void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_,

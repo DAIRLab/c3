@@ -12,7 +12,7 @@
         <strong style="vertical-align: middle;">Build (Jammy)</strong>
         <img src="https://api.cirrus-ci.com/github/DAIRLab/c3.svg?task=jammy&script=test&branch=main" alt="Jammy Test" style="vertical-align: middle;"/>
     </a>
-    <br>
+    &nbsp;&nbsp;
     <a href="https://github.com/DAIRLab/c3/actions/workflows/coverage.yml"><strong style="vertical-align: middle;">Coverage</strong>
         <img src="https://github.com/DAIRLab/c3/actions/workflows/coverage.yml/badge.svg?branch=main&event=push" alt="C3 Coverage" style="vertical-align: middle;"/>
     </a>
@@ -36,7 +36,21 @@ This repository contains the reference implementation of the [Consensus Compleme
 
 ## Setup
 
-1. **Clone C3 (do not `cd` into the directory yet):**
+1. **Install Bazel or Bazelisk:**  
+    You can install Bazelisk (a user-friendly launcher for Bazel) or Bazel directly. Bazelisk is recommended as it automatically manages Bazel versions.
+
+    **To install Bazelisk:**
+    ```sh
+    sudo apt-get update
+    sudo apt-get install -y curl
+    sudo curl -L https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64 -o /usr/local/bin/bazel
+    sudo chmod +x /usr/local/bin/bazel
+    ```
+    For more details and to find a specific version, visit the [Bazelisk releases page](https://github.com/bazelbuild/bazelisk/releases). Choose a version compatible with your system and project requirements.
+
+    **Or, to install Bazel directly:**  
+    Follow the instructions at [Bazel's official installation guide](https://bazel.build/install/ubuntu).
+2. **Clone C3 (do not `cd` into the directory yet):**
     ```sh
     git clone --filter=blob:none git@github.com:DAIRLab/c3.git
     ```
@@ -117,10 +131,25 @@ c3/
 ├── systems/           # Drake systems and tests
 ├── multibody/         # algorithms for computation in multibody environments
 ├── third_party/       # External dependencies
-└── WORKSPACE          # Bazel workspace file
+└── MODULE.bazel       # Bazel module file
 ```
 ---
 
 ## Reference
 
 For a detailed explanation of the C3 algorithm, please refer to the [main paper](https://arxiv.org/abs/2304.11259). Additional resources and in-depth examples can be found in the [dairlib repository](https://github.com/DAIRLab/dairlib).
+
+## Citation
+If you use C3 in your research, please cite:
+
+```bibtex
+@misc{aydinoglu2024consensuscomplementaritycontrolmulticontact,
+      title={Consensus Complementarity Control for Multi-Contact MPC}, 
+      author={Alp Aydinoglu and Adam Wei and Wei-Cheng Huang and Michael Posa},
+      year={2024},
+      eprint={2304.11259},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2304.11259}, 
+}
+```

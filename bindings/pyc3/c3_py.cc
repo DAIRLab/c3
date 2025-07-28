@@ -124,17 +124,13 @@ PYBIND11_MODULE(c3, m) {
       .def(py::init<const LCS&, const C3::CostMatrices&,
                     const std::vector<Eigen::VectorXd>&, const C3Options&>(),
            py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
-           py::arg("options"))
-      .def("GetWarmStartDelta", &C3MIQP::GetWarmStartDelta)
-      .def("GetWarmStartBinary", &C3MIQP::GetWarmStartBinary);
+           py::arg("options"));
 
-  py::class_<C3QP, C3>(m, "C3QP")
-      .def(py::init<const LCS&, const C3::CostMatrices&,
-                    const std::vector<Eigen::VectorXd>&, const C3Options&>(),
-           py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
-           py::arg("options"))
-      .def("GetWarmStartDelta", &C3QP::GetWarmStartDelta)
-      .def("GetWarmStartBinary", &C3QP::GetWarmStartBinary);
+  py::class_<C3QP, C3>(m, "C3QP").def(
+      py::init<const LCS&, const C3::CostMatrices&,
+               const std::vector<Eigen::VectorXd>&, const C3Options&>(),
+      py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
+      py::arg("options"));
 
   py::class_<LCS>(m, "LCS")
       .def(py::init<const std::vector<Eigen::MatrixXd>&,

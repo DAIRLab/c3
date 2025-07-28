@@ -8,6 +8,7 @@ cc_binary(
     srcs = ["c3_example.cc"],
     deps = [
         "//core:c3",
+        "@gflags"
     ],
 )
 

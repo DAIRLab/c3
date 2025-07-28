@@ -40,7 +40,6 @@ using namespace c3;
  * | Solve                  |    -    |
  * | SetOsqpSolverOptions   |    -    |
  * | CreatePlaceholderLCS   |   DONE  |
- * | WarmStartSmokeTest     |   DONE  |
  * | # of regression tests  |    2    |
  *
  * It also has an E2E test for ensuring the "Solve()" function and other
@@ -341,22 +340,6 @@ TEST_F(C3CartpoleTest, CreatePlaceholder) {
   LCS placeholder = LCS::CreatePlaceholderLCS(n, k, m, N, dt);
   // Ensure the object is created without any issues
   ASSERT_TRUE(placeholder.HasSameDimensionsAs(*pSystem));
-}
-
-// Test if the solver works with warm start enabled (smoke test)
-TEST_F(C3CartpoleTest, WarmStartSmokeTest) {
-  // Enable warm start option
-  options.warm_start = true;
-  C3MIQP optimizer(*pSystem, cost, xdesired, options);
-
-  // Solver should not throw when called with warm start
-  ASSERT_NO_THROW(optimizer.Solve(x0));
-
-  auto delta = optimizer.GetWarmStartDelta();
-  ASSERT_TRUE(delta.size() > 0);
-
-  auto binary = optimizer.GetWarmStartBinary();
-  ASSERT_TRUE(binary.size() > 0);
 }
 
 template <typename T>

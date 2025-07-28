@@ -62,7 +62,7 @@ python -c 'import pyc3; print("pyc3 installed successfully!")'
 
 Complete examples are available in the `examples/python/` directory:
 
-- **`c3_example.py`**: Basic C3 optimization example
+- **`c3_example.py`**: Basic C3 with toy example
 - **`c3_controller_example.py`**: Real-time controller with Drake integration
 - **`lcs_factory_example.py`**: LCS creation from multibody systems
 
