@@ -5,8 +5,8 @@ from pyc3 import (
     LCSSimulator,
     LoadC3ControllerOptions,
 )
-from test_utils import C3Solution2Input, Vector2TimestampedVector
-from bindings.test.c3_core_py_test import (
+from common_systems import C3Solution2Input, Vector2TimestampedVector
+from c3_example import (
     make_cartpole_with_soft_walls_dynamics,
     make_cartpole_costs,
 )
@@ -34,7 +34,7 @@ def AddVisualizer(builder, scene_graph, state_port, time_step=0.0):
     parser = Parser(plant, scene_graph)
 
     # Load the Cartpole model from an SDF file.
-    file = "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf"
+    file = "examples/resources/cartpole_softwalls/cartpole_softwalls.sdf"
     parser.AddModels(file)
     plant.Finalize()
 
@@ -62,7 +62,7 @@ def DoMain():
 
     # Initialize the C3 cartpole problem.
     options = LoadC3ControllerOptions(
-        "systems/test/resources/cartpole_softwalls/c3_controller_cartpole_options.yaml"
+        "examples/resources/cartpole_softwalls/c3_controller_cartpole_options.yaml"
     )
     cartpole = make_cartpole_with_soft_walls_dynamics(N)
     costs = make_cartpole_costs(cartpole, options.c3_options, N)

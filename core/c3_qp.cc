@@ -88,12 +88,4 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   return delta_kc;
 }
 
-std::vector<Eigen::VectorXd> C3QP::GetWarmStartDelta() const {
-  return warm_start_delta_[0];
-}
-
-std::vector<Eigen::VectorXd> C3QP::GetWarmStartBinary() const {
-  return warm_start_binary_[0];
-}
-
 }  // namespace c3

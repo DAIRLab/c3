@@ -3,7 +3,7 @@
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/common/yaml/yaml_read_archive.h"
 
-namespace c3{
+namespace c3 {
 
 struct C3Options {
   // Hyperparameters
@@ -18,7 +18,7 @@ struct C3Options {
   int delta_option =
       1;  // 1 initializes the state value of the delta value with x0
 
-  double M = 1000;              // big M value for MIQP
+  double M = 1000;  // big M value for MIQP
 
   int admm_iter = 3;  // total number of ADMM iterations
 
@@ -143,7 +143,5 @@ inline C3Options LoadC3Options(const std::string& filename) {
   auto options = drake::yaml::LoadYamlFile<C3Options>(filename);
   return options;
 }
-
-
 
 }  // namespace c3

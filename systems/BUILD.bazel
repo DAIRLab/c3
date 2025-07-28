@@ -4,11 +4,25 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "vector",
+    name = "systems",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":framework",
+        ":options",
+        ":c3_controller",
+        ":lcs_simulator",
+        ":lcs_factory_system",
+    ]
+)
+
+cc_library(
+    name = "framework",
     srcs = [
+        "framework/c3_output.cc",
         "framework/timestamped_vector.cc",
     ],
     hdrs = [
+        "framework/c3_output.h",
         "framework/timestamped_vector.h",
     ],
     deps = [
@@ -16,25 +30,47 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "systems",
+cc_library( name = "c3_controller",
     srcs = [
         "c3_controller.cc",
-        "lcs_simulator.cc",
-        "framework/c3_output.cc",
-        "lcs_factory_system.cc",
     ],
     hdrs = [
         "c3_controller.h",
-        "lcs_simulator.h",
-        "framework/c3_output.h",
-        "lcs_factory_system.h",
-        
-        ],
+    ],
     deps = [
-        ":vector",
         ":options",
+        ":framework",
         "//core:c3",
+        "//core:options",
+        "//multibody:lcs_factory",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library( name = "lcs_simulator",
+    srcs = [
+        "lcs_simulator.cc",
+    ],
+    hdrs = [
+        "lcs_simulator.h",
+    ],
+    deps = [
+        "//core:lcs",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "lcs_factory_system",
+    srcs = [
+        "lcs_factory_system.cc",
+    ],
+    hdrs = [
+        "lcs_factory_system.h",
+    ],
+    deps = [
+        ":framework",
+        "//core:lcs",
         "//core:options",
         "//multibody:lcs_factory",
         "@drake//:drake_shared_library",
@@ -53,43 +89,7 @@ cc_library(
     ]
 )
 
-filegroup(
-    name = 'test_data',
-    srcs = glob(['test/resources/**'])
-)
 
-cc_binary(
-    name = "c3_controller_test",
-    srcs = [
-        "test/c3_controller_test.cc", 
-        "test/test_utils.hpp" ],
-    data = [
-        ":test_data"
-    ],
-    deps = [
-        "//core:c3",
-        ":systems",
-        ":system_utils",
-        "//core:c3_cartpole_problem",
-    ]
-)
-
-cc_binary(
-    name = "lcs_factory_system_test",
-    srcs = [
-        "test/lcs_factory_system_test.cc", 
-        "test/test_utils.hpp" ],
-    data = [
-        ":test_data",
-    ],
-    deps = [
-        "//core:c3",
-        ":systems",
-        ":system_utils",
-        "//core:c3_cartpole_problem",
-        "@gflags",
-    ]
-)
 
 cc_library(
     name = "system_utils",
@@ -99,4 +99,43 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
     ],
+)
+cc_test(
+    name = "systems_test",
+    srcs = [
+        "test/systems_test.cc",
+    ],
+    data = [
+        "//examples:example_data",
+    ],
+    deps = [
+        ":systems",
+        "//core:c3_cartpole_problem",
+        "@gtest//:main",
+    ],
+    env_inherit = [
+        "GUROBI_HOME",
+        "GRB_LICENSE_FILE"
+    ],
+)
+
+cc_test(
+    name = "framework_test",
+    srcs = [
+        "test/framework_test.cc"
+    ],
+    deps = [
+        ":systems",
+        ":framework",
+        "@gtest//:main",
+    ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
+    visibility = ["//visibility:public"],
 )

@@ -92,14 +92,6 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
     return this->get_output_port(lcs_contact_jacobian_port_);
   }
 
-  static LCSFactorySystem* AddToBuilder(
-      drake::systems::DiagramBuilder<double>& builder,
-      const drake::multibody::MultibodyPlant<double>& plant_for_lcs,
-      drake::systems::Context<double>* plant_diagram_context,
-      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>
-          contact_geoms,
-      LCSFactoryOptions options);
-
  private:
   /**
    * @brief Computes the LCS based on the current state and inputs.
@@ -136,7 +128,8 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
   int N_;         ///< Number of time steps for the LCS.
   double dt_;     ///< Time step size for the LCS.
 
-  std::unique_ptr<multibody::LCSFactory> lcs_factory_;  ///< Factory for creating LCS objects.
+  std::unique_ptr<multibody::LCSFactory>
+      lcs_factory_;  ///< Factory for creating LCS objects.
 };
 
 }  // namespace systems

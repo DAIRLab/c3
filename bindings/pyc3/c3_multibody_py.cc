@@ -2,9 +2,9 @@
 #include <pybind11/pybind11.h>
 
 #include "core/lcs.h"
-#include "multibody/lcs_factory_options.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/lcs_factory.h"
+#include "multibody/lcs_factory_options.h"
 #include "multibody/multibody_utils.h"
 
 #include "drake/bindings/pydrake/common/sorted_pair_pybind.h"

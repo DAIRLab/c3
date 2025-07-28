@@ -27,8 +27,8 @@ from pyc3 import (
     ConstraintVariable,
 )
 
-from test_utils import C3Solution2Input, Vector2TimestampedVector
-from bindings.test.c3_core_py_test import (
+from common_systems import C3Solution2Input, Vector2TimestampedVector
+from c3_example import (
     make_cartpole_with_soft_walls_dynamics,
     make_cartpole_costs,
 )
@@ -89,7 +89,7 @@ class SoftWallReactionForce(LeafSystem):
 def RunCartpoleTest():
     # Initialize the C3 cartpole problem.
     options = LoadC3ControllerOptions(
-        "systems/test/resources/cartpole_softwalls/"
+        "examples/resources/cartpole_softwalls/"
         "c3_controller_cartpole_options.yaml"
     )
     cartpole = make_cartpole_with_soft_walls_dynamics(options.lcs_factory_options.N)
@@ -100,7 +100,7 @@ def RunCartpoleTest():
     builder = DiagramBuilder()
     plant_for_lcs, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.01)
     parser = Parser(plant_for_lcs, scene_graph)
-    file = "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf"
+    file = "examples/resources/cartpole_softwalls/cartpole_softwalls.sdf"
     parser.AddModels(file)
     plant_for_lcs.Finalize()
 
@@ -138,7 +138,7 @@ def RunCartpoleTest():
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.01)
     parser = Parser(plant, scene_graph)
-    file = "systems/test/resources/cartpole_softwalls/cartpole_softwalls_no_collision_walls.sdf"
+    file = "examples/resources/cartpole_softwalls/cartpole_softwalls_no_collision_walls.sdf"
     parser.AddModels(file)
     plant.Finalize()
 
@@ -252,7 +252,7 @@ def RunPivotingTest():
     builder = DiagramBuilder()
     plant_for_lcs, scene_graph_for_lcs = AddMultibodyPlantSceneGraph(builder, 0.0)
     parser_for_lcs = Parser(plant_for_lcs, scene_graph_for_lcs)
-    file_for_lcs = "systems/test/resources/cube_pivoting/cube_pivoting.sdf"
+    file_for_lcs = "examples/resources/cube_pivoting/cube_pivoting.sdf"
     parser_for_lcs.AddModels(file_for_lcs)
     plant_for_lcs.Finalize()
 
@@ -296,13 +296,13 @@ def RunPivotingTest():
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.01)
     parser = Parser(plant, scene_graph)
-    file = "systems/test/resources/cube_pivoting/cube_pivoting.sdf"
+    file = "examples/resources/cube_pivoting/cube_pivoting.sdf"
     parser.AddModels(file)
     plant.Finalize()
 
     # Load controller options and cost matrices.
     options = LoadC3ControllerOptions(
-        "systems/test/resources/cube_pivoting/c3_controller_pivoting_options.yaml"
+        "examples/resources/cube_pivoting/c3_controller_pivoting_options.yaml"
     )
     cost = C3.CreateCostMatricesFromC3Options(
         options.c3_options, options.lcs_factory_options.N

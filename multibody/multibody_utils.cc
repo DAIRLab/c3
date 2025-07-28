@@ -62,7 +62,6 @@ VectorX<T> GetInput(const MultibodyPlant<T>& plant, const Context<T>& context) {
   }
 }
 
-
 template <typename T>
 void SetContext(const MultibodyPlant<T>& plant,
                 const Eigen::Ref<const VectorX<T>>& state,
@@ -108,7 +107,6 @@ void SetInputsIfNew(const MultibodyPlant<T>& plant,
     plant.get_actuation_input_port().FixValue(context, u);
   }
 }
-
 
 template void SetContext(const MultibodyPlant<double>& plant,
                          const Eigen::Ref<const VectorXd>& state,

@@ -1,10 +1,14 @@
 registry_config: ENCRYPTED[!88cf0d757d2f8b93dca9e57dc166b65ddedef6378e7ac12a91a022ab3fb28dd47b10d452dc5c53a68e144e6bdbae999b!]
 jammy_task:
+  only_if: "$CIRRUS_PR != ''  || $CIRRUS_BRANCH == 'main'" # This condition ensures the task runs only for PRs or on the main branch.
   timeout_in: 120m
   container:
     image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42
     cpu: 8
     memory: 24
+  format_script:
+    - apt update && apt install -y clang-format
+    - ./tools/scripts/check_format.sh
   test_script:
     - export CC=clang-15
     - export CXX=clang++-15
@@ -17,19 +21,24 @@ jammy_task:
     - bazel test
       --local_resources=ram=24000
       --local_resources=cpu=8
+      --jobs=8
+      --test_output=all
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
-  always:
-    jammy_test_artifacts:
-      path: "bazel-testlogs/**/test.xml"
-      format: junit
+  jammy_test_artifacts:
+    path: "bazel-testlogs/**/test.xml"
+    format: junit
 
 noble_task:
+  only_if: "$CIRRUS_PR != ''  || $CIRRUS_BRANCH == 'main'" # This condition ensures the task runs only for PRs or on the main branch.
   timeout_in: 120m
   container:
     image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
     cpu: 8
     memory: 24
+  format_script:
+    - apt update && apt install -y clang-format
+    - ./tools/scripts/check_format.sh
   test_script:
     - export CC=clang-15
     - export CXX=clang++-15
@@ -42,9 +51,10 @@ noble_task:
     - bazel test
       --local_resources=ram=24000
       --local_resources=cpu=8
+      --jobs=8
+      --test_output=all
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
-  always:
-    noble_test_artifacts:
-      path: "bazel-testlogs/**/test.xml"
-      format: junit
+  noble_test_artifacts:
+    path: "bazel-testlogs/**/test.xml"
+    format: junit

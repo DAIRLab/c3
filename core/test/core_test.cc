@@ -5,6 +5,8 @@
 #include <gtest/gtest.h>
 
 #include "core/c3_miqp.h"
+#include "core/c3_qp.h"
+#include "core/lcs.h"
 #include "core/test/c3_cartpole_problem.hpp"
 
 #include "drake/math/discrete_algebraic_riccati_equation.h"
@@ -37,6 +39,7 @@ using namespace c3;
  * | UpdateCostMatrix       |   DONE  |
  * | Solve                  |    -    |
  * | SetOsqpSolverOptions   |    -    |
+ * | CreatePlaceholderLCS   |   DONE  |
  * | # of regression tests  |    2    |
  *
  * It also has an E2E test for ensuring the "Solve()" function and other
@@ -331,37 +334,46 @@ TEST_F(C3CartpoleTest, ZSolStaleTest) {
   }
 }
 
+// Test if CreatePlaceholderLCS works as expected
+TEST_F(C3CartpoleTest, CreatePlaceholder) {
+  // Create a placeholder LCS object
+  LCS placeholder = LCS::CreatePlaceholderLCS(n, k, m, N, dt);
+  // Ensure the object is created without any issues
+  ASSERT_TRUE(placeholder.HasSameDimensionsAs(*pSystem));
+}
+
+template <typename T>
+class C3CartpoleTypedTest : public testing::Test, public C3CartpoleProblem {
+ protected:
+  C3CartpoleTypedTest()
+      : C3CartpoleProblem(0.411, 0.978, 0.6, 0.4267, 0.35, -0.35, 100, 9.81) {
+    pOpt = std::make_unique<T>(*pSystem, cost, xdesired, options);
+  }
+  std::unique_ptr<T> pOpt;
+};
+
+using projection_types = ::testing::Types<C3QP, C3MIQP>;
+TYPED_TEST_SUITE(C3CartpoleTypedTest, projection_types);
+
 // Test the cartpole example
 // This test will take some time to complete ~30s
-TEST_F(C3CartpoleTest, End2EndCartpoleTest) {
-  /// initialize ADMM variables (delta, w)
-  std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
-  std::vector<VectorXd> w(N, VectorXd::Zero(n + m + k));
-
-  /// initialize ADMM reset variables (delta, w are reseted to these values)
-  std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
-  std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
-
+TYPED_TEST(C3CartpoleTypedTest, End2EndCartpoleTest) {
   int timesteps = 1000;  // number of timesteps for the simulation
 
   /// create state and input arrays
-  std::vector<VectorXd> x(timesteps, VectorXd::Zero(n));
-  std::vector<VectorXd> input(timesteps, VectorXd::Zero(k));
+  std::vector<VectorXd> x(timesteps, VectorXd::Zero(this->n));
+  std::vector<VectorXd> input(timesteps, VectorXd::Zero(this->k));
 
-  x[0] = x0;
+  x[0] = this->x0;
 
   int close_to_zero_counter = 0;
   for (int i = 0; i < timesteps - 1; i++) {
-    /// reset delta and w (default option)
-    delta = delta_reset;
-    w = w_reset;
-
     /// calculate the input given x[i]
-    pOpt->Solve(x[i]);
-    input[i] = pOpt->GetInputSolution()[0];
+    this->pOpt->Solve(x[i]);
+    input[i] = this->pOpt->GetInputSolution()[0];
 
     /// simulate the LCS
-    x[i + 1] = pSystem->Simulate(x[i], input[i]);
+    x[i + 1] = this->pSystem->Simulate(x[i], input[i]);
     if (x[i + 1].isZero(0.1)) {
       close_to_zero_counter++;
       if (close_to_zero_counter == 30) break;

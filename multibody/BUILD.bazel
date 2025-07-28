@@ -4,6 +4,15 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "multibody",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":lcs_factory",
+        ":options"
+    ],
+)
+
+cc_library(
     name = "lcs_factory",
     srcs = ["lcs_factory.cc",
             "geom_geom_collider.cc",
@@ -37,15 +46,22 @@ filegroup(
 )
 
 cc_test(
-    name = "lcs_factory_test",
-    srcs = ["test/lcs_factory_test.cc"],
+    name = "multibody_test",
+    srcs = ["test/multibody_test.cc"],
     data = [
         ":test_data",
-        "//systems:test_data",
+        "//examples:example_data",
     ],
     deps = [
         ":lcs_factory",
         "@gtest//:main",
     ],
+)
 
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+    ]),
+    visibility = ["//visibility:public"],
 )

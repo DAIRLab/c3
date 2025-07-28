@@ -1,6 +1,4 @@
 // Includes for core controllers, simulators, and test problems.
-#include "systems/lcs_factory_system.h"
-
 #include <algorithm>
 #include <cmath>
 
@@ -20,11 +18,12 @@
 #include <gflags/gflags.h>
 
 #include "core/test/c3_cartpole_problem.hpp"
+#include "examples/common_systems.hpp"
 #include "systems/c3_controller.h"
 #include "systems/c3_controller_options.h"
 #include "systems/common/system_utils.hpp"
+#include "systems/lcs_factory_system.h"
 #include "systems/lcs_simulator.h"
-#include "systems/test/test_utils.hpp"
 
 #include "drake/multibody/plant/externally_applied_spatial_force.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
@@ -121,7 +120,7 @@ int RunCartpoleTest() {
       AddMultibodyPlantSceneGraph(&plant_builder, 0.01);
   Parser parser_for_lcs(&plant_for_lcs, &scene_graph_for_lcs);
   const std::string file_for_lcs =
-      "systems/test/resources/cartpole_softwalls/cartpole_softwalls.sdf";
+      "examples/resources/cartpole_softwalls/cartpole_softwalls.sdf";
   parser_for_lcs.AddModels(file_for_lcs);
   plant_for_lcs.Finalize();
 
@@ -155,12 +154,13 @@ int RunCartpoleTest() {
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, 0.01);
   Parser parser(&plant, &scene_graph);
   const std::string file =
-      "systems/test/resources/cartpole_softwalls/cartpole_softwalls_no_collision_walls.sdf";
+      "examples/resources/cartpole_softwalls/"
+      "cartpole_softwalls_no_collision_walls.sdf";
   parser.AddModels(file);
   plant.Finalize();
 
   C3ControllerOptions options = drake::yaml::LoadYamlFile<C3ControllerOptions>(
-      "systems/test/resources/cartpole_softwalls/"
+      "examples/resources/cartpole_softwalls/"
       "c3_controller_cartpole_options.yaml");
 
   std::unique_ptr<drake::systems::Context<double>> plant_diagram_context =
@@ -273,7 +273,7 @@ int RunPivotingTest() {
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
   Parser parser_for_lcs(&plant_for_lcs, &scene_graph_for_lcs);
   const std::string file_for_lcs =
-      "systems/test/resources/cube_pivoting/cube_pivoting.sdf";
+      "examples/resources/cube_pivoting/cube_pivoting.sdf";
   parser_for_lcs.AddModels(file_for_lcs);
   plant_for_lcs.Finalize();
 
@@ -315,14 +315,13 @@ int RunPivotingTest() {
   DiagramBuilder<double> builder;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, 0.01);
   Parser parser(&plant, &scene_graph);
-  const std::string file =
-      "systems/test/resources/cube_pivoting/cube_pivoting.sdf";
+  const std::string file = "examples/resources/cube_pivoting/cube_pivoting.sdf";
   parser.AddModels(file);
   plant.Finalize();
 
   // Load controller options and cost matrices.
   C3ControllerOptions options = drake::yaml::LoadYamlFile<C3ControllerOptions>(
-      "systems/test/resources/cube_pivoting/"
+      "examples/resources/cube_pivoting/"
       "c3_controller_pivoting_options.yaml");
   C3::CostMatrices cost = C3::CreateCostMatricesFromC3Options(
       options.c3_options, options.lcs_factory_options.N);

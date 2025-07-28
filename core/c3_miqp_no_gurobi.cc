@@ -26,16 +26,4 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
       "projection method.");
 }
 
-std::vector<Eigen::VectorXd> C3MIQP::GetWarmStartDelta() const {
-  throw std::runtime_error(
-      "The Gurobi bindings were not compiled.  You'll need to use a different "
-      "projection method.");
-}
-
-std::vector<Eigen::VectorXd> C3MIQP::GetWarmStartBinary() const {
-  throw std::runtime_error(
-      "The Gurobi bindings were not compiled.  You'll need to use a different "
-      "projection method.");
-}
-
 }  // namespace c3

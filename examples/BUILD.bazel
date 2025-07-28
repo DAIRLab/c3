@@ -1,7 +1,53 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
 cc_binary(
     name = "c3_example",
     srcs = ["c3_example.cc"],
     deps = [
         "//core:c3",
+        "@gflags"
     ],
+)
+
+filegroup(
+    name = 'example_data',
+    srcs = glob(['resources/**'])
+)
+
+cc_binary(
+    name = "c3_controller_example",
+    srcs = [
+        "c3_controller_example.cc", 
+        "common_systems.hpp" 
+    ],
+    data = [
+        ":example_data"
+    ],
+    deps = [
+        "//core:c3",
+        "//core:c3_cartpole_problem",
+        "//systems:systems",
+        "//systems:system_utils",
+    ]
+)
+
+cc_binary(
+    name = "lcs_factory_system_example",
+    srcs = [
+        "lcs_factory_system_example.cc", 
+        "common_systems.hpp"  
+    ],
+    data = [
+        ":example_data",
+    ],
+    deps = [
+        "//core:c3",
+        "//core:c3_cartpole_problem",
+        "//systems:systems",
+        "//systems:system_utils",
+        "@gflags"
+    ]
 )

@@ -1,6 +1,8 @@
 #include <chrono>
-#include <string>
 #include <iostream>
+#include <string>
+
+#include <gflags/gflags.h>
 
 #include "core/c3_miqp.h"
 
@@ -13,6 +15,8 @@ using std::vector;
 
 using c3::C3Options;
 using c3::ConstraintVariable;
+
+DEFINE_bool(verbose, false, "Print verbose output during the example run");
 
 void init_cartpole(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_,
                    vector<MatrixXd>* B_, vector<MatrixXd>* D_,
@@ -130,7 +134,6 @@ int DoMain(int argc, char* argv[]) {
     opt.AddLinearConstraint(LinIneq2, lowerbound, upperbound, stateconstraint);
   }
 
-
   /// initialize ADMM variables (delta, w)
   std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w(N, VectorXd::Zero(n + m + k));
@@ -163,7 +166,6 @@ int DoMain(int argc, char* argv[]) {
       w = w_reset;
     }
 
-
     if (example == 2) {
       init_pivoting(x[i], &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd,
                     &cd, &Qd, &Rd, &Gd, &Ud, &x0, &xdesired, &options);
@@ -172,14 +174,12 @@ int DoMain(int argc, char* argv[]) {
       C3MIQP opt(system, cost, xdesired, options);
     }
 
-
     auto start = std::chrono::high_resolution_clock::now();
     /// calculate the input given x[i]
     opt.Solve(x[i]);
     input[i] = opt.GetInputSolution()[0];
 
-
-        auto finish = std::chrono::high_resolution_clock::now();
+    auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
     std::cout << "Solve time:" << elapsed.count() << std::endl;
     total_time = total_time + elapsed.count();
@@ -188,7 +188,10 @@ int DoMain(int argc, char* argv[]) {
     x[i + 1] = system.Simulate(x[i], input[i]);
 
     /// print the state
-    //std::cout << "state: " << x[i + 1] << std::endl;
+    if (FLAGS_verbose) {
+      std::cout << "Step: " << i << ", State: " << x[i + 1].transpose()
+                << ", Input: " << input[i].transpose() << std::endl;
+    }
   }
   std::cout << "Average time: " << total_time / (timesteps - 1) << std::endl;
   return 0;
@@ -197,6 +200,7 @@ int DoMain(int argc, char* argv[]) {
 }  // namespace c3
 
 int main(int argc, char* argv[]) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   return c3::DoMain(argc, argv);
 }
 
