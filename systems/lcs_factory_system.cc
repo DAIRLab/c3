@@ -8,8 +8,8 @@
 #include "systems/framework/timestamped_vector.h"
 
 using c3::LCS;
-using c3::multibody::LCSFactory;
 using c3::multibody::LCSContactDescription;
+using c3::multibody::LCSFactory;
 using c3::systems::TimestampedVector;
 using drake::multibody::ModelInstanceIndex;
 using drake::systems::BasicVector;
@@ -70,10 +70,9 @@ void LCSFactorySystem::InitializeSystem(
                                               &LCSFactorySystem::OutputLCS)
                   .get_index();
 
-  lcs_contact_output_port_ =
+  lcs_contact_descriptions_output_port_ =
       this->DeclareAbstractOutputPort(
-              "contact_descriptions",
-              std::vector<LCSContactDescription>(),
+              "contact_descriptions", std::vector<LCSContactDescription>(),
               &LCSFactorySystem::OutputLCSContactDescriptions)
           .get_index();
 }
