@@ -79,36 +79,6 @@ cc_library(
     ],
 )
 
-cc_library( name = "lcs_simulator",
-    srcs = [
-        "lcs_simulator.cc",
-    ],
-    hdrs = [
-        "lcs_simulator.h",
-    ],
-    deps = [
-        "//core:lcs",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "lcs_factory_system",
-    srcs = [
-        "lcs_factory_system.cc",
-    ],
-    hdrs = [
-        "lcs_factory_system.h",
-    ],
-    deps = [
-        ":framework",
-        "//core:lcs",
-        "//core:options",
-        "//multibody:lcs_factory",
-        "@drake//:drake_shared_library",
-    ],
-)
-
 cc_library(
     name = "options",
     hdrs = [
@@ -142,8 +112,6 @@ cc_library(
 )
 
 
-
-
 cc_library(
     name = "system_utils",
     hdrs = [
@@ -153,6 +121,7 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
 cc_test(
     name = "systems_test",
     srcs = [

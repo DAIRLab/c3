@@ -103,8 +103,8 @@ PYBIND11_MODULE(systems, m) {
            py::return_value_policy::reference)
       .def("get_output_port_lcs", &LCSFactorySystem::get_output_port_lcs,
            py::return_value_policy::reference)
-      .def("get_output_port_lcs_contact_description",
-           &LCSFactorySystem::get_output_port_lcs_contact_description,
+      .def("get_output_port_lcs_contact_descriptions",
+           &LCSFactorySystem::get_output_port_lcs_contact_descriptions,
            py::return_value_policy::reference);
 
   py::class_<C3Output::C3Solution>(m, "C3Solution")
