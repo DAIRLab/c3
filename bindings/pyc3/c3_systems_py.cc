@@ -248,9 +248,9 @@ PYBIND11_MODULE(systems, m) {
       .def("get_input_port_c3_solution",
            &lcmt_generators::ContactForceGenerator::get_input_port_c3_solution,
            py::return_value_policy::reference)
-      .def("get_input_port_lcs_contact_info",
+      .def("get_input_port_lcs_contact_descriptions",
            &lcmt_generators::ContactForceGenerator::
-               get_input_port_lcs_contact_info,
+               get_input_port_lcs_contact_descriptions,
            py::return_value_policy::reference)
       .def("get_output_port_contact_force",
            &lcmt_generators::ContactForceGenerator::
