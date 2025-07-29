@@ -52,7 +52,7 @@ void ContactForceGenerator::DoCalc(const Context<double>& context,
   const auto& contact_info =
       this->EvalInputValue<std::vector<LCSContactDescription>>(
           context, lcs_contact_info_port_);
-  
+
   output->forces.clear();
   output->num_forces = 0;
   // Iterate over all contact points and compute forces.
@@ -60,7 +60,7 @@ void ContactForceGenerator::DoCalc(const Context<double>& context,
     auto force = lcmt_contact_force();
 
     if (contact_info->at(i).is_slack)
-      // If the contact is slack, set the force to zero.
+      // If the contact is slack, ignore it.
       continue;
 
     // Set contact point position.

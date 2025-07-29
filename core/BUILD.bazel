@@ -49,9 +49,6 @@ cc_library(
         "c3_qp.h",
         "c3_plus.h",
     ],
-    data = [
-        ":default_solver_options",
-    ],
     copts = ["-fopenmp"],
     linkopts = ["-fopenmp"],
     deps = [
