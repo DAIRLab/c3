@@ -173,6 +173,18 @@ cc_test(
     size = "small",
 )
 
+cc_test(
+    name = "generators_test",
+    srcs = [
+        "test/generators_test.cc"
+    ],
+    deps = [
+        ":lcmt_generators",
+        "//core:c3_cartpole_problem",
+        "@gtest//:main",
+    ],
+)
+
 filegroup(
     name = "headers",
     srcs = glob([

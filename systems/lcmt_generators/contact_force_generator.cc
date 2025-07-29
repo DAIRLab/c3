@@ -87,15 +87,15 @@ void ContactForceGenerator::DoCalc(const Context<double>& context,
 LcmPublisherSystem* ContactForceGenerator::AddLcmPublisherToBuilder(
     DiagramBuilder<double>& builder,
     const drake::systems::OutputPort<double>& solution_port,
-    const drake::systems::OutputPort<double>& lcs_contact_info_port,
+    const drake::systems::OutputPort<double>& lcs_contact_descriptions_port,
     const std::string& channel, drake::lcm::DrakeLcmInterface* lcm,
     const drake::systems::TriggerTypeSet& publish_triggers,
     double publish_period, double publish_offset) {
   // Add and connect the ContactForceGenerator system.
   auto force_publisher = builder.AddSystem<ContactForceGenerator>();
   builder.Connect(solution_port, force_publisher->get_input_port_c3_solution());
-  builder.Connect(lcs_contact_info_port,
-                  force_publisher->get_input_port_lcs_contact_info());
+  builder.Connect(lcs_contact_descriptions_port,
+                  force_publisher->get_input_port_lcs_contact_descriptions());
 
   // Add and connect the LCM publisher system.
   auto lcm_force_publisher =
