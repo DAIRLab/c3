@@ -48,8 +48,8 @@ class ContactForceGenerator : public drake::systems::LeafSystem<double> {
    * @brief Returns the input port for the LCS contact information.
    * @return Reference to the input port for LCS contact info.
    */
-  const drake::systems::InputPort<double>& get_input_port_lcs_contact_info()
-      const {
+  const drake::systems::InputPort<double>&
+  get_input_port_lcs_contact_descriptions() const {
     return this->get_input_port(lcs_contact_info_port_);
   }
 
@@ -82,7 +82,7 @@ class ContactForceGenerator : public drake::systems::LeafSystem<double> {
   static drake::systems::lcm::LcmPublisherSystem* AddLcmPublisherToBuilder(
       drake::systems::DiagramBuilder<double>& builder,
       const drake::systems::OutputPort<double>& solution_port,
-      const drake::systems::OutputPort<double>& lcs_contact_info_port,
+      const drake::systems::OutputPort<double>& lcs_contact_descriptions_port,
       const std::string& channel, drake::lcm::DrakeLcmInterface* lcm,
       const drake::systems::TriggerTypeSet& publish_triggers,
       double publish_period = 0.0, double publish_offset = 0.0);
