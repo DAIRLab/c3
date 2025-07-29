@@ -438,13 +438,15 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   AddAugmentedCost(G, WD, delta, is_final_solve);
   SetInitialGuessQP(x0, admm_iteration);
 
-  MathematicalProgramResult result = osqp_.Solve(prog_);
-
+  try {
+    MathematicalProgramResult result = osqp_.Solve(prog_);
+  } catch (const std::exception& e) {
+    drake::log()->error("C3::SolveQP failed with exception: {}", e.what());
+  }
   if (!result.is_success()) {
     drake::log()->warn("C3::SolveQP failed to solve the QP with status: {}",
                        result.get_solution_result());
   }
-
   StoreQPResults(result, admm_iteration, is_final_solve);
 
   return *z_sol_;
