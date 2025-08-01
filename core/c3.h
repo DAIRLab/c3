@@ -13,6 +13,8 @@
 namespace c3 {
 typedef drake::solvers::Binding<drake::solvers::LinearConstraint>
     LinearConstraintBinding;
+typedef drake::solvers::Binding<drake::solvers::QuadraticCost>
+    QuadraticCostBinding;
 
 enum ConstraintVariable : uint8_t { STATE = 1, INPUT = 2, FORCE = 3 };
 
@@ -50,6 +52,8 @@ class C3 {
     std::vector<Eigen::MatrixXd> U;
   };
 
+  using CalcZSizeFunc = std::function<int(const LCS&)>;
+
   /*!
    * @param LCS system dynamics, defined as an LCS (see lcs.h)
    * @param costs Cost function parameters (see above)
@@ -58,7 +62,8 @@ class C3 {
    * @param options see c3_options.h
    */
   C3(const LCS& LCS, const CostMatrices& costs,
-     const std::vector<Eigen::VectorXd>& x_desired, const C3Options& options);
+     const std::vector<Eigen::VectorXd>& x_desired, const C3Options& options,
+     CalcZSizeFunc calc_z_size = nullptr);
 
   virtual ~C3() = default;
 
@@ -72,7 +77,7 @@ class C3 {
    * Update the dynamics
    * @param lcs the new LCS
    */
-  void UpdateLCS(const LCS& lcs);
+  virtual void UpdateLCS(const LCS& lcs);
 
   /**
    * @brief Get a vector dynamic constraints.
@@ -205,6 +210,9 @@ class C3 {
   const int n_x_;       // n
   const int n_lambda_;  // m
   const int n_u_;       // k
+  const int n_z_;       // (default) n + m + k
+
+  bool use_parallelization_in_projection_ = true;
 
   /*!
    * Project delta_c onto the LCP constraint.
@@ -213,7 +221,8 @@ class C3 {
    * @param delta_c value to project to the LCP constraint
    * @param E, F, H, c LCS state, force, input, and constant terms
    * @param admm_iteration index of the current ADMM iteration
-   * @param warm_start_index index into cache of warm start variables
+   * @param warm_start_index index into cache of warm start variables, -1 for no
+   * warm start
    * @return
    */
   virtual Eigen::VectorXd SolveSingleProjection(
@@ -222,12 +231,21 @@ class C3 {
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index) = 0;
 
- private:
+  virtual void WarmStartQP(const Eigen::VectorXd& x0, int admm_iteration);
+  virtual void ProcessQPResults(
+      const drake::solvers::MathematicalProgramResult& result,
+      int admm_iteration, bool is_final_solve);
   /*!
    * Scales the LCS matrices internally to better condition the problem.
    * This only scales the lambdas.
    */
   void ScaleLCS();
+
+  /*!
+   * Set the default solver options for the MathematicalProgram
+   * This is called in the constructor, and can be overridden by the user
+   */
+  void SetDefaultSolverOptions();
 
   /*!
    * Solve the projection problem for all time-steps
@@ -279,6 +297,7 @@ class C3 {
   std::vector<drake::solvers::VectorXDecisionVariable> x_;
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
+  std::vector<drake::solvers::VariableRefList> z_;
 
   // QP step constraints
   std::shared_ptr<drake::solvers::LinearEqualityConstraint>
@@ -291,8 +310,8 @@ class C3 {
   /// Projection step variables are defined outside of the MathematicalProgram
   /// interface
 
-  std::vector<drake::solvers::QuadraticCost*> target_cost_;
-  std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
+  std::vector<drake::solvers::QuadraticCost*> target_costs_;
+  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> augmented_costs_;
   std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
 
   // Solutions

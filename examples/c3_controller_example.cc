@@ -76,6 +76,7 @@ int DoMain() {
 
   // Initialize the C3 cartpole problem.
   auto c3_cartpole_problem = C3CartpoleProblem();
+  c3_cartpole_problem.UseC3Plus();  // Use C3+ controller if desired.
 
   // Add the LCS simulator.
   auto lcs_simulator =
@@ -101,6 +102,7 @@ int DoMain() {
                              state_zero_order_hold->get_output_port());
 
   // Add the C3 controller.
+  options.projection_type = "C3+";  // Set projection type to C3+.
   auto c3_controller = builder.AddSystem<C3Controller>(
       *plant, c3_cartpole_problem.cost, options);
 

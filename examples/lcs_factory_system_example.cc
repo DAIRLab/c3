@@ -114,6 +114,7 @@ int RunCartpoleTest() {
   // Initialize the C3 cartpole problem. Assuming SDF matches default values in
   // problem.
   auto c3_cartpole_problem = C3CartpoleProblem();
+  c3_cartpole_problem.UseC3Plus();  // Use C3+ controller.
 
   DiagramBuilder<double> plant_builder;
   auto [plant_for_lcs, scene_graph_for_lcs] =
@@ -162,6 +163,7 @@ int RunCartpoleTest() {
   C3ControllerOptions options = drake::yaml::LoadYamlFile<C3ControllerOptions>(
       "examples/resources/cartpole_softwalls/"
       "c3_controller_cartpole_options.yaml");
+  options.projection_type = "C3+";  // Use C3+ controller.
 
   std::unique_ptr<drake::systems::Context<double>> plant_diagram_context =
       plant_diagram->CreateDefaultContext();

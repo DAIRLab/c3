@@ -49,7 +49,7 @@ struct C3StatePredictionJoint {
 };
 
 struct C3ControllerOptions {
-  std::string projection_type;  // "QP" or "MIQP"
+  std::string projection_type;  // "QP" or "MIQP" or "C3+"
   // C3 optimization options
   C3Options c3_options;
 
@@ -81,6 +81,12 @@ struct C3ControllerOptions {
                  expected_lambda_size);
     DRAKE_DEMAND(static_cast<int>(c3_options.u_lambda.size()) ==
                  expected_lambda_size);
+    if (projection_type == "C3+") {
+      DRAKE_DEMAND(static_cast<int>(c3_options.g_eta->size()) ==
+                   expected_lambda_size);
+      DRAKE_DEMAND(static_cast<int>(c3_options.u_eta->size()) ==
+                   expected_lambda_size);
+    }
   }
 };
 

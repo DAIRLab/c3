@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "core/c3_miqp.h"
+#include "core/c3_plus.h"
 #include "core/c3_qp.h"
 #include "core/lcs.h"
 #include "core/test/c3_cartpole_problem.hpp"
@@ -40,6 +41,7 @@ using namespace c3;
  * | Solve                  |    -    |
  * | SetOsqpSolverOptions   |    -    |
  * | CreatePlaceholderLCS   |   DONE  |
+ * | WarmStartSmokeTest     |   DONE  |
  * | # of regression tests  |    2    |
  *
  * It also has an E2E test for ensuring the "Solve()" function and other
@@ -342,17 +344,28 @@ TEST_F(C3CartpoleTest, CreatePlaceholder) {
   ASSERT_TRUE(placeholder.HasSameDimensionsAs(*pSystem));
 }
 
+// Test if the solver works with warm start enabled (smoke test)
+TEST_F(C3CartpoleTest, WarmStartSmokeTest) {
+  // Enable warm start option
+  options.warm_start = true;
+  C3MIQP optimizer(*pSystem, cost, xdesired, options);
+
+  // Solver should not throw when called with warm start
+  ASSERT_NO_THROW(optimizer.Solve(x0));
+}
+
 template <typename T>
 class C3CartpoleTypedTest : public testing::Test, public C3CartpoleProblem {
  protected:
   C3CartpoleTypedTest()
       : C3CartpoleProblem(0.411, 0.978, 0.6, 0.4267, 0.35, -0.35, 100, 9.81) {
+    if (std::is_same<T, C3Plus>::value) UseC3Plus();
     pOpt = std::make_unique<T>(*pSystem, cost, xdesired, options);
   }
   std::unique_ptr<T> pOpt;
 };
 
-using projection_types = ::testing::Types<C3QP, C3MIQP>;
+using projection_types = ::testing::Types<C3QP, C3MIQP, C3Plus>;
 TYPED_TEST_SUITE(C3CartpoleTypedTest, projection_types);
 
 // Test the cartpole example
