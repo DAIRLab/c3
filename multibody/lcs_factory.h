@@ -291,17 +291,18 @@ class LCSFactory {
   // Configuration options for the LCSFactory
   LCSFactoryOptions options_;
 
+  ContactModel contact_model_;  ///< The contact model being used.
+  int n_contacts_;              ///< Number of contact points.
+  int n_friction_directions_;   ///< Number of friction directions.u
   int n_q_;                     ///< Number of configuration variables.
   int n_v_;                     ///< Number of velocity variables.
   int n_x_;                     ///< Number of state variables.
   int n_lambda_;                ///< Number of contact force variables.
   int n_u_;                     ///< Number of input variables.
-  int n_contacts_;              ///< Number of contact points.
-  int n_friction_directions_;   ///< Number of friction directions.
-  ContactModel contact_model_;  ///< The contact model being used.
-  std::vector<double> mu_;      ///< Vector of friction coefficients.
-  bool frictionless_;           ///< Flag indicating frictionless contacts.
-  double dt_;                   ///< Time step.
+
+  std::vector<double> mu_;  ///< Vector of friction coefficients.
+  bool frictionless_;       ///< Flag indicating frictionless contacts.
+  double dt_;               ///< Time step.
 };
 
 }  // namespace multibody

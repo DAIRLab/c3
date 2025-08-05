@@ -24,7 +24,12 @@ struct C3Options {
   int delta_option =
       1;  // 1 initializes the state value of the delta value with x0
 
-  double M = 1000;  // big M value for MIQP
+  std::optional<double> M = 1000;  // big M value for MIQP
+
+  std::optional<double>
+      qp_projection_alpha;  // alpha value for the QP projection
+  std::optional<double>
+      qp_projection_scaling;  // scaling factor for the QP projection
 
   int admm_iter = 3;  // total number of ADMM iterations
 
@@ -90,6 +95,8 @@ struct C3Options {
     a->Visit(DRAKE_NVP(delta_option));
 
     a->Visit(DRAKE_NVP(M));
+    a->Visit(DRAKE_NVP(qp_projection_alpha));
+    a->Visit(DRAKE_NVP(qp_projection_scaling));
 
     a->Visit(DRAKE_NVP(admm_iter));
 

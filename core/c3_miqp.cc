@@ -10,7 +10,7 @@ using std::vector;
 
 C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
-    : C3(LCS, costs, xdesired, options), M_(options.M) {
+    : C3(LCS, costs, xdesired, options), M_(options.M.value_or(1000)) {
   if (warm_start_) {
     warm_start_delta_.resize(options_.admm_iter + 1);
     warm_start_binary_.resize(options_.admm_iter + 1);

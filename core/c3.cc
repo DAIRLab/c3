@@ -43,13 +43,13 @@ C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
 
 C3::C3(const LCS& lcs, const CostMatrices& costs,
        const vector<VectorXd>& x_desired, const C3Options& options,
-       CalcZSizeFunc calc_z_size)
+       const int z_size)
     : warm_start_(options.warm_start),
       N_(lcs.N()),
       n_x_(lcs.num_states()),
       n_lambda_(lcs.num_lambdas()),
       n_u_(lcs.num_inputs()),
-      n_z_(calc_z_size ? calc_z_size(lcs) : n_x_ + n_lambda_ + n_u_),
+      n_z_(z_size),
       lcs_(lcs),
       cost_matrices_(costs),
       x_desired_(x_desired),
@@ -82,6 +82,7 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
 
+  z_fin_ = std::make_unique<std::vector<VectorXd>>();
   z_sol_ = std::make_unique<std::vector<VectorXd>>();
   x_sol_ = std::make_unique<std::vector<VectorXd>>();
   lambda_sol_ = std::make_unique<std::vector<VectorXd>>();
@@ -93,6 +94,8 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
     x_sol_->push_back(Eigen::VectorXd::Zero(n_x_));
     lambda_sol_->push_back(Eigen::VectorXd::Zero(n_lambda_));
     u_sol_->push_back(Eigen::VectorXd::Zero(n_u_));
+    z_fin_->push_back(Eigen::VectorXd::Zero(n_z_));
+    z_sol_->push_back(Eigen::VectorXd::Zero(n_z_));
     w_sol_->push_back(Eigen::VectorXd::Zero(n_z_));
     delta_sol_->push_back(Eigen::VectorXd::Zero(n_z_));
   }
@@ -175,6 +178,11 @@ void C3::SetDefaultSolverOptions() {
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
   SetSolverOptions(solver_options);
 }
+
+C3::C3(const LCS& lcs, const CostMatrices& costs,
+       const vector<VectorXd>& x_desired, const C3Options& options)
+    : C3(lcs, costs, x_desired, options,
+         lcs.num_states() + lcs.num_lambdas() + lcs.num_inputs()) {}
 
 C3::CostMatrices C3::CreateCostMatricesFromC3Options(const C3Options& options,
                                                      int N) {
@@ -320,7 +328,7 @@ void C3::Solve(const VectorXd& x0) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
 
-  vector<VectorXd> zfin = SolveQP(x0, G, WD, options_.admm_iter, true);
+  *z_fin_ = SolveQP(x0, G, WD, options_.admm_iter, true);
 
   *w_sol_ = w;
   *delta_sol_ = delta;
@@ -381,6 +389,7 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
 }
 
 void C3::WarmStartQP(const Eigen::VectorXd& x0, int admm_iteration) {
+  
   if (admm_iteration == 0) return;  // No warm start for the first iteration
   int index = solve_time_ / lcs_.dt();
   double weight = (solve_time_ - index * lcs_.dt()) / lcs_.dt();

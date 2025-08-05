@@ -46,8 +46,8 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   auto ln_ = prog.NewContinuousVariables(n_lambda_, "lambda");
   auto un_ = prog.NewContinuousVariables(n_u_, "u");
 
-  double alpha = 0.01;
-  double scaling = 1000;
+  double alpha = options_.qp_projection_alpha.value_or(0.01);
+  double scaling = options_.qp_projection_scaling.value_or(1000);
 
   MatrixXd EFH(n_lambda_, n_x_ + n_lambda_ + n_u_);
   EFH.block(0, 0, n_lambda_, n_x_) = E / scaling;

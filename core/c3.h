@@ -52,8 +52,6 @@ class C3 {
     std::vector<Eigen::MatrixXd> U;
   };
 
-  using CalcZSizeFunc = std::function<int(const LCS&)>;
-
   /*!
    * @param LCS system dynamics, defined as an LCS (see lcs.h)
    * @param costs Cost function parameters (see above)
@@ -62,8 +60,7 @@ class C3 {
    * @param options see c3_options.h
    */
   C3(const LCS& LCS, const CostMatrices& costs,
-     const std::vector<Eigen::VectorXd>& x_desired, const C3Options& options,
-     CalcZSizeFunc calc_z_size = nullptr);
+     const std::vector<Eigen::VectorXd>& x_desired, const C3Options& options);
 
   virtual ~C3() = default;
 
@@ -193,13 +190,32 @@ class C3 {
   }
 
   std::vector<Eigen::VectorXd> GetFullSolution() { return *z_sol_; }
+  std::vector<Eigen::VectorXd> GetFullQPSolution() { return *z_fin_; }
   std::vector<Eigen::VectorXd> GetStateSolution() { return *x_sol_; }
   std::vector<Eigen::VectorXd> GetForceSolution() { return *lambda_sol_; }
   std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
 
+  int GetZSize() const { return n_z_; }
+
  protected:
+  /// @param lcs      Parameters defining the LCS.
+  /// @param costs    Cost matrices used in the optimization.
+  /// @param x_des    Desired goal state trajectory.
+  /// @param options  Options specific to the C3 formulation.
+  /// @param z_size   Size of the z vector, which depends on the specific C3
+  /// variant.
+  ///                 For example:
+  ///                   - C3MIQP / C3QP: z = [x, u, lambda]
+  ///                   - C3Plus:        z = [x, u, lambda, eta]
+  ///
+  /// This constructor is intended for internal use only. The public constructor
+  /// delegates to this one, passing in an explicitly computed z vector size.
+  C3(const LCS& lcs, const CostMatrices& costs,
+     const std::vector<Eigen::VectorXd>& x_des, const C3Options& options,
+     int z_size);
+
   std::vector<std::vector<Eigen::VectorXd>> warm_start_delta_;
   std::vector<std::vector<Eigen::VectorXd>> warm_start_binary_;
   std::vector<std::vector<Eigen::VectorXd>> warm_start_x_;
@@ -320,6 +336,9 @@ class C3 {
   std::unique_ptr<std::vector<Eigen::VectorXd>> u_sol_;
 
   std::unique_ptr<std::vector<Eigen::VectorXd>> z_sol_;
+  std::unique_ptr<std::vector<Eigen::VectorXd>>
+      z_fin_;  // Final QP solution which may differ from z_sol_ if
+               // end_on_qp_step is false
   std::unique_ptr<std::vector<Eigen::VectorXd>> delta_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> w_sol_;
 };

@@ -41,17 +41,18 @@ LCSFactory::LCSFactory(
       context_ad_(context_ad),
       contact_pairs_(contact_geoms),
       options_(options),
+      n_contacts_(contact_geoms.size()),
+      n_friction_directions_(options_.num_friction_directions),
+      contact_model_(GetContactModelMap().at(options_.contact_model)),
       n_q_(plant_.num_positions()),
       n_v_(plant_.num_velocities()),
       n_x_(n_q_ + n_v_),
-      n_lambda_(multibody::LCSFactory::GetNumContactVariables(options)),
+      n_lambda_(multibody::LCSFactory::GetNumContactVariables(
+          contact_model_, n_contacts_, n_friction_directions_)),
       n_u_(plant_.num_actuators()),
-      n_contacts_(contact_geoms.size()),
-      n_friction_directions_(options_.num_friction_directions),
-      contact_model_(GetContactModelMap().at(options.contact_model)),
       mu_(options.mu),
       frictionless_(contact_model_ == ContactModel::kFrictionlessSpring),
-      dt_(options_.dt) {}
+      dt_(options.dt) {}
 
 void LCSFactory::ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn,
                                         MatrixXd& Jt) {

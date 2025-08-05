@@ -15,11 +15,11 @@ using std::vector;
 
 using drake::solvers::MathematicalProgramResult;
 
-C3Plus::C3Plus(const LCS& LCS, const CostMatrices& costs,
+C3Plus::C3Plus(const LCS& lcs, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
-    : C3(LCS, costs, xdesired, options, [](const class LCS& lcs) {
-        return (lcs.num_states() + 2 * lcs.num_lambdas() + lcs.num_inputs());
-      }) {
+    : C3(lcs, costs, xdesired, options,
+         lcs.num_states() + 2 * lcs.num_lambdas() + lcs.num_inputs()) {
+  // Initialize eta as optimization variables
   eta_ = vector<drake::solvers::VectorXDecisionVariable>();
   eta_sol_ = std::make_unique<std::vector<VectorXd>>();
   for (int i = 0; i < N_; ++i) {
@@ -28,6 +28,8 @@ C3Plus::C3Plus(const LCS& LCS, const CostMatrices& costs,
         prog_.NewContinuousVariables(n_lambda_, "eta" + std::to_string(i)));
     z_.at(i).push_back(eta_.back());
   }
+
+  // Add eta equality constraints η = E * x + F * λ + H * u + c
   MatrixXd EtaLinEq(n_lambda_, n_x_ + 2 * n_lambda_ + n_u_);
   EtaLinEq.block(0, n_x_ + n_lambda_ + n_u_, n_lambda_, n_lambda_) =
       -1 * MatrixXd::Identity(n_lambda_, n_lambda_);
@@ -104,38 +106,38 @@ VectorXd C3Plus::SolveSingleProjection(const MatrixXd& U,
                                        const int& warm_start_index) {
   VectorXd delta_proj = delta_c;
 
-  // Handle complementarity constraints for each lambda-eta pair
-  for (int i = 0; i < n_lambda_; ++i) {
-    double w_eta =
-        std::abs(U(n_x_ + n_lambda_ + n_u_ + i, n_x_ + n_lambda_ + n_u_ + i));
-    double w_lambda = std::abs(U(n_x_ + i, n_x_ + i));
+  // Extract the weight vectors for lambda and eta from the diagonal of the cost
+  // matrix U.
+  VectorXd w_eta_vec = U.block(n_x_ + n_lambda_ + n_u_, n_x_ + n_lambda_ + n_u_,
+                               n_lambda_, n_lambda_)
+                           .diagonal();
+  VectorXd w_lambda_vec = U.block(n_x_, n_x_, n_lambda_, n_lambda_).diagonal();
 
-    double lambda_val = delta_c(n_x_ + i);
-    double eta_val = delta_c(n_x_ + n_lambda_ + n_u_ + i);
-
-    if (lambda_val <= 0) {
-      delta_proj(n_x_ + i) = 0;
-      delta_proj(n_x_ + n_lambda_ + n_u_ + i) = std::max(0.0, eta_val);
-    } else {
-      if (eta_val <= 0) {
-        delta_proj(n_x_ + i) = lambda_val;
-        delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-      } else {
-        // If point (lambda, eta) is above the slope sqrt(w_lambda/w_eta), set
-        // lambda to 0 and keep eta Otherwise, set lambda to lambda and set eta
-        // to 0
-        if (eta_val * std::sqrt(w_eta) > lambda_val * std::sqrt(w_lambda)) {
-          delta_proj(n_x_ + i) = 0;
-          delta_proj(n_x_ + n_lambda_ + n_u_ + i) = eta_val;
-        } else {
-          delta_proj(n_x_ + i) = lambda_val;
-          delta_proj(n_x_ + n_lambda_ + n_u_ + i) = 0;
-        }
-      }
-    }
+  // Throw an error if any weights are negative.
+  if (w_eta_vec.minCoeff() < 0 || w_lambda_vec.minCoeff() < 0) {
+    throw std::runtime_error(
+        "Negative weights in the cost matrix U are not allowed.");
   }
+
+  VectorXd lambda_c = delta_c.segment(n_x_, n_lambda_);
+  VectorXd eta_c = delta_c.segment(n_x_ + n_lambda_ + n_u_, n_lambda_);
+
+  // Set the smaller of lambda and eta to zero
+  Eigen::Array<bool, Eigen::Dynamic, 1> eta_larger =
+      eta_c.array() * w_eta_vec.array().sqrt() >
+      lambda_c.array() * w_lambda_vec.array().sqrt();
+
+  delta_proj.segment(n_x_, n_lambda_) =
+      eta_larger.select(VectorXd::Zero(n_lambda_), lambda_c);
+  delta_proj.segment(n_x_ + n_lambda_ + n_u_, n_lambda_) =
+      eta_larger.select(eta_c, VectorXd::Zero(n_lambda_));
+
+  // Clip lambda and eta at 0
+  delta_proj.segment(n_x_, n_lambda_) =
+      delta_proj.segment(n_x_, n_lambda_).cwiseMax(0);
+  delta_proj.segment(n_x_ + n_lambda_ + n_u_, n_lambda_) =
+      delta_proj.segment(n_x_ + n_lambda_ + n_u_, n_lambda_).cwiseMax(0);
 
   return delta_proj;
 }
-
 }  // namespace c3
