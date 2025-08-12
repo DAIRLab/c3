@@ -35,14 +35,9 @@ namespace c3 {
 // onto the feasible set defined by the complementarity condition (i.e., λᵢ ηᵢ
 // = 0 for all i, with λ ≥ 0 and η ≥ 0).
 //
-// To get the solution, we can simply perform if-else to handle the following
-// cases:
-//
-// 1. λ₀ <= 0 and η₀ > 0, then λ = 0 and η = η₀
-// 2. λ₀ <= 0 and η₀ <= 0 then λ = 0 and η = 0
-// 3. λ₀ > 0 and η₀ <= 0, then λ = λ₀ and η = 0
-// 4. λ₀ > 0, η₀ > 0, and η₀ > sqrt(w_λ/w_η) * λ₀, then λ = 0 and η = η₀
-// 5. λ₀ > 0, η₀ > 0, and η₀ <= sqrt(w_λ/w_η) * λ₀, then λ = λ₀ and η = 0
+// To get the solution, we can simply do the following steps:
+// 1. If η₀ > sqrt(w_λ/w_η) * λ₀, then λ = 0, else η = 0
+// 2. [λ, η] = max(0, [λ, η])
 class C3Plus final : public C3 {
  public:
   C3Plus(const LCS& LCS, const CostMatrices& costs,

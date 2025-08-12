@@ -148,12 +148,12 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
                               x_.at(i), 1)
             .evaluator()
             .get();
-    if (i < N_) {
-      input_costs_[i] = prog_
-                            .AddQuadraticCost(2 * cost_matrices_.R.at(i),
-                                              VectorXd::Zero(n_u_), u_.at(i), 1)
-                            .evaluator();
-    }
+    // Skip input cost at the (N + 1)th time step
+    if (i == N_) break;
+    input_costs_[i] = prog_
+                          .AddQuadraticCost(2 * cost_matrices_.R.at(i),
+                                            VectorXd::Zero(n_u_), u_.at(i), 1)
+                          .evaluator();
   }
 
   // Set default solver options

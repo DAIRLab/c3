@@ -66,24 +66,24 @@ void C3Plus::UpdateLCS(const LCS& lcs) {
 }
 
 void C3Plus::WarmStartQP(const Eigen::VectorXd& x0, int admm_iteration) {
-  if (admm_iteration == 0) return;  // No warm start for the first iteration
+  // if (admm_iteration == 0) return;  // No warm start for the first iteration
   int index = solve_time_ / lcs_.dt();
   double weight = (solve_time_ - index * lcs_.dt()) / lcs_.dt();
   for (int i = 0; i < N_ - 1; ++i) {
+    prog_.SetInitialGuess(x_[i],
+                          (1 - weight) * warm_start_x_[admm_iteration][i] +
+                              weight * warm_start_x_[admm_iteration][i + 1]);
     prog_.SetInitialGuess(
-        x_[i], (1 - weight) * warm_start_x_[admm_iteration - 1][i] +
-                   weight * warm_start_x_[admm_iteration - 1][i + 1]);
-    prog_.SetInitialGuess(
-        lambda_[i], (1 - weight) * warm_start_lambda_[admm_iteration - 1][i] +
-                        weight * warm_start_lambda_[admm_iteration - 1][i + 1]);
-    prog_.SetInitialGuess(
-        u_[i], (1 - weight) * warm_start_u_[admm_iteration - 1][i] +
-                   weight * warm_start_u_[admm_iteration - 1][i + 1]);
-    prog_.SetInitialGuess(
-        eta_[i], (1 - weight) * warm_start_eta_[admm_iteration - 1][i] +
-                     weight * warm_start_eta_[admm_iteration - 1][i + 1]);
+        lambda_[i], (1 - weight) * warm_start_lambda_[admm_iteration][i] +
+                        weight * warm_start_lambda_[admm_iteration][i + 1]);
+    prog_.SetInitialGuess(u_[i],
+                          (1 - weight) * warm_start_u_[admm_iteration][i] +
+                              weight * warm_start_u_[admm_iteration][i + 1]);
+    prog_.SetInitialGuess(eta_[i],
+                          (1 - weight) * warm_start_eta_[admm_iteration][i] +
+                              weight * warm_start_eta_[admm_iteration][i + 1]);
   }
-  prog_.SetInitialGuess(x_[N_], warm_start_x_[admm_iteration - 1][N_]);
+  prog_.SetInitialGuess(x_[N_], warm_start_x_[admm_iteration][N_]);
 }
 
 void C3Plus::ProcessQPResults(const MathematicalProgramResult& result,
@@ -95,6 +95,12 @@ void C3Plus::ProcessQPResults(const MathematicalProgramResult& result,
     }
     z_sol_->at(i).segment(n_x_ + n_lambda_ + n_u_, n_lambda_) =
         result.GetSolution(eta_[i]);
+  }
+
+  if (!warm_start_)
+    return;  // No warm start, so no need to update warm start parameters
+  for (int i = 0; i < N_; ++i) {
+    warm_start_eta_[admm_iteration][i] = result.GetSolution(eta_[i]);
   }
 }
 
