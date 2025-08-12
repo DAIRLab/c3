@@ -55,10 +55,11 @@ class C3Plus final : public C3 {
   std::vector<std::vector<Eigen::VectorXd>> warm_start_eta_;
 
  private:
-  void ProcessQPResults(const drake::solvers::MathematicalProgramResult& result,
-                        int admm_iteration, bool is_final_solve) override;
+  void StoreQPResults(const drake::solvers::MathematicalProgramResult& result,
+                      int admm_iteration, bool is_final_solve) override;
   void UpdateLCS(const LCS& lcs) override;
-  void WarmStartQP(const Eigen::VectorXd& x0, int admm_iteration) override;
+  void SetInitialGuessQP(const Eigen::VectorXd& x0,
+                         int admm_iteration) override;
   std::vector<drake::solvers::VectorXDecisionVariable> eta_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> eta_sol_;
 

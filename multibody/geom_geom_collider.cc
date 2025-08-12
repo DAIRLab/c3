@@ -78,7 +78,7 @@ void GeomGeomCollider<T>::ComputeSphereMeshDistance(const Context<T>& context,
   mesh_set.Add(mesh_id);
   const auto sd_set = query_object.ComputeSignedDistanceGeometryToPoint(
       sphere_center, mesh_set);
-  DRAKE_ASSERT(sd_set.size() > 0);
+  DRAKE_DEMAND(sd_set.size() == 1);
   SignedDistanceToPoint<T> sd_to_point = sd_set[0];
 
   // Compute contact distance and normal.
@@ -90,11 +90,11 @@ void GeomGeomCollider<T>::ComputeSphereMeshDistance(const Context<T>& context,
     nhat_BA_W = -nhat_BA_W;
     p_ACa = inspector.GetPoseInFrame(geometry_id_A_).template cast<T>() *
             sd_to_point.p_GN;
-    p_BCb = X_FS.template cast<T>() * (-sphere_radius * nhat_BA_W);
+    p_BCb = X_FS.template cast<T>() * (-1 * sphere_radius * nhat_BA_W);
   } else {
     p_BCb = inspector.GetPoseInFrame(geometry_id_B_).template cast<T>() *
             sd_to_point.p_GN;
-    p_ACa = X_FS.template cast<T>() * (-sphere_radius * nhat_BA_W);
+    p_ACa = X_FS.template cast<T>() * (-1 * sphere_radius * nhat_BA_W);
   }
 }
 

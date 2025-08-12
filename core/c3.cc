@@ -388,9 +388,10 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   }
 }
 
-void C3::WarmStartQP(const Eigen::VectorXd& x0, int admm_iteration) {
-  
-  if (admm_iteration == 0) return;  // No warm start for the first iteration
+void C3::SetInitialGuessQP(const Eigen::VectorXd& x0, int admm_iteration) {
+  prog_.SetInitialGuess(x_[0], x0);
+  if (!warm_start_ || admm_iteration == 0)
+    return;  // No warm start for the first iteration
   int index = solve_time_ / lcs_.dt();
   double weight = (solve_time_ - index * lcs_.dt()) / lcs_.dt();
   for (int i = 0; i < N_ - 1; ++i) {
@@ -407,8 +408,8 @@ void C3::WarmStartQP(const Eigen::VectorXd& x0, int admm_iteration) {
   prog_.SetInitialGuess(x_[N_], warm_start_x_[admm_iteration - 1][N_]);
 }
 
-void C3::ProcessQPResults(const MathematicalProgramResult& result,
-                          int admm_iteration, bool is_final_solve) {
+void C3::StoreQPResults(const MathematicalProgramResult& result,
+                        int admm_iteration, bool is_final_solve) {
   for (int i = 0; i < N_; ++i) {
     if (is_final_solve) {
       x_sol_->at(i) = result.GetSolution(x_[i]);
@@ -449,8 +450,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
                                               -2 * G.at(i) * WD.at(i));
   }
 
-  prog_.SetInitialGuess(x_[0], x0);
-  if (warm_start_) WarmStartQP(x0, admm_iteration);
+  SetInitialGuessQP(x0, admm_iteration);
 
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
@@ -459,7 +459,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
                        result.get_solution_result());
   }
 
-  ProcessQPResults(result, admm_iteration, is_final_solve);
+  StoreQPResults(result, admm_iteration, is_final_solve);
 
   return *z_sol_;
 }
@@ -476,7 +476,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
   }
 
 #pragma omp parallel for num_threads( \
-        options_.num_threads) if (use_parallelization_in_projection_)
+    options_.num_threads) if (use_parallelization_in_projection_)
   for (int i = 0; i < N_; ++i) {
     if (warm_start_) {
       if (i == N_ - 1) {

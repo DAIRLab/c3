@@ -247,8 +247,8 @@ class C3 {
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index) = 0;
 
-  virtual void WarmStartQP(const Eigen::VectorXd& x0, int admm_iteration);
-  virtual void ProcessQPResults(
+  virtual void SetInitialGuessQP(const Eigen::VectorXd& x0, int admm_iteration);
+  virtual void StoreQPResults(
       const drake::solvers::MathematicalProgramResult& result,
       int admm_iteration, bool is_final_solve);
   /*!
