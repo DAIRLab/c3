@@ -8,7 +8,11 @@ using drake::EigenPtr;
 using drake::MatrixX;
 using drake::VectorX;
 using drake::geometry::GeometryId;
+using drake::geometry::GeometrySet;
+using drake::geometry::QueryObject;
+using drake::geometry::SceneGraphInspector;
 using drake::geometry::SignedDistancePair;
+using drake::geometry::SignedDistanceToPoint;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
@@ -26,43 +30,126 @@ GeomGeomCollider<T>::GeomGeomCollider(
       geometry_id_A_(geometry_pair.first()),
       geometry_id_B_(geometry_pair.second()) {}
 
+// Determines if the geometry pair consists of a sphere and a mesh.
+template <typename T>
+bool GeomGeomCollider<T>::IsSphereAndMesh(
+    const SceneGraphInspector<T>& inspector) const {
+  const auto type_A = inspector.GetShape(geometry_id_A_).type_name();
+  const auto type_B = inspector.GetShape(geometry_id_B_).type_name();
+  return ((type_A == "Sphere" && type_B == "Mesh") ||
+          (type_A == "Mesh" && type_B == "Sphere"));
+}
+
+// Computes collision information between a sphere and a mesh.
+template <typename T>
+void GeomGeomCollider<T>::ComputeSphereMeshDistance(const Context<T>& context,
+                                                    Vector3d& p_ACa,
+                                                    Vector3d& p_BCb,
+                                                    T& distance,
+                                                    Vector3d& nhat_BA_W) const {
+  // Access the geometry query object from the plant's geometry query port.
+  const auto& query_port = plant_.get_geometry_query_input_port();
+  const auto& query_object = query_port.template Eval<QueryObject<T>>(context);
+
+  // Access the geometry inspector from the query object.
+  const auto& inspector = query_object.inspector();
+
+  // Identify which geometry is the mesh and which is the sphere.
+  bool geometry_A_is_mesh =
+      (inspector.GetShape(geometry_id_A_).type_name() == "Mesh");
+  GeometryId mesh_id = geometry_A_is_mesh ? geometry_id_A_ : geometry_id_B_;
+  GeometryId sphere_id = geometry_A_is_mesh ? geometry_id_B_ : geometry_id_A_;
+
+  // Get sphere properties.
+  const auto* sphere = dynamic_cast<const drake::geometry::Sphere*>(
+      &inspector.GetShape(sphere_id));
+  T sphere_radius = sphere->radius();
+
+  // Compute sphere center in world frame.
+  auto X_FS = inspector.GetPoseInFrame(sphere_id).template cast<T>();
+  auto frame_S_id = inspector.GetFrameId(sphere_id);
+  auto X_WS = plant_.EvalBodyPoseInWorld(
+      context, *plant_.GetBodyFromFrameId(frame_S_id));
+  auto X_WS_sphere = X_WS * X_FS;
+  Vector3d sphere_center = X_WS_sphere.translation();
+
+  // Compute signed distance from sphere center to mesh.
+  GeometrySet mesh_set;
+  mesh_set.Add(mesh_id);
+  const auto sd_set = query_object.ComputeSignedDistanceGeometryToPoint(
+      sphere_center, mesh_set);
+  DRAKE_ASSERT(sd_set.size() > 0);
+  SignedDistanceToPoint<T> sd_to_point = sd_set[0];
+
+  // Compute contact distance and normal.
+  distance = sd_to_point.distance - sphere_radius;
+  nhat_BA_W = sd_to_point.grad_W.normalized();
+
+  // Compute contact points in local frames.
+  if (geometry_A_is_mesh) {
+    nhat_BA_W = -nhat_BA_W;
+    p_ACa = inspector.GetPoseInFrame(geometry_id_A_).template cast<T>() *
+            sd_to_point.p_GN;
+    p_BCb = X_FS.template cast<T>() * (-sphere_radius * nhat_BA_W);
+  } else {
+    p_BCb = inspector.GetPoseInFrame(geometry_id_B_).template cast<T>() *
+            sd_to_point.p_GN;
+    p_ACa = X_FS.template cast<T>() * (-sphere_radius * nhat_BA_W);
+  }
+}
+
+// Computes collision information for general geometry pairs (non-sphere-mesh).
+template <typename T>
+void GeomGeomCollider<T>::ComputeGeneralGeometryDistance(
+    const Context<T>& context, Vector3d& p_ACa, Vector3d& p_BCb, T& distance,
+    Vector3d& nhat_BA_W) const {
+  // Access the geometry query object from the plant's geometry query port.
+  const auto& query_port = plant_.get_geometry_query_input_port();
+  const auto& query_object = query_port.template Eval<QueryObject<T>>(context);
+
+  // Access the geometry inspector from the query object.
+  const auto& inspector = query_object.inspector();
+
+  const SignedDistancePair<T> signed_distance_pair =
+      query_object.ComputeSignedDistancePairClosestPoints(geometry_id_A_,
+                                                          geometry_id_B_);
+  distance = signed_distance_pair.distance;
+  nhat_BA_W = signed_distance_pair.nhat_BA_W;
+  p_ACa = inspector.GetPoseInFrame(geometry_id_A_).template cast<T>() *
+          signed_distance_pair.p_ACa;
+  p_BCb = inspector.GetPoseInFrame(geometry_id_B_).template cast<T>() *
+          signed_distance_pair.p_BCb;
+}
+
+// Computes and returns all relevant geometry query results for the collider
+// pair.
 template <typename T>
 typename GeomGeomCollider<T>::GeometryQueryResult
 GeomGeomCollider<T>::GetGeometryQueryResult(const Context<T>& context) const {
   // Access the geometry query object from the plant's geometry query port.
   const auto& query_port = plant_.get_geometry_query_input_port();
-  const auto& query_object =
-      query_port.template Eval<drake::geometry::QueryObject<T>>(context);
-
-  // Compute the signed distance pair between the two geometries.
-  const SignedDistancePair<T> signed_distance_pair =
-      query_object.ComputeSignedDistancePairClosestPoints(geometry_id_A_,
-                                                          geometry_id_B_);
+  const auto& query_object = query_port.template Eval<QueryObject<T>>(context);
 
   // Access the geometry inspector from the query object.
   const auto& inspector = query_object.inspector();
   const auto frame_A_id = inspector.GetFrameId(geometry_id_A_);
   const auto frame_B_id = inspector.GetFrameId(geometry_id_B_);
 
-  // Get the frames associated with the geometry ids
+  // Get the frames associated with the geometry ids.
   const auto& frameA = plant_.GetBodyFromFrameId(frame_A_id)->body_frame();
   const auto& frameB = plant_.GetBodyFromFrameId(frame_B_id)->body_frame();
 
-  // Get the poses of the contact points in their respective frames.
-  const Vector3d& p_ACa =
-      inspector.GetPoseInFrame(geometry_id_A_).template cast<T>() *
-      signed_distance_pair.p_ACa;
-  const Vector3d& p_BCb =
-      inspector.GetPoseInFrame(geometry_id_B_).template cast<T>() *
-      signed_distance_pair.p_BCb;
+  // Compute distance and contact points.
+  T distance;
+  Vector3d nhat_BA_W, p_ACa, p_BCb;
+  if (IsSphereAndMesh(inspector)) {
+    ComputeSphereMeshDistance(context, p_ACa, p_BCb, distance, nhat_BA_W);
+  } else {
+    ComputeGeneralGeometryDistance(context, p_ACa, p_BCb, distance, nhat_BA_W);
+  }
 
-  return GeometryQueryResult{signed_distance_pair,
-                             frame_A_id,
-                             frame_B_id,
-                             frameA,
-                             frameB,
-                             p_ACa,
-                             p_BCb};
+  return GeometryQueryResult{distance, nhat_BA_W, frame_A_id, frame_B_id,
+                             frameA,   frameB,    p_ACa,      p_BCb};
 }
 
 template <typename T>
@@ -88,8 +175,7 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
   // Compute final Jacobian: J = force_basis * R_WC^T * (Jv_WCa - Jv_WCb)
   auto J = force_basis * R_WC.matrix().transpose() * (Jv_WCa - Jv_WCb);
 
-  return std::pair<T, MatrixX<T>>(query_result.signed_distance_pair.distance,
-                                  J);
+  return std::pair<T, MatrixX<T>>(query_result.distance, J);
 }
 
 template <typename T>
@@ -111,7 +197,7 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::EvalPolytope(
 
   // Create rotation matrix from contact normal
   auto R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(
-      query_result.signed_distance_pair.nhat_BA_W, 0);
+      query_result.nhat_BA_W, 0);
 
   return DoEval(context, query_result, polytope_force_bases, wrt, R_WC);
 }
@@ -141,8 +227,8 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::EvalPlanar(
   const auto query_result = GetGeometryQueryResult(context);
 
   // Compute the planar force basis using the contact normal and planar normal
-  auto planar_force_basis = ComputePlanarForceBasis(
-      query_result.signed_distance_pair.nhat_BA_W, planar_normal);
+  auto planar_force_basis =
+      ComputePlanarForceBasis(query_result.nhat_BA_W, planar_normal);
 
   // For planar case, use identity rotation since force basis is already in
   // world frame

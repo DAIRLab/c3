@@ -113,7 +113,8 @@ class GeomGeomCollider {
     /**
      * @brief The signed distance pair between the two geometries.
      */
-    drake::geometry::SignedDistancePair<T> signed_distance_pair;
+    T distance;
+    Eigen::Vector3<T> nhat_BA_W;
     /**
      * @brief The FrameId of the first frame.
      */
@@ -216,6 +217,67 @@ class GeomGeomCollider {
    */
   GeometryQueryResult GetGeometryQueryResult(
       const drake::systems::Context<T>& context) const;
+
+  /**
+   * @brief Determines if the geometry pair consists of a sphere and a mesh.
+   *
+   * This method inspects the two geometries in the collider pair to identify
+   * whether one is a sphere and the other is a mesh (in either order). This
+   * classification is used to select the appropriate distance computation
+   * algorithm.
+   *
+   * @param inspector The SceneGraphInspector providing access to geometry
+   *                  shape information.
+   * @return true if one geometry is a sphere and the other is a mesh,
+   *         false otherwise.
+   */
+  bool IsSphereAndMesh(
+      const drake::geometry::SceneGraphInspector<T>& inspector) const;
+
+  /**
+   * @brief Computes collision information for sphere-mesh geometry pairs.
+   *
+   * This method provides specialized collision detection for sphere-mesh
+   * pairs that can handle non-convex meshes. This implementation uses
+   * ComputeSignedDistanceGeometryToPoint to accurately compute distances from a
+   * point to any mesh (convex or concave).
+   *
+   * The method determines which geometry is the sphere and which is the mesh,
+   * computes the sphere's world-frame center, finds the closest point on the
+   * mesh surface, and calculates the resulting contact information.
+   *
+   * @param context The context for the MultibodyPlant.
+   * @param[out] p_ACa Contact point on geometry A expressed in frame A.
+   * @param[out] p_BCb Contact point on geometry B expressed in frame B.
+   * @param[out] distance Signed distance between the geometries (negative
+   *                      indicates penetration).
+   * @param[out] nhat_BA_W Unit normal vector pointing from geometry B to
+   *                       geometry A, expressed in world frame.
+   */
+  void ComputeSphereMeshDistance(const drake::systems::Context<T>& context,
+                                 Eigen::Vector3d& p_ACa, Eigen::Vector3d& p_BCb,
+                                 T& distance, Eigen::Vector3d& nhat_BA_W) const;
+
+  /**
+   * @brief Computes collision information for general geometry pairs.
+   *
+   * This method handles collision detection for arbitrary geometry pairs
+   * using Drake's standard ComputeSignedDistancePairClosestPoints algorithm.
+   * It works reliably for convex geometries and convex hulls of meshes, but
+   * may not provide accurate results for non-convex mesh surfaces.
+   *
+   * @param context The context for the MultibodyPlant.
+   * @param[out] p_ACa Contact point on geometry A expressed in frame A.
+   * @param[out] p_BCb Contact point on geometry B expressed in frame B.
+   * @param[out] distance Signed distance between the geometries (negative
+   *                      indicates penetration).
+   * @param[out] nhat_BA_W Unit normal vector pointing from geometry B to
+   *                       geometry A, expressed in world frame.
+   */
+  void ComputeGeneralGeometryDistance(const drake::systems::Context<T>& context,
+                                      Eigen::Vector3d& p_ACa,
+                                      Eigen::Vector3d& p_BCb, T& distance,
+                                      Eigen::Vector3d& nhat_BA_W) const;
 
   /**
    * @brief A reference to the MultibodyPlant containing the geometries.
