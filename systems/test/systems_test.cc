@@ -205,6 +205,10 @@ TYPED_TEST(C3ControllerTypedTest, CheckPlannedTrajectory) {
   EXPECT_EQ(c3_intermediates.time_vector_.size(), pSystem->N());
   int total_vars =
       pSystem->num_states() + pSystem->num_lambdas() + pSystem->num_inputs();
+  if constexpr (std::is_same<TypeParam, C3Plus>::value) {
+    // C3Plus has additional slack variables
+    total_vars += pSystem->num_lambdas();
+  }
   EXPECT_EQ(c3_intermediates.z_.rows(), total_vars);
   EXPECT_EQ(c3_intermediates.delta_.rows(), total_vars);
   EXPECT_EQ(c3_intermediates.w_.rows(), total_vars);
