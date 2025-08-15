@@ -82,9 +82,9 @@ struct C3ControllerOptions {
     DRAKE_DEMAND(static_cast<int>(c3_options.u_lambda.size()) ==
                  expected_lambda_size);
     if (projection_type == "C3+") {
-      DRAKE_DEMAND(static_cast<int>(c3_options.g_eta->size()) ==
+      DRAKE_DEMAND(static_cast<int>(c3_options.g_eta_vector.size()) ==
                    expected_lambda_size);
-      DRAKE_DEMAND(static_cast<int>(c3_options.u_eta->size()) ==
+      DRAKE_DEMAND(static_cast<int>(c3_options.u_eta_vector.size()) ==
                    expected_lambda_size);
     }
   }

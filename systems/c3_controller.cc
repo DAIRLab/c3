@@ -111,8 +111,7 @@ C3Controller::C3Controller(
           .get_index();
   c3_intermediates_port_ =
       this->DeclareAbstractOutputPort(
-              "intermediates",
-              C3Output::C3Intermediates(n_x_, n_lambda_, n_u_, N_),
+              "intermediates", C3Output::C3Intermediates(c3_->GetZSize(), N_),
               &C3Controller::OutputC3Intermediates)
           .get_index();
 

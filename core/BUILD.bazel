@@ -30,6 +30,11 @@ filegroup(
 )
 
 cc_library(
+    name = "logging",
+    hdrs = ["common/logging_utils.hpp"],
+)
+
+cc_library(
     name = "c3",
     srcs = [
         "c3.cc",
@@ -49,11 +54,15 @@ cc_library(
         "c3_qp.h",
         "c3_plus.h",
     ],
+    data = [
+        ":default_solver_options",
+    ],
     copts = ["-fopenmp"],
     linkopts = ["-fopenmp"],
     deps = [
         ":lcs",
         ":options",
+        ":logging",
         "@drake//:drake_shared_library",
     ] + select({
          "//tools:with_gurobi": ["@gurobi//:gurobi_cxx"],

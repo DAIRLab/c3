@@ -451,8 +451,8 @@ std::vector<LCSContactDescription> LCSFactory::GetContactDescriptions() {
   for (int i = 0; i < n_contacts_; i++) {
     multibody::GeomGeomCollider collider(plant_, contact_pairs_[i]);
     auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context_);
-    auto force_basis =
-        collider.CalcForceBasisInWorldFrame(context_, n_friction_directions_);
+    auto force_basis = collider.CalcForceBasisInWorldFrame(
+        context_, n_friction_directions_per_contact_[i]);
 
     for (int j = 0; j < force_basis.rows(); j++) {
       LCSContactDescription contact_description = {
@@ -487,16 +487,19 @@ std::vector<LCSContactDescription> LCSFactory::GetContactDescriptions() {
     contact_descriptions.insert(contact_descriptions.end(),
                                 tangential_contact_descriptions.begin(),
                                 tangential_contact_descriptions.end());
-    DRAKE_ASSERT(n_friction_directions_ > 0);
-    for (int i = 0; i < tangential_contact_descriptions.size(); i++) {
-      int normal_index = i / (2 * n_friction_directions_);
-      DRAKE_ASSERT(
-          contact_descriptions.at(i).witness_point_A ==
-          normal_contact_descriptions.at(normal_index).witness_point_A);
-      contact_descriptions.at(i).force_basis =
-          contact_descriptions.at(i).force_basis +
-          mu_[normal_index] *
-              normal_contact_descriptions.at(normal_index).force_basis;
+    for (int normal_index = 0; normal_index < n_contacts_; normal_index++) {
+      // Jt_row_sizes_ gives number of friction directions per contact
+      for (int i = 0; i < Jt_row_sizes_(normal_index); i++) {
+        int tangential_index = Jt_row_sizes_.segment(0, normal_index).sum() + i;
+        DRAKE_ASSERT(
+            contact_descriptions.at(tangential_index).witness_point_A ==
+            normal_contact_descriptions.at(normal_index).witness_point_A);
+        contact_descriptions.at(tangential_index).force_basis =
+            mu_[normal_index] *
+                contact_descriptions.at(tangential_index).force_basis +
+            normal_contact_descriptions.at(normal_index).force_basis;
+        contact_descriptions.at(tangential_index).force_basis.normalize();
+      }
     }
   }
 
