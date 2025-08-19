@@ -475,8 +475,11 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
     omp_set_schedule(omp_sched_static, 0);
   }
 
+  // clang-format off
 #pragma omp parallel for num_threads( \
     options_.num_threads) if (use_parallelization_in_projection_)
+  // clang-format on
+
   for (int i = 0; i < N_; ++i) {
     if (warm_start_) {
       if (i == N_ - 1) {

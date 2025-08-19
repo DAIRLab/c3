@@ -50,8 +50,8 @@ class LCS {
    *
    * @return The state at the next timestep
    */
-  const Eigen::VectorXd Simulate(Eigen::VectorXd& x_init,
-                                 Eigen::VectorXd& u) const;
+  const Eigen::VectorXd Simulate(Eigen::VectorXd& x_init, Eigen::VectorXd& u,
+                                 bool regularized = false) const;
 
   /*!
    * Accessors dynamics terms
