@@ -9,17 +9,35 @@ lcs_factory_options:
   #options are 'stewart_and_trinkle' or 'anitescu'
   # contact_model : 'stewart_and_trinkle'
   contact_model: "stewart_and_trinkle"
-  num_friction_directions: 1
   num_contacts: 3
   spring_stiffness: 0
-  mu: [ 0.1, 0.1, 0.1 ]
   N: 10
   dt: 0.01
+  contact_pair_configs:
+    - body_A: "cube"
+      body_A_collision_geom_indices: [0]
+      body_B: "left_finger"
+      body_B_collision_geom_indices: [0]
+      mu: 0.1
+      num_friction_directions: 1
+    - body_A: "cube"
+      body_A_collision_geom_indices: [0]
+      body_B: "right_finger"
+      body_B_collision_geom_indices: [0]
+      mu: 0.1
+      num_friction_directions: 1
+    - body_A: "cube"
+      body_A_collision_geom_indices: [0]
+      body_B: "platform"
+      body_B_collision_geom_indices: [0]
+      mu: 0.1
+      num_friction_directions: 1
 
 c3_options:
   warm_start: false
   end_on_qp_step: true
   scale_lcs: false
+  penalize_input_change: false
 
   num_threads: 10
   delta_option: 1
