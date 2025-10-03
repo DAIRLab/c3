@@ -190,7 +190,6 @@ class C3 {
   }
 
   std::vector<Eigen::VectorXd> GetFullSolution() { return *z_sol_; }
-  std::vector<Eigen::VectorXd> GetFullQPSolution() { return *z_fin_; }
   std::vector<Eigen::VectorXd> GetStateSolution() { return *x_sol_; }
   std::vector<Eigen::VectorXd> GetForceSolution() { return *lambda_sol_; }
   std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
@@ -246,11 +245,6 @@ class C3 {
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index) = 0;
-
-  virtual void SetInitialGuessQP(const Eigen::VectorXd& x0, int admm_iteration);
-  virtual void StoreQPResults(
-      const drake::solvers::MathematicalProgramResult& result,
-      int admm_iteration, bool is_final_solve);
   /*!
    * Scales the LCS matrices internally to better condition the problem.
    * This only scales the lambdas.
@@ -293,11 +287,20 @@ class C3 {
    * @param admm_iteration Index of the current ADMM iteration
    * @param is_final_solve Whether this is the final ADMM iteration
    */
-  std::vector<Eigen::VectorXd> SolveQP(const Eigen::VectorXd& x0,
-                                       const std::vector<Eigen::MatrixXd>& G,
-                                       const std::vector<Eigen::VectorXd>& WD,
-                                       int admm_iteration,
-                                       bool is_final_solve = false);
+  std::vector<Eigen::VectorXd> SolveQP(
+      const Eigen::VectorXd& x0, const std::vector<Eigen::MatrixXd>& G,
+      const std::vector<Eigen::VectorXd>& WD,
+      const std::vector<Eigen::VectorXd>& delta, int admm_iteration,
+      bool is_final_solve = false);
+
+  virtual void AddAugmentedCost(const std::vector<Eigen::MatrixXd>& G,
+                                const std::vector<Eigen::VectorXd>& WD,
+                                const std::vector<Eigen::VectorXd>& delta,
+                                bool is_final_solve);
+  virtual void SetInitialGuessQP(const Eigen::VectorXd& x0, int admm_iteration);
+  virtual void StoreQPResults(
+      const drake::solvers::MathematicalProgramResult& result,
+      int admm_iteration, bool is_final_solve);
 
   LCS lcs_;
   double AnDn_ = 1.0;  // Scaling factor for lambdas
@@ -327,7 +330,7 @@ class C3 {
   /// interface
 
   std::vector<drake::solvers::QuadraticCost*> target_costs_;
-  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> augmented_costs_;
+  std::vector<QuadraticCostBinding> augmented_costs_;
   std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
 
   // Solutions
@@ -336,9 +339,6 @@ class C3 {
   std::unique_ptr<std::vector<Eigen::VectorXd>> u_sol_;
 
   std::unique_ptr<std::vector<Eigen::VectorXd>> z_sol_;
-  std::unique_ptr<std::vector<Eigen::VectorXd>>
-      z_fin_;  // Final QP solution which may differ from z_sol_ if
-               // end_on_qp_step is false
   std::unique_ptr<std::vector<Eigen::VectorXd>> delta_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> w_sol_;
 };
