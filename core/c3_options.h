@@ -31,6 +31,15 @@ struct C3Options {
   std::optional<double>
       qp_projection_scaling;  // scaling factor for the QP projection
 
+  std::optional<double>
+      final_augmented_cost_contact_scaling;  // scaling factor for the final
+                                             // augmented cost matrix for C3+
+                                             // projection
+  std::optional<std::vector<double>>
+      final_augmented_cost_contact_indices;  // vector for scaling the final
+                                             // augmented cost matrix for C3+
+                                             // projection
+
   int admm_iter = 3;  // total number of ADMM iterations
 
   // See comments below for how we parse the .yaml into the cost matrices
@@ -97,6 +106,8 @@ struct C3Options {
     a->Visit(DRAKE_NVP(M));
     a->Visit(DRAKE_NVP(qp_projection_alpha));
     a->Visit(DRAKE_NVP(qp_projection_scaling));
+    a->Visit(DRAKE_NVP(final_augmented_cost_contact_scaling));
+    a->Visit(DRAKE_NVP(final_augmented_cost_contact_indices));
 
     a->Visit(DRAKE_NVP(admm_iter));
 

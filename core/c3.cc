@@ -82,7 +82,6 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
 
-  z_fin_ = std::make_unique<std::vector<VectorXd>>();
   z_sol_ = std::make_unique<std::vector<VectorXd>>();
   x_sol_ = std::make_unique<std::vector<VectorXd>>();
   lambda_sol_ = std::make_unique<std::vector<VectorXd>>();
@@ -94,7 +93,6 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
     x_sol_->push_back(Eigen::VectorXd::Zero(n_x_));
     lambda_sol_->push_back(Eigen::VectorXd::Zero(n_lambda_));
     u_sol_->push_back(Eigen::VectorXd::Zero(n_u_));
-    z_fin_->push_back(Eigen::VectorXd::Zero(n_z_));
     z_sol_->push_back(Eigen::VectorXd::Zero(n_z_));
     w_sol_->push_back(Eigen::VectorXd::Zero(n_z_));
     delta_sol_->push_back(Eigen::VectorXd::Zero(n_z_));
@@ -328,7 +326,7 @@ void C3::Solve(const VectorXd& x0) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
 
-  *z_fin_ = SolveQP(x0, G, WD, options_.admm_iter, true);
+  SolveQP(x0, G, WD, delta, options_.admm_iter, true);
 
   *w_sol_ = w;
   *delta_sol_ = delta;
@@ -368,7 +366,7 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
     WD.at(i) = delta->at(i) - w->at(i);
   }
 
-  vector<VectorXd> z = SolveQP(x0, *G, WD, admm_iteration, false);
+  vector<VectorXd> z = SolveQP(x0, *G, WD, *delta, admm_iteration, false);
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_z_));
   for (int i = 0; i < N_; ++i) {
@@ -434,22 +432,10 @@ void C3::StoreQPResults(const MathematicalProgramResult& result,
 }
 
 vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
-                             const vector<VectorXd>& WD, int admm_iteration,
+                             const vector<VectorXd>& WD,
+                             const vector<VectorXd>& delta, int admm_iteration,
                              bool is_final_solve) {
-  // Add or update augmented costs
-  if (augmented_costs_.size() == 0) {
-    for (int i = 0; i < N_; ++i)
-      augmented_costs_.push_back(prog_
-                                     .AddQuadraticCost(2 * G.at(i),
-                                                       -2 * G.at(i) * WD.at(i),
-                                                       z_.at(i), 1)
-                                     .evaluator());
-  } else {
-    for (int i = 0; i < N_; ++i)
-      augmented_costs_[i]->UpdateCoefficients(2 * G.at(i),
-                                              -2 * G.at(i) * WD.at(i));
-  }
-
+  AddAugmentedCost(G, WD, delta, is_final_solve);
   SetInitialGuessQP(x0, admm_iteration);
 
   MathematicalProgramResult result = osqp_.Solve(prog_);
@@ -462,6 +448,21 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   StoreQPResults(result, admm_iteration, is_final_solve);
 
   return *z_sol_;
+}
+
+void C3::AddAugmentedCost(const vector<MatrixXd>& G, const vector<VectorXd>& WD,
+                          const vector<VectorXd>& delta, bool is_final_solve) {
+  // Remove previous augmented costs
+  for (auto& cost : augmented_costs_) {
+    prog_.RemoveCost(cost);
+  }
+  augmented_costs_.clear();
+  // Add or update augmented costs
+  for (int i = 0; i < N_; ++i) {
+    DRAKE_ASSERT(G.at(i).cols() == WD.at(i).rows());
+    augmented_costs_.push_back(prog_.AddQuadraticCost(
+        2 * G.at(i), -2 * G.at(i) * WD.at(i), z_.at(i), 1));
+  }
 }
 
 vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,

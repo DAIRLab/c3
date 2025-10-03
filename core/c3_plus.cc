@@ -96,6 +96,42 @@ void C3Plus::StoreQPResults(const MathematicalProgramResult& result,
   }
 }
 
+void C3Plus::AddAugmentedCost(const vector<MatrixXd>& G,
+                              const vector<VectorXd>& WD,
+                              const vector<VectorXd>& delta,
+                              bool is_final_solve) {
+  if (is_final_solve) {
+    for (auto& cost : augmented_costs_) {
+      prog_.RemoveCost(cost);
+    }
+    augmented_costs_.clear();
+
+    std::vector<Eigen::MatrixXd> GFinal = G;
+    for (int i = 0; i < N_; ++i) {
+      Eigen::VectorXd GScaling =
+          Eigen::VectorXd::Ones(n_z_);  // Default scaling is 1
+      if (options_.final_augmented_cost_contact_scaling.has_value() &&
+          options_.final_augmented_cost_contact_indices.has_value()) {
+        for (int index :
+             options_.final_augmented_cost_contact_indices.value()) {
+          if (delta.at(i)[n_x_ + index] == 0)
+            GScaling(n_x_ + index) *=
+                options_.final_augmented_cost_contact_scaling.value();
+          else
+            GScaling(n_x_ + n_lambda_ + n_u_ + index) *=
+                options_.final_augmented_cost_contact_scaling.value();
+        }
+      }
+      auto GiFinal = GFinal.at(i).array().colwise() * GScaling.array();
+      augmented_costs_.push_back(prog_.AddQuadraticCost(
+          2 * GiFinal.matrix(), -2 * GiFinal.matrix() * delta.at(i), z_.at(i),
+          1));
+    }
+  } else {
+    C3::AddAugmentedCost(G, WD, delta, is_final_solve);
+  }
+}
+
 VectorXd C3Plus::SolveSingleProjection(const MatrixXd& U,
                                        const VectorXd& delta_c,
                                        const MatrixXd& E, const MatrixXd& F,

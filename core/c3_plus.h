@@ -55,6 +55,10 @@ class C3Plus final : public C3 {
   std::vector<std::vector<Eigen::VectorXd>> warm_start_eta_;
 
  private:
+  void AddAugmentedCost(const std::vector<Eigen::MatrixXd>& G,
+                        const std::vector<Eigen::VectorXd>& WD,
+                        const std::vector<Eigen::VectorXd>& delta,
+                        bool is_final_solve) override;
   void StoreQPResults(const drake::solvers::MathematicalProgramResult& result,
                       int admm_iteration, bool is_final_solve) override;
   void UpdateLCS(const LCS& lcs) override;
