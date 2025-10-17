@@ -144,6 +144,20 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "quaternion_cost_test",
+    srcs = [
+        "test/quaternion_cost_test.cc"
+    ],
+    data = [
+        "test/quaternion_cost_test.yaml"
+    ],
+    deps = [
+        ":systems",
+        "@gtest//:main",
+    ],
+)
+
 filegroup(
     name = "headers",
     srcs = glob([
