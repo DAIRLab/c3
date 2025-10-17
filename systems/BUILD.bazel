@@ -89,8 +89,6 @@ cc_library(
     ]
 )
 
-
-
 cc_library(
     name = "system_utils",
     hdrs = [
@@ -100,6 +98,20 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "quaternion_error_hessian",
+    srcs = [
+        "common/quaternion_error_hessian.cc",
+    ],
+    hdrs = [
+        "common/quaternion_error_hessian.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_test(
     name = "systems_test",
     srcs = [
