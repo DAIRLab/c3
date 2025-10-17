@@ -43,6 +43,7 @@ cc_library( name = "c3_controller",
         "//core:c3",
         "//core:options",
         "//multibody:lcs_factory",
+        "//systems:quaternion_error_hessian",
         "@drake//:drake_shared_library",
     ],
 )
@@ -90,6 +91,18 @@ cc_library(
 )
 
 
+cc_library(
+    name = "quaternion_error_hessian",
+    srcs = [
+        "common/quaternion_error_hessian.cc"
+    ],
+    hdrs = [
+        "common/quaternion_error_hessian.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
 
 cc_library(
     name = "system_utils",

@@ -60,6 +60,10 @@ struct C3ControllerOptions {
   double solve_time_filter_alpha = 0.0;
   double publish_frequency = 100.0;  // Hz
 
+  std::vector<int> quaternion_indices;    // Start indices for each quaternion block
+  double quaternion_weight = 0.0;         // Quaternion cost scaling term
+  double quaternion_regularizer_fraction = 0.0; // Outer product regularization scaling term
+
   std::vector<C3StatePredictionJoint> state_prediction_joints;
 
   template <typename Archive>
@@ -70,6 +74,9 @@ struct C3ControllerOptions {
     a->Visit(DRAKE_NVP(solve_time_filter_alpha));
     a->Visit(DRAKE_NVP(publish_frequency));
     a->Visit(DRAKE_NVP(state_prediction_joints));
+    a->Visit(DRAKE_NVP(quaternion_indices));    
+    a->Visit(DRAKE_NVP(quaternion_weight));    
+    a->Visit(DRAKE_NVP(quaternion_regularizer_fraction));
 
     if (projection_type == "QP") {
       DRAKE_DEMAND(lcs_factory_options.contact_model == "anitescu");

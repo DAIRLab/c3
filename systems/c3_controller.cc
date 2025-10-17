@@ -7,6 +7,7 @@
 #include "core/c3_miqp.h"
 #include "core/c3_qp.h"
 #include "multibody/lcs_factory.h"
+#include "common/quaternion_error_hessian.h"
 
 #include "drake/common/text_logging.h"
 
@@ -158,6 +159,11 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   if (!state_prediction_joints_.empty())
     ResolvePredictedState(x0, filtered_solve_time);
 
+  // Update cost matrices with quaternion cost blocks
+  UpdateQuaternionCosts(x0, desired_state.value());
+  C3::CostMatrices new_costs(Q_, R_, G_, U_);
+  c3_->UpdateCostMatrices(new_costs);
+  
   // Update LCS and target in the C3 problem
   c3_->UpdateLCS(lcs);
   c3_->UpdateTarget(target);
@@ -271,6 +277,51 @@ void C3Controller::OutputC3Intermediates(
     c3_intermediates->w_.col(i) = w[i].cast<float>();
   }
 }
+
+void C3Controller::UpdateQuaternionCosts(
+    const Eigen::VectorXd& x_curr, const Eigen::VectorXd& x_des) const {
+    Q_.clear();
+    R_.clear();
+    G_.clear();
+    U_.clear();
+
+    double discount_factor = 1;
+    for (int i = 0; i < N_; i++) {
+      Q_.push_back(discount_factor *  controller_options_.c3_options.Q);
+      discount_factor *=  controller_options_.c3_options.gamma;
+      if (i < N_) {
+        R_.push_back(discount_factor *  controller_options_.c3_options.R);
+        G_.push_back( controller_options_.c3_options.G);
+        U_.push_back( controller_options_.c3_options.U);
+      }
+    }  
+    Q_.push_back(discount_factor * controller_options_.c3_options.Q); 
+
+    for (int index : controller_options_.quaternion_indices) {
+      
+      Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4);
+      Eigen::VectorXd quat_des_i = x_des.segment(index, 4);
+
+      Eigen::MatrixXd quat_hessian_i = common::hessian_of_squared_quaternion_angle_difference(quat_curr_i, quat_des_i);
+
+      // Regularize hessian so Q is always PSD
+      double min_eigenval = quat_hessian_i.eigenvalues().real().minCoeff();
+      Eigen::MatrixXd quat_regularizer_1 = std::max(0.0, -min_eigenval) * Eigen::MatrixXd::Identity(4, 4);
+      Eigen::MatrixXd quat_regularizer_2 = quat_des_i * quat_des_i.transpose();
+
+      // Additional regularization term to help with numerical issues
+      Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
+
+      double discount_factor = 1;
+      for (int i = 0; i < N_ + 1; i++) {
+        Q_[i].block(index, index, 4, 4) = 
+          discount_factor * controller_options_.quaternion_weight * 
+          (quat_hessian_i + quat_regularizer_1 + 
+           controller_options_.quaternion_regularizer_fraction * quat_regularizer_2 + quat_regularizer_3);
+        discount_factor *= controller_options_.c3_options.gamma;
+      }
+    }
+  }
 
 }  // namespace systems
 }  // namespace c3
