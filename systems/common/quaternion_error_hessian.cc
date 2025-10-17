@@ -1,16 +1,12 @@
 #include "quaternion_error_hessian.h"
-#include <iostream>
 
-
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
 
 namespace c3 {
 namespace systems {
 namespace common {
 
-Eigen::MatrixXd hessian_of_squared_quaternion_angle_difference(
-    const Eigen::VectorXd& quat, const Eigen::VectorXd& quat_desired)
+MatrixXd hessian_of_squared_quaternion_angle_difference(
+    const VectorXd& quat, const VectorXd& quat_desired)
 {
     // Check the inputs are of expected shape.
     DRAKE_DEMAND(quat.size() == 4);
@@ -19,7 +15,7 @@ Eigen::MatrixXd hessian_of_squared_quaternion_angle_difference(
     // If difference is very small set to 0 matrix to avoid NaN's
     if ((quat - quat_desired).norm() < 1e-12 ||
         std::abs(quat.dot(quat_desired) - 1.0) < 1e-12) {
-        return Eigen::MatrixXd::Zero(4, 4);
+        return MatrixXd::Zero(4, 4);
     }
 
     // Extract the quaternion components.
@@ -112,7 +108,7 @@ Eigen::MatrixXd hessian_of_squared_quaternion_angle_difference(
         (exp_8)*(exp_11)*(exp_6))/(exp_5);
 
     // Define the Hessian.
-    Eigen::MatrixXd hessian = Eigen::MatrixXd::Zero(4, 4);
+    MatrixXd hessian = Eigen::MatrixXd::Zero(4, 4);
     hessian.col(0) << H_ww, H_wx, H_wy, H_wz;
     hessian.col(1) << H_wx, H_xx, H_xy, H_xz;
     hessian.col(2) << H_wy, H_xy, H_yy, H_yz;

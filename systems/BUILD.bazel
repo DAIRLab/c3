@@ -142,6 +142,7 @@ cc_test(
         ":framework",
         "@gtest//:main",
     ],
+    size = "small",
 )
 
 cc_test(
@@ -156,6 +157,7 @@ cc_test(
         ":systems",
         "@gtest//:main",
     ],
+    size = "small",
 )
 
 filegroup(
