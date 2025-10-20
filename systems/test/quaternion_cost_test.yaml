@@ -1,4 +1,4 @@
-# Example yaml parameter file for testing
+# yaml parameter file for testing quaternion error Hessian computations
 
 projection_type: "MIQP"
 

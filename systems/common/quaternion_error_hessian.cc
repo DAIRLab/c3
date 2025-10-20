@@ -1,9 +1,5 @@
 #include "quaternion_error_hessian.h"
-#include <iostream>
 
-
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
 
 namespace c3 {
 namespace systems {
@@ -39,8 +35,8 @@ Eigen::Matrix4d small_angle_hessian_at(const Eigen::Vector4d& r_in) {
     return H;
 }
     
-Eigen::MatrixXd hessian_of_squared_quaternion_angle_difference(
-    const Eigen::VectorXd& quat, const Eigen::VectorXd& quat_desired)
+MatrixXd hessian_of_squared_quaternion_angle_difference(
+    const VectorXd& quat, const VectorXd& quat_desired)
 {
     // Check the inputs are of expected shape.
     DRAKE_DEMAND(quat.size() == 4);

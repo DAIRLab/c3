@@ -97,8 +97,9 @@ cc_test(
     ],
     env_inherit = [
         "GUROBI_HOME",
-        "GRB_LICENSE_FILE"
+        "GRB_LICENSE0_FILE"
     ],
+    size = "small",
 )
 
 filegroup(
