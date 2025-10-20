@@ -130,6 +130,7 @@ cc_test(
         "GUROBI_HOME",
         "GRB_LICENSE_FILE"
     ],
+    size = "small",
 )
 
 cc_test(
