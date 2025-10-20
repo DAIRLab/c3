@@ -75,31 +75,35 @@ class QuaternionCostTest : public ::testing::Test {
 TEST_F(QuaternionCostTest, HessianAngleDifferenceTest) {
   // Construct from initializer list.
   VectorXd q1(4);
-  q1 << 0.5, 0.5, 0.5, 0.5  ;
+  q1 << 0.5, 0.5, 0.5, 0.5;
 
   MatrixXd hessian = common::hessian_of_squared_quaternion_angle_difference(q1, q1);
+  std::cout << hessian << std::endl;
+
+  MatrixXd true_hessian(4, 4);
+  true_hessian << 6, -2, -2, -2,
+                  -2, 6, -2, -2,
+                  -2, -2, 6, -2,
+                  -2, -2, -2, 6;
 
   EXPECT_EQ(hessian.rows(), 4);
   EXPECT_EQ(hessian.cols(), 4);
-  EXPECT_TRUE(hessian.isApprox(Eigen::MatrixXd::Zero(4, 4)));
+  EXPECT_TRUE(hessian.isApprox(true_hessian, 1e-4));
 
   VectorXd q2(4);
   q2 << 0.707, 0, 0, 0.707;  
 
   hessian = common::hessian_of_squared_quaternion_angle_difference(q1, q2);
+  std::cout << hessian << std::endl;
+
+  true_hessian << 8.28319,  -2,       -2,        2,
+                -2,        2,       -4.28319, -2,
+                -2,       -4.28319, 2,       -2,
+                2,       -2,       -2,       8.28319;
 
   EXPECT_EQ(hessian.rows(), 4);
   EXPECT_EQ(hessian.cols(), 4);
-
-  MatrixXd true_hessian(4, 4);
-  true_hessian << 6.4422, -2, -2, 2,
-                -2, 2, -2.4422, -2,
-                -2, -2.4422, 2, -2,
-                2, -2, -2, 6.4422;
-
-
   EXPECT_TRUE(hessian.isApprox(true_hessian, 1e-4));
-
 }
 
 
@@ -115,7 +119,7 @@ TEST_F(QuaternionCostTest, QuaternionCostMatrixTest) {
   q2 << 0.707, 0, 0, 0.707;   
 
   std::vector<MatrixXd> Q = UpdateQuaternionCosts(q1, q2, controller_options);
-  
+    
   for (int i = 0; i < Q.size(); i++) {
     // Check each Q is PSD
     double min_eigenval = Q[i].eigenvalues().real().minCoeff();
@@ -129,11 +133,6 @@ TEST_F(QuaternionCostTest, QuaternionCostMatrixTest) {
       EXPECT_TRUE(!(Q_block.isApprox(Q_diag)));
     }
   } 
-  
-
-
-
-
 
 }
 
