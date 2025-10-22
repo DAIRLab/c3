@@ -1,6 +1,5 @@
 #include "quaternion_error_hessian.h"
 
-
 namespace c3 {
 namespace systems {
 namespace common {
@@ -43,8 +42,8 @@ MatrixXd hessian_of_squared_quaternion_angle_difference(
     DRAKE_DEMAND(quat_desired.size() == 4);
 
     // If difference is very small set to closed-form limit to avoid NaN's
-    if ((quat - quat_desired).norm() < 1e-12 ||
-        std::abs(quat.dot(quat_desired) - 1.0) < 1e-12) {
+    if ((quat - quat_desired).norm() < 1e-3 ||
+        std::abs(quat.dot(quat_desired) - 1.0) < 1e-3) {
         return small_angle_hessian_at(quat);
     }
 
