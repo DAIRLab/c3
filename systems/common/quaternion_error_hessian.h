@@ -1,9 +1,10 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
+
 #include "drake/common/drake_assert.h"
 
-using Eigen::VectorXd;
 using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 namespace c3 {
 namespace systems {
@@ -16,11 +17,10 @@ namespace common {
  * angle difference is with respect to this quaternion.
  * @param quat_desired The second quaternion (size 4 vector).
  * @return The 4x4 Hessian matrix of the squared angle difference.
-*/
-Eigen::MatrixXd hessian_of_squared_quaternion_angle_difference(
-    const Eigen::VectorXd& quat,
-    const Eigen::VectorXd& quat_desired);
+ */
+MatrixXd hessian_of_squared_quaternion_angle_difference(
+    const VectorXd& quat, const VectorXd& quat_desired);
 
-} // namespace common
-} // namespace systems
-} // namespace c3
+}  // namespace common
+}  // namespace systems
+}  // namespace c3

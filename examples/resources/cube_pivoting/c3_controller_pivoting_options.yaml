@@ -5,6 +5,11 @@ solve_time_filter_alpha: 0.0
 publish_frequency: 100
 state_prediction_joints: []
 
+quaternion_indices: []
+#leave empty to disable any quaternion-dependent cost weights
+quaternion_weight: 0.0
+quaternion_regularizer_fraction: 0.0
+
 lcs_factory_options:
   #options are 'stewart_and_trinkle' or 'anitescu'
   # contact_model : 'stewart_and_trinkle'

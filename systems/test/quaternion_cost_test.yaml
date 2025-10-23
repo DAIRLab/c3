@@ -8,6 +8,7 @@ publish_frequency: 100
 state_prediction_joints: []
 
 quaternion_indices: [5]
+#leave empty to disable any quaternion-dependent cost weights
 quaternion_weight: 1000
 quaternion_regularizer_fraction: 0.0
 
