@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <world name="default">
+    <!-- Sphere model -->
+    <model name="sphere">
+      <pose>0 0 0.0 0 0 0</pose>
+      <link name="sphere">
+        <inertial>
+          <mass>1.0</mass>
+          <inertia>
+            <ixx>0.004</ixx>
+            <iyy>0.004</iyy>
+            <izz>0.004</izz>
+            <ixy>0.0</ixy>
+            <ixz>0.0</ixz>
+            <iyz>0.0</iyz>
+          </inertia>
+        </inertial>
+        <collision name="sphere_collision">
+          <geometry>
+            <sphere>
+              <radius>0.01</radius>
+            </sphere>
+          </geometry>
+        </collision>
+        <visual name="sphere_visual">
+          <geometry>
+            <sphere>
+              <radius>0.01</radius>
+            </sphere>
+          </geometry>
+          <material>
+            <diffuse>1 0 0 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- mesh model -->
+    <model name="mesh">
+      <pose>-0.06 0 0.0 0 0 0</pose>
+      <link name="mesh">
+        <inertial>
+          <pose>0 0 0 0 0 0</pose>
+          <mass>1.0</mass>
+          <inertia>
+            <ixx>0.003</ixx>
+            <iyy>0.003</iyy>
+            <izz>0.006</izz>
+            <ixy>0.0</ixy>
+            <ixz>0.0</ixz>
+            <iyz>0.0</iyz>
+          </inertia>
+        </inertial>
+        
+        <visual name="convex_0">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <mesh>
+              <uri>mesh.obj</uri>
+            </mesh>
+          </geometry>
+          <material>
+            <diffuse>0 0 0 1</diffuse>
+          </material>
+        </visual>
+        <collision name="convex_0_volume">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <mesh>
+              <uri>mesh.obj</uri>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+  </world>
+</sdf>

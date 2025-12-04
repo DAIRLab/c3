@@ -1,0 +1,53 @@
+projection_type: "C3+"
+
+solve_time_filter_alpha: 0.0
+#set to 0 to publish as fast as possible
+publish_frequency: 100
+state_prediction_joints: []
+  # - name : "CartSlider"
+  #   max_acceleration : 10
+
+lcs_factory_options:
+  #options are 'stewart_and_trinkle' or 'anitescu'
+  # contact_model : 'stewart_and_trinkle'
+  contact_model: "frictionless_spring"
+  num_friction_directions: 0
+  num_contacts: 2
+  spring_stiffness: 100
+  mu: [0, 0]
+  N: 5
+  dt: 0.01
+
+c3_options:
+  warm_start: false
+  end_on_qp_step: true
+  scale_lcs: false
+
+  num_threads: 5
+  delta_option: 0
+
+  M: 1000
+  admm_iter: 10
+
+  gamma: 1.0
+  rho_scale: 2 #matrix scaling
+  w_Q: 1
+  w_R: 1 #Penalty on all decision variables, assuming scalar
+  w_G: 1 #Penalty on all decision variables, assuming scalar
+  w_U: 1 #State Tracking Error, assuming diagonal
+  q_vector: [10, 2, 1, 1] #Penalty on efforts, assuming diagonal
+  r_vector: [1] #Penalty on matching projected variables
+  g_x: [0, 0, 0, 0]
+  g_gamma: []
+  g_lambda_n: []
+  g_lambda_t: []
+  g_lambda: [1, 1]
+  g_eta: [1, 1]
+  g_u: [0] #Penalty on matching the QP variables
+  u_x: [0, 0, 0, 0]
+  u_gamma: []
+  u_lambda_n: []
+  u_lambda_t: []
+  u_lambda: [1, 1]
+  u_eta: [10000, 10000]
+  u_u: [0]

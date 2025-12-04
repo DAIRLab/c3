@@ -172,12 +172,12 @@ struct C3Options {
     u_vector.insert(u_vector.end(), u_u.begin(), u_u.end());
     if (u_eta != std::nullopt || u_eta_slack != std::nullopt) {
       if (u_eta == std::nullopt || u_eta->empty()) {
-        g_vector.insert(g_vector.end(), u_eta_slack->begin(),
+        u_vector.insert(u_vector.end(), u_eta_slack->begin(),
                         u_eta_slack->end());
-        g_vector.insert(g_vector.end(), u_eta_n->begin(), u_eta_n->end());
-        g_vector.insert(g_vector.end(), u_eta_t->begin(), u_eta_t->end());
+        u_vector.insert(u_vector.end(), u_eta_n->begin(), u_eta_n->end());
+        u_vector.insert(u_vector.end(), u_eta_t->begin(), u_eta_t->end());
       } else {
-        g_vector.insert(g_vector.end(), u_eta->begin(), u_eta->end());
+        u_vector.insert(u_vector.end(), u_eta->begin(), u_eta->end());
       }
     }
 

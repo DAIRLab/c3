@@ -5,6 +5,9 @@
 #include <drake/multibody/tree/multibody_element.h>
 #include <gtest/gtest.h>
 
+#include "core/c3_miqp.h"
+#include "core/c3_plus.h"
+#include "core/c3_qp.h"
 #include "core/test/c3_cartpole_problem.hpp"
 #include "multibody/lcs_factory.h"
 #include "systems/c3_controller.h"
@@ -92,25 +95,33 @@ TEST_F(LCSSimulatorTest, MissingLCS) {
 }
 
 // Test fixture for C3Controller
-class C3ControllerTest : public ::testing::Test, public C3CartpoleProblem {
+template <typename T>
+class C3ControllerTypedTest : public ::testing::Test, public C3CartpoleProblem {
  protected:
-  C3ControllerTest()
+  C3ControllerTypedTest()
       : C3CartpoleProblem(0.411, 0.978, 0.6, 0.4267, 0.35, -0.35, 100, 9.81, 10,
-                          0.1) {}
+                          0.1) {
+    // Load controller options from YAML
+    if (std::is_same<T, C3Plus>::value){
+      controller_options_ = drake::yaml::LoadYamlFile<C3ControllerOptions>(
+          "examples/resources/cartpole_softwalls/"
+          "c3Plus_controller_cartpole_options.yaml");
+          UseC3Plus();
+        }
+    else
+      controller_options_ = drake::yaml::LoadYamlFile<C3ControllerOptions>(
+          "examples/resources/cartpole_softwalls/"
+          "c3_controller_cartpole_options.yaml");
+  }
 
   void SetUp() override {
-    // Load controller options from YAML
-    C3ControllerOptions controller_options =
-        drake::yaml::LoadYamlFile<C3ControllerOptions>(
-            "examples/resources/cartpole_softwalls/"
-            "c3_controller_cartpole_options.yaml");
-    controller_options.publish_frequency = 0;  // Forced Update
+    controller_options_.publish_frequency = 0;  // Forced Update
 
     // Add prediction for the slider joint
-    controller_options.state_prediction_joints.push_back(
+    controller_options_.state_prediction_joints.push_back(
         {.name = "CartSlider", .max_acceleration = 10.0});
-    controller_options.lcs_factory_options.N = 10;
-    controller_options.lcs_factory_options.dt = 0.1;
+    controller_options_.lcs_factory_options.N = 10;
+    controller_options_.lcs_factory_options.dt = 0.1;
 
     // Build plant and scene graph
     std::tie(plant, scene_graph) =
@@ -121,7 +132,7 @@ class C3ControllerTest : public ::testing::Test, public C3CartpoleProblem {
     plant->Finalize();
 
     controller_ =
-        std::make_unique<C3Controller>(*plant, cost, controller_options);
+        std::make_unique<C3Controller>(*plant, cost, controller_options_);
 
     context_ = controller_->CreateDefaultContext();
     output_ = controller_->AllocateOutput();
@@ -145,9 +156,15 @@ class C3ControllerTest : public ::testing::Test, public C3CartpoleProblem {
   std::unique_ptr<Context<double>> context_;
   std::unique_ptr<SystemOutput<double>> output_;
   std::unique_ptr<DiscreteValues<double>> discrete_values_;
+  C3ControllerOptions controller_options_;
 };
 
-TEST_F(C3ControllerTest, CheckInputOutputPorts) {
+using projection_types = ::testing::Types<C3MIQP, C3Plus>;
+TYPED_TEST_SUITE(C3ControllerTypedTest, projection_types);
+
+TYPED_TEST(C3ControllerTypedTest, CheckInputOutputPorts) {
+  auto& controller_ = this->controller_;
+  auto& pSystem = this->pSystem;
   // Check input and output port sizes and existence
   EXPECT_NO_THROW(controller_->get_input_port_lcs_state());
   EXPECT_EQ(controller_->get_input_port_lcs_state().size(),
@@ -158,7 +175,12 @@ TEST_F(C3ControllerTest, CheckInputOutputPorts) {
   EXPECT_NO_THROW(controller_->get_output_port_c3_intermediates());
 }
 
-TEST_F(C3ControllerTest, CheckPlannedTrajectory) {
+TYPED_TEST(C3ControllerTypedTest, CheckPlannedTrajectory) {
+  auto& controller_ = this->controller_;
+  auto& context_ = this->context_;
+  auto& discrete_values_ = this->discrete_values_;
+  auto& output_ = this->output_;
+  auto& pSystem = this->pSystem;
   // Should not throw when computing plan with valid inputs
   EXPECT_NO_THROW({
     controller_->CalcForcedDiscreteVariableUpdate(*context_,
@@ -168,7 +190,7 @@ TEST_F(C3ControllerTest, CheckPlannedTrajectory) {
 
   // Check C3 solution output
   const auto& c3_solution =
-      output_->get_data(0)->get_value<C3Output::C3Solution>();
+      output_->get_data(0)->template get_value<C3Output::C3Solution>();
   EXPECT_EQ(c3_solution.time_vector_.size(), pSystem->N());
   EXPECT_EQ(c3_solution.x_sol_.rows(), pSystem->num_states());
   EXPECT_EQ(c3_solution.lambda_sol_.rows(), pSystem->num_lambdas());
@@ -179,7 +201,7 @@ TEST_F(C3ControllerTest, CheckPlannedTrajectory) {
 
   // Check C3 intermediates output
   const auto& c3_intermediates =
-      output_->get_data(1)->get_value<C3Output::C3Intermediates>();
+      output_->get_data(1)->template get_value<C3Output::C3Intermediates>();
   EXPECT_EQ(c3_intermediates.time_vector_.size(), pSystem->N());
   int total_vars =
       pSystem->num_states() + pSystem->num_lambdas() + pSystem->num_inputs();
@@ -191,7 +213,11 @@ TEST_F(C3ControllerTest, CheckPlannedTrajectory) {
   EXPECT_EQ(c3_intermediates.w_.cols(), pSystem->N());
 }
 
-TEST_F(C3ControllerTest, ThrowsOnMissingLCS) {
+TYPED_TEST(C3ControllerTypedTest, ThrowsOnMissingLCS) {
+  auto& controller_ = this->controller_;
+  auto& plant = this->plant;
+  auto& x0 = this->x0;
+  auto& discrete_values_ = this->discrete_values_;
   // Remove LCS input and expect a runtime error
   auto new_context = controller_->CreateDefaultContext();
   auto state_vec = c3::systems::TimestampedVector<double>(
@@ -207,7 +233,12 @@ TEST_F(C3ControllerTest, ThrowsOnMissingLCS) {
                std::runtime_error);
 }
 
-TEST_F(C3ControllerTest, TestJointPrediction) {
+TYPED_TEST(C3ControllerTypedTest, TestJointPrediction) {
+  auto& controller_ = this->controller_;
+  auto& context_ = this->context_;
+  auto& discrete_values_ = this->discrete_values_;
+  auto& output_ = this->output_;
+  auto& x0 = this->x0;
   // Test that joint prediction modifies the first state in the planned
   // trajectory
   double eps = 1e-8;
@@ -215,8 +246,9 @@ TEST_F(C3ControllerTest, TestJointPrediction) {
                                                 discrete_values_.get());
   controller_->CalcOutput(*context_, output_.get());
   const auto& pre_solution =
-      output_->get_data(0)->get_value<C3Output::C3Solution>();
-  Eigen::VectorXd first_state = pre_solution.x_sol_.col(0).cast<double>();
+      output_->get_data(0)->template get_value<C3Output::C3Solution>();
+  Eigen::VectorXd first_state =
+      pre_solution.x_sol_.col(0).template cast<double>();
   EXPECT_TRUE(first_state.isApprox(x0, eps));
 
   // Update context with predicted state and check that it changes
@@ -225,9 +257,9 @@ TEST_F(C3ControllerTest, TestJointPrediction) {
       *context_, discrete_values_.get()));
   controller_->CalcOutput(*context_, output_.get());
   const auto& post_solution =
-      output_->get_data(0)->get_value<C3Output::C3Solution>();
+      output_->get_data(0)->template get_value<C3Output::C3Solution>();
   Eigen::VectorXd predicted_first_state =
-      post_solution.x_sol_.col(0).cast<double>();
+      post_solution.x_sol_.col(0).template cast<double>();
   EXPECT_FALSE(predicted_first_state.isApprox(x0, eps));
 }
 
