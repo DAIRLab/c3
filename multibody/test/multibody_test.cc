@@ -139,7 +139,8 @@ class LCSFactoryPivotingTest
 
     options.contact_model = std::get<0>(GetParam());
     contact_model = GetContactModelMap().at(options.contact_model);
-    options.num_friction_directions = std::get<1>(GetParam());
+    options.num_friction_directions_per_contact =
+        std::vector<int>(contact_pairs.size(), std::get<1>(GetParam()));
     lcs_factory = std::make_unique<LCSFactory>(
         *plant, plant_context, *plant_autodiff, *plant_context_autodiff,
         contact_pairs, options);
@@ -227,17 +228,20 @@ TEST_P(LCSFactoryPivotingTest, ComputeContactJacobian) {
   auto [J, contact_points] = lcs_factory->GetContactJacobianAndPoints();
 
   int n_contacts = contact_pairs.size();
+  auto n_tangential_directions =
+      2 * std::accumulate(options.num_friction_directions_per_contact->begin(),
+                          options.num_friction_directions_per_contact->end(),
+                          0);
   // Check for number of force variables (not including slack variables)
   switch (contact_model) {
     case ContactModel::kStewartAndTrinkle:
-      EXPECT_EQ(J.rows(),
-                n_contacts + 2 * n_contacts * options.num_friction_directions);
+      EXPECT_EQ(J.rows(), n_contacts + n_tangential_directions);
       break;
     case ContactModel::kFrictionlessSpring:
       EXPECT_EQ(J.rows(), n_contacts);
       break;
     case ContactModel::kAnitescu:
-      EXPECT_EQ(J.rows(), 2 * n_contacts * options.num_friction_directions);
+      EXPECT_EQ(J.rows(), n_tangential_directions);
       break;
     default:
       EXPECT_TRUE(false);  // Something went wrong in parsing the contact model
