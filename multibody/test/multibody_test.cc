@@ -402,17 +402,10 @@ GTEST_TEST(GeomGeomColliderTest, SphereMeshDistance) {
   GeomGeomCollider<double> collider(plant, geom_pair);
   auto [distance_no_contact, J] = collider.EvalPolytope(context, 1);
 
-<<<<<<< Updated upstream
-  EXPECT_NEAR(
-      distance_no_contact,
-      NO_CONTACT_HEIGHT - MESH_HEIGHT - SPHERE_RADIUS, 1e-2);  // Expected distance
-  EXPECT_EQ(J.rows(), 3);
-=======
   EXPECT_NEAR(distance_no_contact,
               NO_CONTACT_HEIGHT - MESH_HEIGHT - SPHERE_RADIUS,
-              1e-2);       // Expected clearance distance
-  EXPECT_EQ(J.rows(), 3);  // 3D contact Jacobian
->>>>>>> Stashed changes
+              1e-2);  // Expected distance
+  EXPECT_EQ(J.rows(), 3);
   EXPECT_EQ(J.cols(), plant.num_velocities());
   EXPECT_TRUE(J.allFinite());
 
@@ -426,12 +419,8 @@ GTEST_TEST(GeomGeomColliderTest, SphereMeshDistance) {
   auto [distance_contact, J_contact] =
       collider_contact.EvalPolytope(context, 1);
 
-<<<<<<< Updated upstream
-  EXPECT_NEAR(distance_contact, -MESH_HEIGHT, 1e-2);  // Expect penetration or zero distance
-=======
   EXPECT_NEAR(distance_contact, -MESH_HEIGHT,
-              1e-2);  // Negative distance indicates penetration
->>>>>>> Stashed changes
+              1e-2);  // Expect penetration or zero distance
   EXPECT_EQ(J_contact.rows(), 3);
   EXPECT_EQ(J_contact.cols(), plant.num_velocities());
   EXPECT_TRUE(J_contact.allFinite());
