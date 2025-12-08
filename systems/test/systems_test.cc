@@ -102,13 +102,12 @@ class C3ControllerTypedTest : public ::testing::Test, public C3CartpoleProblem {
       : C3CartpoleProblem(0.411, 0.978, 0.6, 0.4267, 0.35, -0.35, 100, 9.81, 10,
                           0.1) {
     // Load controller options from YAML
-    if (std::is_same<T, C3Plus>::value){
+    if (std::is_same<T, C3Plus>::value) {
       controller_options_ = drake::yaml::LoadYamlFile<C3ControllerOptions>(
           "examples/resources/cartpole_softwalls/"
           "c3Plus_controller_cartpole_options.yaml");
-          UseC3Plus();
-        }
-    else
+      UseC3Plus();
+    } else
       controller_options_ = drake::yaml::LoadYamlFile<C3ControllerOptions>(
           "examples/resources/cartpole_softwalls/"
           "c3_controller_cartpole_options.yaml");
