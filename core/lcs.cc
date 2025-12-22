@@ -58,15 +58,17 @@ double LCS::ScaleComplementarityDynamics() {
 }
 
 const VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& u,
-                             bool regularized) const {
+                             const LCSSimulateConfig& config) const {
   VectorXd x_final;
   VectorXd force;
   drake::solvers::MobyLCPSolver<double> LCPSolver;
-  if (regularized) {
+  if (config.regularized) {
     LCPSolver.SolveLcpLemkeRegularized(
-        F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force);
+        F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force, config.min_exp,
+        config.step_exp, config.max_exp, config.piv_tol, config.zero_tol);
   } else {
-    LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force);
+    LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force,
+                            config.piv_tol, config.zero_tol);
   }
   x_final = A_[0] * x_init + B_[0] * u + D_[0] * force + d_[0];
   return x_final;
