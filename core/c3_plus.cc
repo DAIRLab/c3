@@ -100,35 +100,57 @@ void C3Plus::AddAugmentedCost(const vector<MatrixXd>& G,
                               const vector<VectorXd>& WD,
                               const vector<VectorXd>& delta,
                               bool is_final_solve) {
-  if (is_final_solve) {
-    for (auto& cost : augmented_costs_) {
-      prog_.RemoveCost(cost);
-    }
-    augmented_costs_.clear();
+  // Remove previous augmented costs
+  for (auto& cost : augmented_costs_) {
+    prog_.RemoveCost(cost);
+  }
+  augmented_costs_.clear();
 
-    std::vector<Eigen::MatrixXd> GFinal = G;
-    for (int i = 0; i < N_; ++i) {
-      Eigen::VectorXd GScaling =
-          Eigen::VectorXd::Ones(n_z_);  // Default scaling is 1
-      if (options_.final_augmented_cost_contact_scaling.has_value() &&
-          options_.final_augmented_cost_contact_indices.has_value()) {
-        for (int index :
-             options_.final_augmented_cost_contact_indices.value()) {
-          if (delta.at(i)[n_x_ + index] == 0)
-            GScaling(n_x_ + index) *=
-                options_.final_augmented_cost_contact_scaling.value();
-          else
-            GScaling(n_x_ + n_lambda_ + n_u_ + index) *=
-                options_.final_augmented_cost_contact_scaling.value();
-        }
+  // Add augmented costs for each time step
+  for (int i = 0; i < N_; i++) {
+    Eigen::VectorXd GScaling = Eigen::VectorXd::Ones(n_z_);
+
+    // Apply contact scaling to final solve if specified in options
+    if (is_final_solve &&
+        options_.final_augmented_cost_contact_scaling.has_value() &&
+        options_.final_augmented_cost_contact_indices.has_value()) {
+      for (int index : options_.final_augmented_cost_contact_indices.value()) {
+        // Scale lambda or eta based on whether the corresponding delta is zero
+        if (delta.at(i)[n_x_ + index] == 0)
+          GScaling(n_x_ + index) *=
+              options_.final_augmented_cost_contact_scaling.value();
+        else
+          GScaling(n_x_ + n_lambda_ + n_u_ + index) *=
+              options_.final_augmented_cost_contact_scaling.value();
       }
-      auto GiFinal = GFinal.at(i).array().colwise() * GScaling.array();
-      augmented_costs_.push_back(prog_.AddQuadraticCost(
-          2 * GiFinal.matrix(), -2 * GiFinal.matrix() * delta.at(i), z_.at(i),
-          1));
     }
-  } else {
-    C3::AddAugmentedCost(G, WD, delta, is_final_solve);
+
+    // Apply scaling to contact forces in final solve to encourage
+    // complementarity constraints. For final solve, scale G matrix by GScaling;
+    // otherwise use unscaled G matrix. This helps satisfy complementarity by
+    // encouraging some contact forces to match previous projection step values,
+    // improving dynamic feasibility. Applied selectively to avoid
+    // over-constraining the QP solver.
+    const MatrixXd& G_i =
+        is_final_solve ? (G.at(i).array().colwise() * GScaling.array()).matrix()
+                       : G.at(i);
+    const VectorXd& WD_i = is_final_solve ? delta.at(i) : WD.at(i);
+
+    // Add quadratic cost for lambda
+    augmented_costs_.push_back(prog_.AddQuadraticCost(
+        2 * G_i.block(n_x_, n_x_, n_lambda_, n_lambda_),
+        -2 * G_i.block(n_x_, n_x_, n_lambda_, n_lambda_) *
+            WD_i.segment(n_x_, n_lambda_),
+        lambda_.at(i), 1));
+    // Add quadratic cost for eta
+    augmented_costs_.push_back(prog_.AddQuadraticCost(
+        2 * G_i.block(n_x_ + n_lambda_ + n_u_, n_x_ + n_lambda_ + n_u_,
+                      n_lambda_, n_lambda_),
+        -2 *
+            G_i.block(n_x_ + n_lambda_ + n_u_, n_x_ + n_lambda_ + n_u_,
+                      n_lambda_, n_lambda_) *
+            WD_i.segment(n_x_ + n_lambda_ + n_u_, n_lambda_),
+        eta_.at(i), 1));
   }
 }
 
