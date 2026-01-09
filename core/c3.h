@@ -293,11 +293,96 @@ class C3 {
       const std::vector<Eigen::VectorXd>& delta, int admm_iteration,
       bool is_final_solve = false);
 
+  /*!
+   * @brief Add the augmented Lagrangian cost to the QP problem.
+   *
+   * This function adds (or updates) the quadratic cost terms for the augmented
+   * Lagrangian formulation of the ADMM algorithm. The cost has the form:
+   *   ||G(z - (w - delta))||^2
+   *
+   * For C3Plus subclass, this function also handles special scaling of contact
+   * forces during the final solve iteration.
+   *
+   * @param G Vector of augmented Lagrangian weight matrices, one per timestep.
+   *          Dimensions: N x (n_z x n_z)
+   * @param WD Vector of (w - delta) terms, one per timestep.
+   *           Dimensions: N x n_z
+   * @param delta Vector of copy variables from the previous ADMM iteration,
+   *              one per timestep. Dimensions: N x n_z
+   * @param is_final_solve Boolean flag indicating if this is the final QP solve
+   *                       after all ADMM iterations complete. Used by
+   * subclasses to apply special handling (e.g., contact scaling).
+   *
+   * @note The cost matrices are stored in augmented_costs_ and removed/re-added
+   *       on each call to ensure the QP remains well-posed.
+   *
+   * @see ADMMStep, SolveQP
+   */
   virtual void AddAugmentedCost(const std::vector<Eigen::MatrixXd>& G,
                                 const std::vector<Eigen::VectorXd>& WD,
                                 const std::vector<Eigen::VectorXd>& delta,
                                 bool is_final_solve);
+
+  /*!
+   * @brief Set the initial guess (warm start) for the QP solver.
+   *
+   * This function provides Drake's OSQP solver with an initial guess for the
+   * decision variables to accelerate convergence. The warm start strategy
+   * interpolates between solutions from previous ADMM iterations if available.
+   *
+   * For non-first ADMM iterations, the function performs linear interpolation
+   * between consecutive warm-start solutions based on the solve_time_ and
+   * the LCS time step dt. This allows smooth transitions across multiple
+   * planning horizons.
+   *
+   * @param x0 The initial state at the current planning iteration.
+   *           Used to initialize x_[0] = x0.
+   * @param admm_iteration The current ADMM iteration index (0-based).
+   *                       For iteration 0, no warm start is applied.
+   *
+   * @note Warm starting is only performed if:
+   *       - warm_start_ flag is enabled in C3Options
+   *       - admm_iteration > 0 (skip first iteration)
+   *
+   * The interpolation formula used is:
+   *   z_guess[i] = (1 - weight) * warm_start[iter-1][i] + weight *
+   * warm_start[iter-1][i+1] where weight = (solve_time_ mod dt) / dt
+   *
+   * @see SetInitialGuessQP, warm_start_x_, warm_start_lambda_, warm_start_u_
+   */
   virtual void SetInitialGuessQP(const Eigen::VectorXd& x0, int admm_iteration);
+
+  /*!
+   * @brief Extract and store the QP solution results.
+   *
+   * This function retrieves the optimized decision variables from the OSQP
+   * solver result and stores them in the solution containers (x_sol_,
+   * lambda_sol_, u_sol_, z_sol_). Additionally, it updates warm-start caches
+   * to accelerate future ADMM iterations.
+   *
+   * The function handles two scenarios:
+   * 1. Intermediate ADMM iterations: Stores results in z_sol_ for the z-update
+   *    step and caches them for warm starting.
+   * 2. Final QP solve: Also stores individual solutions in x_sol_, lambda_sol_,
+   *    and u_sol_ for final output.
+   *
+   * Solution storage layout in z_sol_[i]:
+   *   z_sol_[i] = [x_[i]; lambda_[i]; u_[i]; ...]
+   *   where [...] may include additional variables (e.g., eta in C3Plus)
+   *
+   * @param result The MathematicalProgramResult from the OSQP solver containing
+   *               the optimized decision variables.
+   * @param admm_iteration The current ADMM iteration index (0-based).
+   * @param is_final_solve Boolean flag indicating if this is the final QP
+   * solve. If true, also populate x_sol_, lambda_sol_, u_sol_.
+   *
+   * @note For warm starting:
+   *       - warm_start_x_[admm_iteration][i] = x_[i] solution
+   *       - warm_start_lambda_[admm_iteration][i] = lambda_[i] solution
+   *       - warm_start_u_[admm_iteration][i] = u_[i] solution
+   *
+   * @see SolveQP, z_sol_, x_sol_, lambda_sol_, u_sol_
+   */
   virtual void StoreQPResults(
       const drake::solvers::MathematicalProgramResult& result,
       int admm_iteration, bool is_final_solve);
