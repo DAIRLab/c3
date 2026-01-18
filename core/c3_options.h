@@ -35,7 +35,7 @@ struct C3Options {
       final_augmented_cost_contact_scaling;  // scaling factor for the final
                                              // augmented cost matrix for C3+
                                              // projection
-  std::optional<std::vector<double>>
+  std::optional<std::vector<int>>
       final_augmented_cost_contact_indices;  // vector for scaling the final
                                              // augmented cost matrix for C3+
                                              // projection
