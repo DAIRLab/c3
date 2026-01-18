@@ -89,7 +89,6 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
   w_sol_ = std::make_unique<std::vector<VectorXd>>();
   delta_sol_ = std::make_unique<std::vector<VectorXd>>();
   for (int i = 0; i < N_; ++i) {
-    z_sol_->push_back(Eigen::VectorXd::Zero(n_z_));
     x_sol_->push_back(Eigen::VectorXd::Zero(n_x_));
     lambda_sol_->push_back(Eigen::VectorXd::Zero(n_lambda_));
     u_sol_->push_back(Eigen::VectorXd::Zero(n_u_));

@@ -11,7 +11,7 @@ struct ContactPairConfig {
   std::vector<int> body_A_collision_geom_indices;
   std::vector<int> body_B_collision_geom_indices;
   int num_friction_directions;
-  float mu;  // friction coefficient
+  double mu;  // friction coefficient
 
   template <typename Archive>
   void Serialize(Archive* a) {

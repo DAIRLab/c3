@@ -263,8 +263,7 @@ class GeomGeomCollider {
    *
    * This method handles collision detection for arbitrary geometry pairs
    * using Drake's standard ComputeSignedDistancePairClosestPoints algorithm.
-   * It works reliably for convex geometries and convex hulls of meshes, but
-   * may not provide accurate results for non-convex mesh surfaces.
+   * It works reliably for convex geometries and convex hulls of meshes.
    *
    * @param context The context for the MultibodyPlant.
    * @param[out] p_ACa Contact point on geometry A expressed in frame A.
