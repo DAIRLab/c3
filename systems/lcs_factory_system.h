@@ -33,6 +33,12 @@ namespace systems {
  */
 class LCSFactorySystem : public drake::systems::LeafSystem<double> {
  public:
+  explicit LCSFactorySystem(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>& context,
+      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+      drake::systems::Context<drake::AutoDiffXd>& context_ad,
+      LCSFactoryOptions options);
   /**
    * @brief Constructs an LCSFactorySystem.
    *
@@ -93,6 +99,8 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
   }
 
  private:
+  void InitializeSystem(const drake::multibody::MultibodyPlant<double>& plant,
+                        LCSFactoryOptions& options);
   /**
    * @brief Computes the LCS based on the current state and inputs.
    *

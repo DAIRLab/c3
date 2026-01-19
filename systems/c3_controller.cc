@@ -5,6 +5,7 @@
 #include <Eigen/Dense>
 
 #include "core/c3_miqp.h"
+#include "core/c3_plus.h"
 #include "core/c3_qp.h"
 #include "multibody/lcs_factory.h"
 
@@ -81,6 +82,10 @@ C3Controller::C3Controller(
                                  controller_options_.c3_options);
   } else if (controller_options_.projection_type == "QP") {
     c3_ = std::make_unique<C3QP>(lcs_placeholder, costs, x_desired_placeholder,
+                                 controller_options_.c3_options);
+  } else if (controller_options_.projection_type == "C3+") {
+    c3_ =
+        std::make_unique<C3Plus>(lcs_placeholder, costs, x_desired_placeholder,
                                  controller_options_.c3_options);
   } else {
     drake::log()->error("Unknown projection type : {}",

@@ -61,6 +61,18 @@ PYBIND11_MODULE(multibody, m) {
                       &c3::multibody::LCSFactory::GetNumContactVariables),
                   py::arg("options"));
 
+  py::class_<ContactPairConfig>(m, "ContactPairConfig")
+      .def(py::init<>())
+      .def_readwrite("body_A", &ContactPairConfig::body_A)
+      .def_readwrite("body_B", &ContactPairConfig::body_B)
+      .def_readwrite("body_A_collision_geom_indices",
+                     &ContactPairConfig::body_A_collision_geom_indices)
+      .def_readwrite("body_B_collision_geom_indices",
+                     &ContactPairConfig::body_B_collision_geom_indices)
+      .def_readwrite("mu", &ContactPairConfig::mu)
+      .def_readwrite("num_friction_directions",
+                     &ContactPairConfig::num_friction_directions);
+
   py::class_<LCSFactoryOptions>(m, "LCSFactoryOptions")
       .def(py::init<>())
       .def_readwrite("dt", &LCSFactoryOptions::dt)
@@ -68,9 +80,13 @@ PYBIND11_MODULE(multibody, m) {
       .def_readwrite("contact_model", &LCSFactoryOptions::contact_model)
       .def_readwrite("num_friction_directions",
                      &LCSFactoryOptions::num_friction_directions)
+      .def_readwrite("num_friction_directions_per_contact",
+                     &LCSFactoryOptions::num_friction_directions_per_contact)
       .def_readwrite("num_contacts", &LCSFactoryOptions::num_contacts)
       .def_readwrite("spring_stiffness", &LCSFactoryOptions::spring_stiffness)
-      .def_readwrite("mu", &LCSFactoryOptions::mu);
+      .def_readwrite("mu", &LCSFactoryOptions::mu)
+      .def_readwrite("contact_pair_configs",
+                     &LCSFactoryOptions::contact_pair_configs);
 
   m.def("LoadLCSFactoryOptions", &LoadLCSFactoryOptions);
 }

@@ -42,6 +42,12 @@ class C3Output {
       w_ = MatrixXf::Zero(n_x + n_lambda + n_u, N);
       time_vector_ = VectorXf::Zero(N);
     };
+    C3Intermediates(int n_z, int N) {
+      z_ = MatrixXf::Zero(n_z, N);
+      delta_ = MatrixXf::Zero(n_z, N);
+      w_ = MatrixXf::Zero(n_z, N);
+      time_vector_ = VectorXf::Zero(N);
+    };
 
     // Shape is (variable_vector_size, knot_points)
     Eigen::VectorXf time_vector_;

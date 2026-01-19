@@ -7,6 +7,20 @@
 #include "drake/common/drake_assert.h"
 
 namespace c3 {
+struct LCSSimulateConfig {
+  // default values found from
+  // https://drake.mit.edu/doxygen_cxx/classdrake_1_1solvers_1_1_moby_lcp_solver.html
+  bool regularized = false;
+  double piv_tol = -1;
+  double zero_tol = -1;
+  // Only used for regularized solves
+  int min_exp = -20;
+  int step_exp = 1;
+  int max_exp = 1;
+
+  LCSSimulateConfig() = default;
+};
+
 class LCS {
  public:
   LCS() = default;
@@ -50,8 +64,9 @@ class LCS {
    *
    * @return The state at the next timestep
    */
-  const Eigen::VectorXd Simulate(Eigen::VectorXd& x_init,
-                                 Eigen::VectorXd& u) const;
+  const Eigen::VectorXd Simulate(
+      Eigen::VectorXd& x_init, Eigen::VectorXd& u,
+      const LCSSimulateConfig& config = LCSSimulateConfig()) const;
 
   /*!
    * Accessors dynamics terms

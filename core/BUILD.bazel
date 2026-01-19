@@ -34,6 +34,7 @@ cc_library(
     srcs = [
         "c3.cc",
         "c3_qp.cc",
+        "c3_plus.cc",
     ] + select({
         "//tools:with_gurobi": [
             ":c3_miqp.cc",
@@ -46,6 +47,7 @@ cc_library(
         "c3.h",
         "c3_miqp.h",
         "c3_qp.h",
+        "c3_plus.h",
     ],
     data = [
         ":default_solver_options",
@@ -81,6 +83,9 @@ cc_library(
     name = "c3_cartpole_problem",
     hdrs = [
         "test/c3_cartpole_problem.hpp",
+    ],
+    deps = [
+        ":core",
     ],
     data = [
         ":test_data",

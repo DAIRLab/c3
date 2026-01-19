@@ -30,6 +30,52 @@ namespace c3 {
 namespace multibody {
 
 LCSFactory::LCSFactory(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>& context,
+    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    drake::systems::Context<drake::AutoDiffXd>& context_ad,
+    LCSFactoryOptions& options)
+    : plant_(plant),
+      context_(context),
+      plant_ad_(plant_ad),
+      context_ad_(context_ad),
+      options_(options),
+      contact_model_(GetContactModelMap().at(options_.contact_model)),
+      n_q_(plant_.num_positions()),
+      n_v_(plant_.num_velocities()),
+      n_x_(n_q_ + n_v_),
+      n_u_(plant_.num_actuators()),
+      frictionless_(contact_model_ == ContactModel::kFrictionlessSpring),
+      dt_(options.dt) {
+  DRAKE_DEMAND(options.contact_pair_configs.has_value());
+  n_contacts_ = options.contact_pair_configs.value().size();
+
+  mu_.clear();
+  n_friction_directions_per_contact_.clear();
+  contact_pairs_.clear();
+  for (auto& pair : options.contact_pair_configs.value()) {
+    std::vector<GeometryId> body_A_collision_geoms =
+        plant.GetCollisionGeometriesForBody(plant.GetBodyByName(pair.body_A));
+    std::vector<GeometryId> body_B_collision_geoms =
+        plant.GetCollisionGeometriesForBody(plant.GetBodyByName(pair.body_B));
+    for (int i : pair.body_A_collision_geom_indices) {
+      for (int j : pair.body_B_collision_geom_indices) {
+        contact_pairs_.emplace_back(SortedPair<GeometryId>(
+            body_A_collision_geoms[i], body_B_collision_geoms[j]));
+        mu_.push_back(pair.mu);
+        n_friction_directions_per_contact_.push_back(
+            pair.num_friction_directions);
+      }
+    }
+  }
+  n_lambda_ = multibody::LCSFactory::GetNumContactVariables(
+      contact_model_, n_contacts_, n_friction_directions_per_contact_);
+  Jt_row_sizes_ = 2 * Eigen::Map<const VectorXi, Eigen::Unaligned>(
+                          n_friction_directions_per_contact_.data(),
+                          n_friction_directions_per_contact_.size());
+}
+
+LCSFactory::LCSFactory(
     const MultibodyPlant<double>& plant, Context<double>& context,
     const MultibodyPlant<AutoDiffXd>& plant_ad, Context<AutoDiffXd>& context_ad,
     const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
@@ -41,23 +87,29 @@ LCSFactory::LCSFactory(
       context_ad_(context_ad),
       contact_pairs_(contact_geoms),
       options_(options),
+      n_contacts_(contact_geoms.size()),
+      n_friction_directions_per_contact_(
+          options_.num_friction_directions_per_contact.value()),
+      contact_model_(GetContactModelMap().at(options_.contact_model)),
       n_q_(plant_.num_positions()),
       n_v_(plant_.num_velocities()),
       n_x_(n_q_ + n_v_),
-      n_lambda_(multibody::LCSFactory::GetNumContactVariables(options)),
+      n_lambda_(multibody::LCSFactory::GetNumContactVariables(
+          contact_model_, n_contacts_, n_friction_directions_per_contact_)),
       n_u_(plant_.num_actuators()),
-      n_contacts_(contact_geoms.size()),
-      n_friction_directions_(options_.num_friction_directions),
-      contact_model_(GetContactModelMap().at(options.contact_model)),
-      mu_(options.mu),
+      mu_(options.mu.value()),
       frictionless_(contact_model_ == ContactModel::kFrictionlessSpring),
-      dt_(options_.dt) {}
+      dt_(options.dt) {
+  Jt_row_sizes_ = 2 * Eigen::Map<const VectorXi, Eigen::Unaligned>(
+                          n_friction_directions_per_contact_.data(),
+                          n_friction_directions_per_contact_.size());
+}
 
 void LCSFactory::ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn,
                                         MatrixXd& Jt) {
   phi.resize(n_contacts_);       // Signed distance values for contacts
   Jn.resize(n_contacts_, n_v_);  // Normal contact Jacobian
-  Jt.resize(2 * n_contacts_ * n_friction_directions_,
+  Jt.resize(Jt_row_sizes_.sum(),
             n_v_);  // Tangential contact Jacobian
 
   Eigen::Vector3d planar_normal = {0, 1, 0};
@@ -65,11 +117,11 @@ void LCSFactory::ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn,
   MatrixX<double> J_i;
   for (int i = 0; i < n_contacts_; i++) {
     multibody::GeomGeomCollider collider(plant_, contact_pairs_[i]);
-    if (frictionless_ || n_friction_directions_ == 1)
+    if (frictionless_ || n_friction_directions_per_contact_[i] == 1)
       std::tie(phi_i, J_i) = collider.EvalPlanar(context_, planar_normal);
     else
-      std::tie(phi_i, J_i) =
-          collider.EvalPolytope(context_, n_friction_directions_);
+      std::tie(phi_i, J_i) = collider.EvalPolytope(
+          context_, n_friction_directions_per_contact_[i]);
 
     // Signed distance value for contact i
     phi(i) = phi_i;
@@ -80,8 +132,8 @@ void LCSFactory::ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn,
     Jn.row(i) = J_i.row(0);
     if (frictionless_)
       continue;  // If frictionless_, we only need the normal force
-    Jt.block(2 * i * n_friction_directions_, 0, 2 * n_friction_directions_,
-             n_v_) = J_i.block(1, 0, 2 * n_friction_directions_, n_v_);
+    Jt.block(Jt_row_sizes_.segment(0, i).sum(), 0, Jt_row_sizes_(i), n_v_) =
+        J_i.block(1, 0, Jt_row_sizes_(i), n_v_);
   }
 }
 
@@ -259,60 +311,50 @@ void LCSFactory::FormulateStewartTrinkleContactDynamics(
 
   // Eₜ = blkdiag(e,.., e), e ∈ 1ⁿᵉ
   // (ne) number of directions in firctional cone
-  MatrixXd E_t =
-      MatrixXd::Zero(n_contacts_, 2 * n_contacts_ * n_friction_directions_);
+  MatrixXd E_t = MatrixXd::Zero(n_contacts_, Jt_row_sizes_.sum());
   for (int i = 0; i < n_contacts_; i++) {
-    E_t.block(i, i * (2 * n_friction_directions_), 1,
-              2 * n_friction_directions_) =
-        MatrixXd::Ones(1, 2 * n_friction_directions_);
+    E_t.block(i, Jt_row_sizes_.segment(0, i).sum(), 1, Jt_row_sizes_(i)) =
+        MatrixXd::Ones(1, Jt_row_sizes_(i));
   }
 
   // Formulate D matrix (state-force)
-  D.block(0, 2 * n_contacts_, n_q_, 2 * n_contacts_ * n_friction_directions_) =
+  D.block(0, 2 * n_contacts_, n_q_, Jt_row_sizes_.sum()) =
       dt_ * dt_ * qdotNv * MinvJ_t_T;
-  D.block(n_q_, 2 * n_contacts_, n_v_,
-          2 * n_contacts_ * n_friction_directions_) = dt_ * MinvJ_t_T;
+  D.block(n_q_, 2 * n_contacts_, n_v_, Jt_row_sizes_.sum()) = dt_ * MinvJ_t_T;
   D.block(0, n_contacts_, n_q_, n_contacts_) = dt_ * dt_ * qdotNv * MinvJ_n_T;
   D.block(n_q_, n_contacts_, n_v_, n_contacts_) = dt_ * MinvJ_n_T;
 
   // Formulate E matrix (force-state)
   E.block(n_contacts_, 0, n_contacts_, n_q_) =
       dt_ * dt_ * Jn * Jf_q + Jn * vNqdot;
-  E.block(2 * n_contacts_, 0, 2 * n_contacts_ * n_friction_directions_, n_q_) =
-      dt_ * Jt * Jf_q;
+  E.block(2 * n_contacts_, 0, Jt_row_sizes_.sum(), n_q_) = dt_ * Jt * Jf_q;
   E.block(n_contacts_, n_q_, n_contacts_, n_v_) =
       dt_ * Jn + dt_ * dt_ * Jn * Jf_v;
-  E.block(2 * n_contacts_, n_q_, 2 * n_contacts_ * n_friction_directions_,
-          n_v_) = Jt + dt_ * Jt * Jf_v;
+  E.block(2 * n_contacts_, n_q_, Jt_row_sizes_.sum(), n_v_) =
+      Jt + dt_ * Jt * Jf_v;
 
   // Formulate F matrix (force-force)
   F.block(0, n_contacts_, n_contacts_, n_contacts_) = mu_.asDiagonal();
-  F.block(0, 2 * n_contacts_, n_contacts_,
-          2 * n_contacts_ * n_friction_directions_) = -E_t;
+  F.block(0, 2 * n_contacts_, n_contacts_, Jt_row_sizes_.sum()) = -E_t;
   F.block(n_contacts_, n_contacts_, n_contacts_, n_contacts_) =
       dt_ * dt_ * Jn * MinvJ_n_T;
-  F.block(n_contacts_, 2 * n_contacts_, n_contacts_,
-          2 * n_contacts_ * n_friction_directions_) =
+  F.block(n_contacts_, 2 * n_contacts_, n_contacts_, Jt_row_sizes_.sum()) =
       dt_ * dt_ * Jn * MinvJ_t_T;
-  F.block(2 * n_contacts_, 0, 2 * n_contacts_ * n_friction_directions_,
-          n_contacts_) = E_t.transpose();
-  F.block(2 * n_contacts_, n_contacts_,
-          2 * n_contacts_ * n_friction_directions_, n_contacts_) =
+  F.block(2 * n_contacts_, 0, Jt_row_sizes_.sum(), n_contacts_) =
+      E_t.transpose();
+  F.block(2 * n_contacts_, n_contacts_, Jt_row_sizes_.sum(), n_contacts_) =
       dt_ * Jt * MinvJ_n_T;
-  F.block(2 * n_contacts_, 2 * n_contacts_,
-          2 * n_contacts_ * n_friction_directions_,
-          2 * n_contacts_ * n_friction_directions_) = dt_ * Jt * MinvJ_t_T;
+  F.block(2 * n_contacts_, 2 * n_contacts_, Jt_row_sizes_.sum(),
+          Jt_row_sizes_.sum()) = dt_ * Jt * MinvJ_t_T;
 
   // Formulate H matrix (force-input)
   H.block(n_contacts_, 0, n_contacts_, n_u_) = dt_ * dt_ * Jn * Jf_u;
-  H.block(2 * n_contacts_, 0, 2 * n_contacts_ * n_friction_directions_, n_u_) =
-      dt_ * Jt * Jf_u;
+  H.block(2 * n_contacts_, 0, Jt_row_sizes_.sum(), n_u_) = dt_ * Jt * Jf_u;
 
   // Formulate c vector
   c.segment(n_contacts_, n_contacts_) =
       phi + dt_ * dt_ * Jn * d_v - Jn * vNqdot * plant_.GetPositions(context_);
-  c.segment(2 * n_contacts_, 2 * n_contacts_ * n_friction_directions_) =
-      Jt * dt_ * d_v;
+  c.segment(2 * n_contacts_, Jt_row_sizes_.sum()) = Jt * dt_ * d_v;
 }
 
 void LCSFactory::FormulateAnitescuContactDynamics(
@@ -325,21 +367,19 @@ void LCSFactory::FormulateAnitescuContactDynamics(
 
   // Eₜ = blkdiag(e,.., e), e ∈ 1ⁿᵉ
   // (ne) number of directions in firctional cone
-  MatrixXd E_t =
-      MatrixXd::Zero(n_contacts_, 2 * n_contacts_ * n_friction_directions_);
+  MatrixXd E_t = MatrixXd::Zero(n_contacts_, Jt_row_sizes_.sum());
   for (int i = 0; i < n_contacts_; i++) {
-    E_t.block(i, i * (2 * n_friction_directions_), 1,
-              2 * n_friction_directions_) =
-        MatrixXd::Ones(1, 2 * n_friction_directions_);
+    E_t.block(i, Jt_row_sizes_.segment(0, i).sum(), 1, Jt_row_sizes_(i)) =
+        MatrixXd::Ones(1, Jt_row_sizes_(i));
   }
 
   // Apply same friction coefficients to each friction direction for same
   // contact
   VectorXd anitescu_mu_vec = VectorXd::Zero(n_lambda_);
   for (int i = 0; i < mu_.rows(); i++) {
-    anitescu_mu_vec.segment((2 * n_friction_directions_) * i,
-                            2 * n_friction_directions_) =
-        mu_(i) * VectorXd::Ones(2 * n_friction_directions_);
+    anitescu_mu_vec.segment(Jt_row_sizes_.segment(0, i).sum(),
+                            Jt_row_sizes_(i)) =
+        mu_(i) * VectorXd::Ones(Jt_row_sizes_(i));
   }
   MatrixXd anitescu_mu_matrix = anitescu_mu_vec.asDiagonal();
 
@@ -400,21 +440,19 @@ LCSFactory::GetContactJacobianAndPoints() {
   if (contact_model_ == ContactModel::kStewartAndTrinkle) {
     // if Stewart and Trinkle model, concatenate the normal and tangential
     // jacobian
-    MatrixXd J_c = MatrixXd::Zero(
-        n_contacts_ + 2 * n_contacts_ * n_friction_directions_, n_v_);
+    MatrixXd J_c = MatrixXd::Zero(n_contacts_ + Jt_row_sizes_.sum(), n_v_);
     J_c << Jn, Jt;
     return std::make_pair(J_c, contact_points);
   }
 
   // Model is Anitescu
-  int n_lambda_ = 2 * n_contacts_ * n_friction_directions_;
+  int n_lambda_ = Jt_row_sizes_.sum();
 
   // Eₜ = blkdiag(e,.., e), e ∈ 1ⁿᵉ
   MatrixXd E_t = MatrixXd::Zero(n_contacts_, n_lambda_);
   for (int i = 0; i < n_contacts_; i++) {
-    E_t.block(i, i * (2 * n_friction_directions_), 1,
-              2 * n_friction_directions_) =
-        MatrixXd::Ones(1, 2 * n_friction_directions_);
+    E_t.block(i, Jt_row_sizes_.segment(0, i).sum(), 1, Jt_row_sizes_(i)) =
+        MatrixXd::Ones(1, Jt_row_sizes_(i));
   }
 
   // Apply same friction coefficients to each friction direction
@@ -425,9 +463,8 @@ LCSFactory::GetContactJacobianAndPoints() {
 
   VectorXd mu_vector = VectorXd::Zero(n_lambda_);
   for (int i = 0; i < muXd.rows(); i++) {
-    mu_vector.segment((2 * n_friction_directions_) * i,
-                      2 * n_friction_directions_) =
-        muXd(i) * VectorXd::Ones(2 * n_friction_directions_);
+    mu_vector.segment(Jt_row_sizes_.segment(0, i).sum(), Jt_row_sizes_(i)) =
+        muXd(i) * VectorXd::Ones(Jt_row_sizes_(i));
   }
   MatrixXd mu_matrix = mu_vector.asDiagonal();
 
@@ -542,29 +579,66 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
   return LCS(A, B, D, d, E, F, H, c, other.dt());
 }
 
+int LCSFactory::GetNumContactVariables(
+    ContactModel contact_model, int num_contacts,
+    std::vector<int> num_friction_directions_per_contact) {
+  if (contact_model == ContactModel::kFrictionlessSpring) {
+    return num_contacts;  // Only normal forces
+  } else {
+    int num_tangential_lambda =
+        2 * std::accumulate(num_friction_directions_per_contact.begin(),
+                            num_friction_directions_per_contact.end(), 0);
+    if (contact_model == ContactModel::kStewartAndTrinkle) {
+      return 2 * num_contacts +
+             num_tangential_lambda;  // Compute contact variable count
+                                     // for Stewart-Trinkle model
+    } else if (contact_model == ContactModel::kAnitescu) {
+      return num_tangential_lambda;  // Compute contact variable
+                                     // count for Anitescu model
+    }
+  }
+  throw std::out_of_range("Unknown contact model.");
+}
+
 int LCSFactory::GetNumContactVariables(ContactModel contact_model,
                                        int num_contacts,
                                        int num_friction_directions) {
-  if (contact_model == ContactModel::kFrictionlessSpring) {
-    return num_contacts;  // Only normal forces
-  } else if (contact_model == ContactModel::kStewartAndTrinkle) {
-    return 2 * num_contacts +
-           2 * num_contacts *
-               num_friction_directions;  // Compute contact variable count
-                                         // for Stewart-Trinkle model
-  } else if (contact_model == ContactModel::kAnitescu) {
-    return 2 * num_contacts *
-           num_friction_directions;  // Compute contact variable
-                                     // count for Anitescu model
-  }
-  throw std::out_of_range("Unknown contact model.");
+  std::vector<int> num_friction_directions_per_contact(num_contacts,
+                                                       num_friction_directions);
+  return GetNumContactVariables(contact_model, num_contacts,
+                                num_friction_directions_per_contact);
 }
 
 int LCSFactory::GetNumContactVariables(const LCSFactoryOptions options) {
   multibody::ContactModel contact_model =
       GetContactModelMap().at(options.contact_model);
+  std::vector<int> n_friction_directions_per_contact;
+  if (options.num_friction_directions_per_contact.has_value()) {
+    n_friction_directions_per_contact =
+        options.num_friction_directions_per_contact.value();
+  } else if (options.contact_pair_configs.has_value()) {
+    for (auto& pair_config : options.contact_pair_configs.value()) {
+      std::vector<int> n_friction_directions_for_contact(
+          pair_config.body_A_collision_geom_indices.size() *
+              pair_config.body_B_collision_geom_indices.size(),
+          pair_config.num_friction_directions);
+      n_friction_directions_per_contact.insert(
+          n_friction_directions_per_contact.end(),
+          n_friction_directions_for_contact.begin(),
+          n_friction_directions_for_contact.end());
+    }
+  } else if (options.num_friction_directions.has_value()) {
+    n_friction_directions_per_contact = std::vector<int>(
+        options.num_contacts, options.num_friction_directions.value());
+  } else {
+    throw std::runtime_error(
+        "LCSFactoryOptions must specify num_friction_directions_per_contact, "
+        "num_friction_directions, or contact_pair_configs.");
+  }
+  DRAKE_DEMAND(n_friction_directions_per_contact.size() ==
+               (size_t)options.num_contacts);
   return GetNumContactVariables(contact_model, options.num_contacts,
-                                options.num_friction_directions);
+                                n_friction_directions_per_contact);
 }
 
 }  // namespace multibody

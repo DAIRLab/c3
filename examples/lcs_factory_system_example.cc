@@ -114,6 +114,7 @@ int RunCartpoleTest() {
   // Initialize the C3 cartpole problem. Assuming SDF matches default values in
   // problem.
   auto c3_cartpole_problem = C3CartpoleProblem();
+  c3_cartpole_problem.UseC3Plus();  // Use C3+ controller.
 
   DiagramBuilder<double> plant_builder;
   auto [plant_for_lcs, scene_graph_for_lcs] =
@@ -162,6 +163,7 @@ int RunCartpoleTest() {
   C3ControllerOptions options = drake::yaml::LoadYamlFile<C3ControllerOptions>(
       "examples/resources/cartpole_softwalls/"
       "c3_controller_cartpole_options.yaml");
+  options.projection_type = "C3+";  // Use C3+ controller.
 
   std::unique_ptr<drake::systems::Context<double>> plant_diagram_context =
       plant_diagram->CreateDefaultContext();
@@ -280,37 +282,6 @@ int RunPivotingTest() {
   // Build the plant diagram.
   auto plant_diagram = plant_builder.Build();
 
-  // Retrieve collision geometries for relevant bodies.
-  std::vector<drake::geometry::GeometryId> platform_collision_geoms =
-      plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("platform"));
-  std::vector<drake::geometry::GeometryId> cube_collision_geoms =
-      plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("cube"));
-  std::vector<drake::geometry::GeometryId> left_finger_collision_geoms =
-      plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("left_finger"));
-  std::vector<drake::geometry::GeometryId> right_finger_collision_geoms =
-      plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("right_finger"));
-
-  // Map collision geometries to their respective components.
-  std::unordered_map<std::string, std::vector<drake::geometry::GeometryId>>
-      contact_geoms;
-  contact_geoms["PLATFORM"] = platform_collision_geoms;
-  contact_geoms["CUBE"] = cube_collision_geoms;
-  contact_geoms["LEFT_FINGER"] = left_finger_collision_geoms;
-  contact_geoms["RIGHT_FINGER"] = right_finger_collision_geoms;
-
-  // Define contact pairs for the LCS system.
-  std::vector<SortedPair<GeometryId>> contact_pairs;
-  contact_pairs.emplace_back(contact_geoms["CUBE"][0],
-                             contact_geoms["LEFT_FINGER"][0]);
-  contact_pairs.emplace_back(contact_geoms["CUBE"][0],
-                             contact_geoms["PLATFORM"][0]);
-  contact_pairs.emplace_back(contact_geoms["CUBE"][0],
-                             contact_geoms["RIGHT_FINGER"][0]);
-
   // Build the main diagram.
   DiagramBuilder<double> builder;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, 0.01);
@@ -338,7 +309,7 @@ int RunPivotingTest() {
   // Add the LCS factory system.
   auto lcs_factory_system = builder.AddSystem<LCSFactorySystem>(
       plant_for_lcs, plant_for_lcs_context, *plant_autodiff,
-      *plant_context_autodiff, contact_pairs, options.lcs_factory_options);
+      *plant_context_autodiff, options.lcs_factory_options);
 
   // Add the C3 controller.
   auto c3_controller =

@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "core/c3_miqp.h"
+#include "core/c3_plus.h"
 #include "core/c3_qp.h"
 #include "core/lcs.h"
 #include "core/test/c3_cartpole_problem.hpp"
@@ -40,6 +41,7 @@ using namespace c3;
  * | Solve                  |    -    |
  * | SetOsqpSolverOptions   |    -    |
  * | CreatePlaceholderLCS   |   DONE  |
+ * | WarmStartSmokeTest     |   DONE  |
  * | # of regression tests  |    2    |
  *
  * It also has an E2E test for ensuring the "Solve()" function and other
@@ -221,40 +223,6 @@ TEST_F(C3CartpoleTest, UpdateCostMatrix) {
   }
 }
 
-// Test if user can update the LCS for the C3 problem
-TEST_F(C3CartpoleTest, UpdateLCSTest) {
-  std::vector<drake::solvers::LinearEqualityConstraint*>
-      pre_dynamic_constraints = pOpt->GetDynamicConstraints();
-  vector<MatrixXd> pre_Al(N);
-  for (int i = 0; i < N; ++i) {
-    pre_Al[i] = pre_dynamic_constraints[i]->GetDenseA();
-  }
-
-  // Dynamics
-  vector<MatrixXd> An(N, MatrixXd::Identity(n, n));
-  vector<MatrixXd> Bn(N, MatrixXd::Identity(n, k));
-  vector<MatrixXd> Dn(N, MatrixXd::Identity(n, m));
-  vector<VectorXd> dn(N, VectorXd::Ones(n));
-
-  // Complimentary constraints
-  vector<MatrixXd> En(N, MatrixXd::Identity(m, n));
-  vector<MatrixXd> Fn(N, MatrixXd::Identity(m, m));
-  vector<VectorXd> cn(N, VectorXd::Ones(m));
-  vector<MatrixXd> Hn(N, MatrixXd::Identity(m, k));
-
-  LCS TestSystem(An, Bn, Dn, dn, En, Fn, Hn, cn, dt);
-
-  pOpt->UpdateLCS(TestSystem);
-
-  std::vector<drake::solvers::LinearEqualityConstraint*>
-      pst_dynamic_constraints = pOpt->GetDynamicConstraints();
-  for (int i = 0; i < N; ++i) {
-    // Linear Equality A matrix should be updated
-    MatrixXd pst_Al = pst_dynamic_constraints[i]->GetDenseA();
-    EXPECT_EQ(pre_Al[i].isApprox(pst_Al), false);
-  }
-}
-
 class C3CartpoleTestParameterizedScalingLCSTest
     : public C3CartpoleTest,
       public ::testing::WithParamInterface<std::tuple<bool, bool>> {};
@@ -342,18 +310,69 @@ TEST_F(C3CartpoleTest, CreatePlaceholder) {
   ASSERT_TRUE(placeholder.HasSameDimensionsAs(*pSystem));
 }
 
+// Test if the solver works with warm start enabled (smoke test)
+TEST_F(C3CartpoleTest, WarmStartSmokeTest) {
+  // Enable warm start option
+  options.warm_start = true;
+  C3MIQP optimizer(*pSystem, cost, xdesired, options);
+
+  // Solver should not throw when called with warm start
+  ASSERT_NO_THROW(optimizer.Solve(x0));
+}
+
 template <typename T>
 class C3CartpoleTypedTest : public testing::Test, public C3CartpoleProblem {
  protected:
   C3CartpoleTypedTest()
       : C3CartpoleProblem(0.411, 0.978, 0.6, 0.4267, 0.35, -0.35, 100, 9.81) {
+    if (std::is_same<T, C3Plus>::value) UseC3Plus();
     pOpt = std::make_unique<T>(*pSystem, cost, xdesired, options);
   }
   std::unique_ptr<T> pOpt;
 };
 
-using projection_types = ::testing::Types<C3QP, C3MIQP>;
+using projection_types = ::testing::Types<C3QP, C3MIQP, C3Plus>;
 TYPED_TEST_SUITE(C3CartpoleTypedTest, projection_types);
+
+// Test if user can update the LCS for the C3 problem
+TYPED_TEST(C3CartpoleTypedTest, UpdateLCSTest) {
+  c3::C3* pOpt = this->pOpt.get();
+  auto dt = this->dt;
+  std::vector<drake::solvers::LinearEqualityConstraint*>
+      pre_dynamic_constraints = pOpt->GetDynamicConstraints();
+  auto& N = this->N;
+  auto n = this->n;
+  auto k = this->k;
+  auto m = this->m;
+  vector<MatrixXd> pre_Al(N);
+  for (int i = 0; i < N; ++i) {
+    pre_Al[i] = pre_dynamic_constraints[i]->GetDenseA();
+  }
+
+  // Dynamics
+  vector<MatrixXd> An(N, MatrixXd::Identity(n, n));
+  vector<MatrixXd> Bn(N, MatrixXd::Identity(n, k));
+  vector<MatrixXd> Dn(N, MatrixXd::Identity(n, m));
+  vector<VectorXd> dn(N, VectorXd::Ones(n));
+
+  // Complimentary constraints
+  vector<MatrixXd> En(N, MatrixXd::Identity(m, n));
+  vector<MatrixXd> Fn(N, MatrixXd::Identity(m, m));
+  vector<VectorXd> cn(N, VectorXd::Ones(m));
+  vector<MatrixXd> Hn(N, MatrixXd::Identity(m, k));
+
+  LCS TestSystem(An, Bn, Dn, dn, En, Fn, Hn, cn, dt);
+
+  pOpt->UpdateLCS(TestSystem);
+
+  std::vector<drake::solvers::LinearEqualityConstraint*>
+      pst_dynamic_constraints = pOpt->GetDynamicConstraints();
+  for (int i = 0; i < N; ++i) {
+    // Linear Equality A matrix should be updated
+    MatrixXd pst_Al = pst_dynamic_constraints[i]->GetDenseA();
+    EXPECT_EQ(pre_Al[i].isApprox(pst_Al), false);
+  }
+}
 
 // Test the cartpole example
 // This test will take some time to complete ~30s

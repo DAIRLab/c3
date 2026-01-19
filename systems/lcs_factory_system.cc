@@ -27,17 +27,33 @@ LCSFactorySystem::LCSFactorySystem(
     drake::systems::Context<double>& context,
     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>& context_ad,
+    LCSFactoryOptions options) {
+  InitializeSystem(plant, options);
+  lcs_factory_ = std::make_unique<multibody::LCSFactory>(
+      plant, context, plant_ad, context_ad, options);
+}
+
+LCSFactorySystem::LCSFactorySystem(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>& context,
+    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    drake::systems::Context<drake::AutoDiffXd>& context_ad,
     const std::vector<drake::SortedPair<drake::geometry::GeometryId>>
         contact_geoms,
     LCSFactoryOptions options) {
+  InitializeSystem(plant, options);
+  lcs_factory_ = std::make_unique<multibody::LCSFactory>(
+      plant, context, plant_ad, context_ad, contact_geoms, options);
+}
+
+void LCSFactorySystem::InitializeSystem(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    LCSFactoryOptions& options) {
   this->set_name("lcs_factory_system");
 
   n_x_ = plant.num_positions() + plant.num_velocities();
   n_lambda_ = multibody::LCSFactory::GetNumContactVariables(options);
   n_u_ = plant.num_actuators();
-
-  lcs_factory_ = std::make_unique<multibody::LCSFactory>(
-      plant, context, plant_ad, context_ad, contact_geoms, options);
 
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))

@@ -129,6 +129,22 @@ class C3CartpoleProblem {
     xdesired.resize(N + 1, xdesiredinit);
   }
 
+  void UseC3Plus() {
+    MatrixXd Ginit(n + 2 * m + k, n + 2 * m + k);
+    Ginit = MatrixXd::Zero(n + 2 * m + k, n + 2 * m + k);
+    Ginit.block(n + m + k, n + m + k, m, m) = MatrixXd::Identity(m, m);
+    Ginit.block(n, n, m, m) = MatrixXd::Identity(m, m);
+
+    MatrixXd Uinit(n + 2 * m + k, n + 2 * m + k);
+    Uinit = MatrixXd::Zero(n + 2 * m + k, n + 2 * m + k);
+    Uinit.block(n, n, m, m) = MatrixXd::Identity(m, m);
+    Uinit.block(n + m + k, n + m + k, m, m) = 10000 * MatrixXd::Identity(m, m);
+
+    vector<MatrixXd> G(N, Ginit);
+    vector<MatrixXd> U(N, Uinit);
+    cost = C3::CostMatrices(cost.Q, cost.R, G, U);
+  }
+
   // Cartpole problem parameters
   float mp, mc, len_p, len_com, d1, d2, ks, g;
 

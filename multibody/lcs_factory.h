@@ -18,6 +18,7 @@ using drake::AutoDiffXd;
 using drake::MatrixX;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::VectorXi;
 
 namespace c3 {
 namespace multibody {
@@ -53,6 +54,12 @@ inline const std::map<std::string, ContactModel>& GetContactModelMap() {
  */
 class LCSFactory {
  public:
+  LCSFactory(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>& context,
+      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+      drake::systems::Context<drake::AutoDiffXd>& context_ad,
+      LCSFactoryOptions& options);
   /**
    * @brief Constructor for the LCSFactory class.
    *
@@ -154,12 +161,11 @@ class LCSFactory {
 
   /**
    * @brief Computes the number of contact variables based on the contact model
-   * and options.
+   * and number of contacts.
    *
    * @param contact_model The contact model to use.
    * @param num_contacts The number of contact points.
-   * @param num_friction_directions The number of friction directions.
-   * @param frictionless Whether the contacts are frictionless.
+   * @param num_friction_directions The total number of friction directions.
    * @return int The number of contact variables.
    */
   static int GetNumContactVariables(ContactModel contact_model,
@@ -167,7 +173,24 @@ class LCSFactory {
                                     int num_friction_directions);
 
   /**
+   * @brief Computes the number of contact variables based on the contact model
+   * and per-contact friction directions.
+   *
+   * @param contact_model The contact model to use.
+   * @param num_contacts The number of contact points.
+   * @param num_friction_directions_per_contact The number of friction
+   * directions for each contact.
+   * @return int The number of contact variables.
+   */
+  static int GetNumContactVariables(
+      ContactModel contact_model, int num_contacts,
+      std::vector<int> num_friction_directions_per_contact);
+
+  /**
    * @brief Computes the number of contact variables based on the LCS options.
+   *
+   * This is the preferred overload as it encapsulates all contact model and
+   * friction configuration in a single options object.
    *
    * @param options The LCS options specifying contact model and friction
    * properties.
@@ -285,23 +308,26 @@ class LCSFactory {
   drake::systems::Context<double>& context_;
   const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
   drake::systems::Context<drake::AutoDiffXd>& context_ad_;
-  const std::vector<drake::SortedPair<drake::geometry::GeometryId>>
-      contact_pairs_;
+  std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_pairs_;
 
   // Configuration options for the LCSFactory
   LCSFactoryOptions options_;
 
-  int n_q_;                     ///< Number of configuration variables.
-  int n_v_;                     ///< Number of velocity variables.
-  int n_x_;                     ///< Number of state variables.
-  int n_lambda_;                ///< Number of contact force variables.
-  int n_u_;                     ///< Number of input variables.
-  int n_contacts_;              ///< Number of contact points.
-  int n_friction_directions_;   ///< Number of friction directions.
-  ContactModel contact_model_;  ///< The contact model being used.
-  std::vector<double> mu_;      ///< Vector of friction coefficients.
-  bool frictionless_;           ///< Flag indicating frictionless contacts.
-  double dt_;                   ///< Time step.
+  int n_contacts_;  ///< Number of contact points.
+  std::vector<int>
+      n_friction_directions_per_contact_;  ///< Number of friction directions.
+  ContactModel contact_model_;             ///< The contact model being used.
+  int n_q_;       ///< Number of configuration variables.
+  int n_v_;       ///< Number of velocity variables.
+  int n_x_;       ///< Number of state variables.
+  int n_lambda_;  ///< Number of contact force variables.
+  int n_u_;       ///< Number of input variables.
+
+  std::vector<double> mu_;  ///< Vector of friction coefficients.
+  bool frictionless_;       ///< Flag indicating frictionless contacts.
+  double dt_;               ///< Time step.
+
+  VectorXi Jt_row_sizes_;  ///< Row sizes for tangential Jacobian blocks.
 };
 
 }  // namespace multibody
