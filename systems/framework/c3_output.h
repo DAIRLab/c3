@@ -7,6 +7,8 @@
 
 #include <Eigen/Dense>
 
+#include "c3/lcmt_output.hpp"
+
 using Eigen::MatrixXf;
 using Eigen::VectorXf;
 
@@ -26,6 +28,14 @@ class C3Output {
       u_sol_ = MatrixXf::Zero(n_u, N);
       time_vector_ = VectorXf::Zero(N);
     };
+
+    Eigen::MatrixXf GetStateSolution() const { return x_sol_; }
+
+    Eigen::MatrixXf GetForceSolution() const { return lambda_sol_; }
+
+    Eigen::MatrixXf GetInputSolution() const { return u_sol_; }
+
+    Eigen::VectorXf GetTimeVector() const { return time_vector_; }
 
     // Shape is (variable_vector_size, knot_points)
     Eigen::VectorXf time_vector_;
@@ -62,6 +72,8 @@ class C3Output {
   // explicit C3Output(const lcmt_c3_output& traj);
 
   virtual ~C3Output() = default;
+
+  lcmt_output GenerateLcmObject(double time) const;
 
  private:
   C3Solution c3_solution_;

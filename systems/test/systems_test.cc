@@ -16,6 +16,7 @@
 #include "systems/lcs_factory_system.h"
 #include "systems/lcs_simulator.h"
 
+using c3::multibody::LCSContactDescription;
 using c3::multibody::LCSFactory;
 using c3::systems::C3Controller;
 using c3::systems::C3ControllerOptions;
@@ -204,6 +205,10 @@ TYPED_TEST(C3ControllerTypedTest, CheckPlannedTrajectory) {
   EXPECT_EQ(c3_intermediates.time_vector_.size(), pSystem->N());
   int total_vars =
       pSystem->num_states() + pSystem->num_lambdas() + pSystem->num_inputs();
+  if constexpr (std::is_same<TypeParam, C3Plus>::value) {
+    // C3Plus has additional slack variables
+    total_vars += pSystem->num_lambdas();
+  }
   EXPECT_EQ(c3_intermediates.z_.rows(), total_vars);
   EXPECT_EQ(c3_intermediates.delta_.rows(), total_vars);
   EXPECT_EQ(c3_intermediates.w_.rows(), total_vars);
@@ -340,7 +345,8 @@ TEST_F(LCSFactorySystemTest, InputOutputPortSizes) {
   EXPECT_EQ(lcs_factory_system->get_input_port_lcs_input().size(),
             plant->num_actuators());
   EXPECT_NO_THROW(lcs_factory_system->get_output_port_lcs());
-  EXPECT_NO_THROW(lcs_factory_system->get_output_port_lcs_contact_jacobian());
+  EXPECT_NO_THROW(
+      lcs_factory_system->get_output_port_lcs_contact_descriptions());
 }
 
 TEST_F(LCSFactorySystemTest, OutputLCSIsValid) {
@@ -360,14 +366,21 @@ TEST_F(LCSFactorySystemTest, OutputContactJacobianIsValid) {
   // Check that the contact Jacobian output is valid
   EXPECT_NO_THROW(
       { lcs_factory_system->CalcOutput(*lcs_context, lcs_output.get()); });
-  auto [J_lcs, p_lcs] =
-      lcs_output->get_data(1)
-          ->get_value<
-              std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>>();
-  EXPECT_EQ(p_lcs.size(), contact_pairs.size());  // for two pairs of contacts
-  EXPECT_EQ(p_lcs.at(0).size(), 3);               // 3D coordinate point
-  EXPECT_EQ(J_lcs.cols(), plant->num_velocities());
-  EXPECT_EQ(J_lcs.rows(), contact_pairs.size());  // for frictionless spring
+  auto contact_descriptions =
+      lcs_output->get_data(1)->get_value<std::vector<LCSContactDescription>>();
+  EXPECT_EQ(contact_descriptions.size(),
+            contact_pairs.size());  // for two pairs of contacts
+  EXPECT_EQ(contact_descriptions.back().witness_point_A.size(),
+            3);  // 3D coordinate point
+  EXPECT_FALSE(
+      contact_descriptions.back().witness_point_A.isZero());  // Not zero
+  EXPECT_EQ(contact_descriptions.back().witness_point_B.size(),
+            3);  // 3D coordinate point
+  EXPECT_FALSE(
+      contact_descriptions.back().witness_point_B.isZero());  // Not zero
+  EXPECT_EQ(contact_descriptions.back().force_basis.size(),
+            3);  // 3D force basis
+  EXPECT_FALSE(contact_descriptions.back().force_basis.isZero());  // Not zero
 }
 
 }  // namespace test

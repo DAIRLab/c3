@@ -47,6 +47,19 @@ inline const std::map<std::string, ContactModel>& GetContactModelMap() {
   return kContactModelMap;
 }
 
+struct LCSContactDescription {
+  Eigen::Vector3d witness_point_A;  ///< Witness point on geometry A.
+  Eigen::Vector3d witness_point_B;  ///< Witness point on geometry B.
+  Eigen::Vector3d force_basis;      ///< Force basis vector
+  bool is_slack = false;  ///< Indicates if the contact variable associate to
+                          ///< the LCS is a slack variable.
+
+  static LCSContactDescription CreateSlackVariableDescription() {
+    return {Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
+            Eigen::Vector3d::Zero(), true};
+  }
+};
+
 /**
  * @class LCSFactory
  * @brief Factory class for creating Linear Complementarity Systems (LCS) from
@@ -91,16 +104,12 @@ class LCSFactory {
   LCS GenerateLCS();
 
   /**
-   * @brief Computes the contact Jacobian for a given multibody plant and
-   * context.
+   * @brief Finds the witness points for each contact pair.
    *
-   * This method calculates the signed distance values and the contact Jacobians
-   * for normal and tangential forces at the specified contact points.
-   *
-   * @return A pair containing the contact Jacobian matrix and a vector of
-   * contact points.
+   * @return A pair of vectors containing the witness points on each geometry
+   * for each contact pair.
    */
-  std::pair<MatrixXd, std::vector<VectorXd>> GetContactJacobianAndPoints();
+  std::vector<LCSContactDescription> GetContactDescriptions();
 
   /**
    * @brief Updates the state and input vectors in the internal context.
@@ -294,14 +303,6 @@ class LCSFactory {
    * @param[out] Jt Contact Jacobian for tangential forces.
    */
   void ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn, MatrixXd& Jt);
-
-  /**
-   * @brief Finds the witness points for each contact pair.
-   *
-   * @return A pair of vectors containing the witness points on each geometry
-   * for each contact pair.
-   */
-  std::pair<std::vector<VectorXd>, std::vector<VectorXd>> FindWitnessPoints();
 
   // References to the MultibodyPlant and its contexts
   const drake::multibody::MultibodyPlant<double>& plant_;

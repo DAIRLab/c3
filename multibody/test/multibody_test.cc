@@ -265,8 +265,8 @@ TEST_P(LCSFactoryParameterizedPivotingTest, LinearizePlantToLCS) {
 TEST_P(LCSFactoryParameterizedPivotingTest, UpdateStateAndInput) {
   // Generate initial LCS at zero state
   LCS initial_lcs = fixture.lcs_factory->GenerateLCS();
-  auto [initial_J, initial_contact_points] =
-      fixture.lcs_factory->GetContactJacobianAndPoints();
+  auto initial_contact_descriptions =
+      fixture.lcs_factory->GetContactDescriptions();
 
   // Update to non-zero state (cube tilted and positioned above platform)
   drake::VectorX<double> state = VectorXd::Zero(
@@ -279,10 +279,9 @@ TEST_P(LCSFactoryParameterizedPivotingTest, UpdateStateAndInput) {
 
   // Generate updated LCS
   LCS updated_lcs = fixture.lcs_factory->GenerateLCS();
-  auto [updated_J, updated_contact_points] =
-      fixture.lcs_factory->GetContactJacobianAndPoints();
+  auto updated_contact_descriptions =
+      fixture.lcs_factory->GetContactDescriptions();
 
-  // Dynamics matrices should remain the same (linearized at same point)
   EXPECT_EQ(initial_lcs.A(), updated_lcs.A());
   EXPECT_EQ(initial_lcs.B(), updated_lcs.B());
   EXPECT_EQ(initial_lcs.d(), updated_lcs.d());
@@ -297,15 +296,20 @@ TEST_P(LCSFactoryParameterizedPivotingTest, UpdateStateAndInput) {
   }
 
   // Contact Jacobian and points should change
-  EXPECT_NE(initial_J, updated_J);
-  for (size_t i = 0; i < initial_contact_points.size(); ++i) {
-    EXPECT_NE(initial_contact_points[i], updated_contact_points[i]);
+  for (size_t i = 0; i < initial_contact_descriptions.size(); ++i) {
+    if (initial_contact_descriptions[i].is_slack) continue;
+    EXPECT_NE(initial_contact_descriptions[i].witness_point_A,
+              updated_contact_descriptions[i].witness_point_A);
+    EXPECT_NE(initial_contact_descriptions[i].witness_point_B,
+              updated_contact_descriptions[i].witness_point_B);
+    EXPECT_NE(initial_contact_descriptions[i].force_basis,
+              updated_contact_descriptions[i].force_basis);
   }
 }
 
 // Test contact Jacobian computation for different contact models
-TEST_P(LCSFactoryParameterizedPivotingTest, ComputeContactJacobian) {
-  auto [J, contact_points] = fixture.lcs_factory->GetContactJacobianAndPoints();
+TEST_P(LCSFactoryParameterizedPivotingTest, CheckContactDescriptionSizes) {
+  auto contact_descriptions = fixture.lcs_factory->GetContactDescriptions();
 
   int n_contacts = fixture.contact_pairs.size();
   auto n_tangential_directions =
@@ -313,27 +317,31 @@ TEST_P(LCSFactoryParameterizedPivotingTest, ComputeContactJacobian) {
               fixture.options.num_friction_directions_per_contact->begin(),
               fixture.options.num_friction_directions_per_contact->end(), 0);
 
+  for (size_t i = 0; i < contact_descriptions.size(); ++i) {
+    if (contact_descriptions[i].is_slack) continue;
+    EXPECT_FALSE(contact_descriptions[i].witness_point_A.isZero());
+    EXPECT_FALSE(contact_descriptions[i].witness_point_B.isZero());
+    EXPECT_FALSE(contact_descriptions[i].force_basis.isZero());
+  }
+
   // Verify Jacobian rows based on contact model
   switch (fixture.contact_model) {
     case ContactModel::kStewartAndTrinkle:
       // Normal + tangential directions for all contacts
-      EXPECT_EQ(J.rows(), n_contacts + n_tangential_directions);
+      EXPECT_EQ(contact_descriptions.size(),
+                2*n_contacts + n_tangential_directions);
       break;
     case ContactModel::kFrictionlessSpring:
       // Normal directions only
-      EXPECT_EQ(J.rows(), n_contacts);
+      EXPECT_EQ(contact_descriptions.size(), n_contacts);
       break;
     case ContactModel::kAnitescu:
       // Tangential directions only (normal handled differently)
-      EXPECT_EQ(J.rows(), n_tangential_directions);
+      EXPECT_EQ(contact_descriptions.size(), n_tangential_directions);
       break;
     default:
       EXPECT_TRUE(false);
   }
-
-  // Jacobian should map velocities to contact space
-  EXPECT_EQ(J.cols(), fixture.plant->num_velocities());
-  EXPECT_EQ(contact_points.size(), n_contacts);
 }
 
 // Test fixing specific contact modes in the LCS

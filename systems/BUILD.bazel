@@ -12,6 +12,7 @@ cc_library(
         ":c3_controller",
         ":lcs_simulator",
         ":lcs_factory_system",
+        ":lcmt_generators",
     ]
 )
 
@@ -26,6 +27,7 @@ cc_library(
         "framework/timestamped_vector.h",
     ],
     deps = [
+        "//lcmtypes:lcmt_c3",
         "@drake//:drake_shared_library",
     ],
 )
@@ -85,10 +87,29 @@ cc_library(
     deps = [
         "//core:options",
         "//multibody:options",
-        "@drake//:drake_shared_library",
     ]
 )
 
+cc_library(
+    name = "lcmt_generators",
+    srcs = [
+        "lcmt_generators/c3_output_generator.cc",
+        "lcmt_generators/contact_force_generator.cc",
+        "lcmt_generators/c3_trajectory_generator.cc",
+    ],
+    hdrs = [
+        "lcmt_generators/c3_output_generator.h",
+        "lcmt_generators/contact_force_generator.h",
+        "lcmt_generators/c3_trajectory_generator.h",
+        "lcmt_generators/c3_trajectory_generator_config.h",
+    ],
+    deps = [
+        ":framework",
+        "//multibody:lcs_factory",
+        "//lcmtypes:lcmt_c3",
+        "@drake//:drake_shared_library",
+    ],
+)
 
 
 cc_library(
@@ -100,6 +121,7 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
 cc_test(
     name = "systems_test",
     srcs = [
@@ -131,11 +153,27 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "generators_test",
+    srcs = [
+        "test/generators_test.cc"
+    ],
+    deps = [
+        ":lcmt_generators",
+        "//core:c3_cartpole_problem",
+        "@gtest//:main",
+    ],
+)
+
 filegroup(
     name = "headers",
     srcs = glob([
         "*.h",
         "**/*.h",
     ]),
+)
+
+exports_files(
+    glob(["**/*.h", "**/*.hpp"]),
     visibility = ["//visibility:public"],
 )
