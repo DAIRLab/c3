@@ -579,24 +579,6 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
   return LCS(A, B, D, d, E, F, H, c, other.dt());
 }
 
-int LCSFactory::GetNumContactVariables(ContactModel contact_model,
-                                       int num_contacts,
-                                       int num_friction_directions) {
-  if (contact_model == ContactModel::kFrictionlessSpring) {
-    return num_contacts;  // Only normal forces
-  } else if (contact_model == ContactModel::kStewartAndTrinkle) {
-    return 2 * num_contacts +
-           2 * num_contacts *
-               num_friction_directions;  // Compute contact variable count
-                                         // for Stewart-Trinkle model
-  } else if (contact_model == ContactModel::kAnitescu) {
-    return 2 * num_contacts *
-           num_friction_directions;  // Compute contact variable
-                                     // count for Anitescu model
-  }
-  throw std::out_of_range("Unknown contact model.");
-}
-
 int LCSFactory::GetNumContactVariables(
     ContactModel contact_model, int num_contacts,
     std::vector<int> num_friction_directions_per_contact) {
@@ -616,6 +598,15 @@ int LCSFactory::GetNumContactVariables(
     }
   }
   throw std::out_of_range("Unknown contact model.");
+}
+
+int LCSFactory::GetNumContactVariables(ContactModel contact_model,
+                                       int num_contacts,
+                                       int num_friction_directions) {
+  std::vector<int> num_friction_directions_per_contact(num_contacts,
+                                                       num_friction_directions);
+  return GetNumContactVariables(contact_model, num_contacts,
+                                num_friction_directions_per_contact);
 }
 
 int LCSFactory::GetNumContactVariables(const LCSFactoryOptions options) {

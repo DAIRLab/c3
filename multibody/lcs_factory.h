@@ -161,25 +161,36 @@ class LCSFactory {
 
   /**
    * @brief Computes the number of contact variables based on the contact model
-   * and options.
+   * and number of contacts.
    *
    * @param contact_model The contact model to use.
    * @param num_contacts The number of contact points.
-   * @param num_friction_directions The number of friction directions.
-   * @param frictionless Whether the contacts are frictionless.
+   * @param num_friction_directions The total number of friction directions.
    * @return int The number of contact variables.
    */
   static int GetNumContactVariables(ContactModel contact_model,
                                     int num_contacts,
                                     int num_friction_directions);
 
+  /**
+   * @brief Computes the number of contact variables based on the contact model
+   * and per-contact friction directions.
+   *
+   * @param contact_model The contact model to use.
+   * @param num_contacts The number of contact points.
+   * @param num_friction_directions_per_contact The number of friction
+   * directions for each contact.
+   * @return int The number of contact variables.
+   */
   static int GetNumContactVariables(
       ContactModel contact_model, int num_contacts,
       std::vector<int> num_friction_directions_per_contact);
 
   /**
-   * @brief Computes the number of contact variables based on the LCS
-   * options.
+   * @brief Computes the number of contact variables based on the LCS options.
+   *
+   * This is the preferred overload as it encapsulates all contact model and
+   * friction configuration in a single options object.
    *
    * @param options The LCS options specifying contact model and friction
    * properties.
