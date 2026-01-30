@@ -51,6 +51,8 @@ class C3Plus final : public C3 {
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index = -1) override;
 
+  void UpdateLCS(const LCS& lcs) override;
+
  protected:
   std::vector<std::vector<Eigen::VectorXd>> warm_start_eta_;
 
@@ -61,7 +63,6 @@ class C3Plus final : public C3 {
                         bool is_final_solve) override;
   void StoreQPResults(const drake::solvers::MathematicalProgramResult& result,
                       int admm_iteration, bool is_final_solve) override;
-  void UpdateLCS(const LCS& lcs) override;
   void SetInitialGuessQP(const Eigen::VectorXd& x0,
                          int admm_iteration) override;
   std::vector<drake::solvers::VectorXDecisionVariable> eta_;
