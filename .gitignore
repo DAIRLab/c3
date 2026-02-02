@@ -8,3 +8,4 @@ MODULE.bazel.lock
 .vscode
 *.ps
 genhtml/*
+.DS_Store
