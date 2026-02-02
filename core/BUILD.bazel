@@ -57,8 +57,14 @@ cc_library(
     data = [
         ":default_solver_options",
     ],
-    copts = ["-fopenmp"],
-    linkopts = ["-fopenmp"],
+    copts = select({
+        "@platforms//os:macos": ["-Xclang"],
+        "//conditions:default": ["-fopenmp"],
+    }),
+    linkopts = select({
+        "@platforms//os:macos": ["-lomp"],
+        "//conditions:default": ["-lgomp"],
+    }),
     deps = [
         ":lcs",
         ":options",
@@ -67,6 +73,10 @@ cc_library(
     ] + select({
          "//tools:with_gurobi": ["@gurobi//:gurobi_cxx"],
          "//conditions:default": [],
+    }) + 
+        select({
+        "@platforms//os:macos": ["@libomp"],
+        "//conditions:default": [],
     }),
     includes = ['.']
 )

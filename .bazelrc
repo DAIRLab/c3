@@ -31,7 +31,7 @@
 build -c opt
 
 # Default build options.
-build --force_pic
+build:linux --force_pic
 build --strip=never
 
 # Default test options.
@@ -46,7 +46,14 @@ build --host_cxxopt=-std=c++20
 build --action_env=CCACHE_DISABLE=1
 
 build --action_env=PATH=/usr/bin:/bin
-build --action_env=LD_LIBRARY_PATH=
+build --action_env=LD_LIBRARY_PATH=:
+
+# macOS-specific OpenMP configuration (use libomp from Homebrew)
+build:omp_macos --copt=-DEIGEN_DONT_PARALLELIZE
+build:omp_macos --copt=-Xclang
+build:omp_macos --action_env=CPATH=/opt/homebrew/opt/libomp/include
+build:omp_macos --action_env=LIBRARY_PATH=/opt/homebrew/opt/libomp/lib
+build --java_runtime_version=remotejdk_11
 
 # use python3 by default
 build --python_path=python3
