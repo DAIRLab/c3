@@ -17,6 +17,7 @@ lcs_factory_options:
   mu: [0, 0]
   N: 5
   dt: 0.01
+  planar_normal_direction: [0, 1, 0]
 
 c3_options:
   warm_start: false

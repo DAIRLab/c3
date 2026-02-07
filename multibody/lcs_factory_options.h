@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/common/yaml/yaml_read_archive.h"
 
@@ -11,7 +13,9 @@ struct ContactPairConfig {
   std::vector<int> body_A_collision_geom_indices;
   std::vector<int> body_B_collision_geom_indices;
   int num_friction_directions;
-  double mu;  // friction coefficient
+  std::optional<std::array<double, 3>>
+      planar_normal_direction;  // optional normal vector for planar contact
+  double mu;                    // friction coefficient
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -20,6 +24,7 @@ struct ContactPairConfig {
     a->Visit(DRAKE_NVP(body_A_collision_geom_indices));
     a->Visit(DRAKE_NVP(body_B_collision_geom_indices));
     a->Visit(DRAKE_NVP(num_friction_directions));
+    a->Visit(DRAKE_NVP(planar_normal_direction));
     a->Visit(DRAKE_NVP(mu));
   }
 };
@@ -35,6 +40,11 @@ struct LCSFactoryOptions {
       num_friction_directions_per_contact;  // Number of friction directions per
   std::optional<std::vector<double>>
       mu;  // Friction coefficient for each contact
+  std::optional<std::array<double, 3>>
+      planar_normal_direction;  // Optional normal vector for planar contact
+  std::optional<std::vector<std::array<double, 3>>>
+      planar_normal_direction_per_contact;  // Optional normal vector for planar
+                                            // contact for each contact
 
   std::optional<std::vector<ContactPairConfig>>
       contact_pair_configs;  // Optional detailed contact pair configurations
@@ -50,6 +60,8 @@ struct LCSFactoryOptions {
     a->Visit(DRAKE_NVP(num_friction_directions));
     a->Visit(DRAKE_NVP(num_friction_directions_per_contact));
     a->Visit(DRAKE_NVP(mu));
+    a->Visit(DRAKE_NVP(planar_normal_direction));
+    a->Visit(DRAKE_NVP(planar_normal_direction_per_contact));
     a->Visit(DRAKE_NVP(contact_pair_configs));
 
     a->Visit(DRAKE_NVP(N));

@@ -1,5 +1,6 @@
 contact_model: "stewart_and_trinkle"
 num_friction_directions: 1
+planar_normal_direction: [0, 1, 0]
 num_contacts: 3
 spring_stiffness: 0
 mu: [0.1, 0.1, 0.1]
@@ -12,15 +13,18 @@ contact_pair_configs: # Not used but kept to test parsing
     body_B_collision_geom_indices: [0]
     mu: 0.1
     num_friction_directions: 1
+    planar_normal_direction: [0, 1, 0]
   - body_A: "cube"
     body_A_collision_geom_indices: [0]
     body_B: "right_finger"
     body_B_collision_geom_indices: [0]
     mu: 0.1
     num_friction_directions: 1
+    planar_normal_direction: [0, 1, 0]
   - body_A: "cube"
     body_A_collision_geom_indices: [0]
     body_B: "platform"
     body_B_collision_geom_indices: [0]
     mu: 0.1
     num_friction_directions: 1
+    planar_normal_direction: [0, 1, 0]

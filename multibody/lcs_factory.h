@@ -316,7 +316,11 @@ class LCSFactory {
   int n_contacts_;  ///< Number of contact points.
   std::vector<int>
       n_friction_directions_per_contact_;  ///< Number of friction directions.
-  ContactModel contact_model_;             ///< The contact model being used.
+  std::vector<std::array<double, 3>>
+      planar_normal_direction_per_contact_;  ///< Optional normal vector for
+                                             ///< planar contact for each
+                                             ///< contact.
+  ContactModel contact_model_;               ///< The contact model being used.
   int n_q_;       ///< Number of configuration variables.
   int n_v_;       ///< Number of velocity variables.
   int n_x_;       ///< Number of state variables.

@@ -47,10 +47,12 @@ pybind_py_library(
                 "@drake//bindings/pydrake/common:default_scalars_pybind",
                 "@drake//bindings/pydrake/common:value_pybind",
                 "@drake//bindings/pydrake/common:sorted_pair_pybind",
+                "@drake//bindings/pydrake/common:type_pack",
                 ],
     cc_so_name = "systems",
     cc_srcs = ["c3_systems_py.cc"],
     py_deps = [
+        "@drake//bindings/pydrake", # TODO: This may break pip install when building pyc3_wheel
         ":module_py",
     ],
     py_imports = ["."],
