@@ -53,6 +53,7 @@ LCSFactory::LCSFactory(
   mu_.clear();
   n_friction_directions_per_contact_.clear();
   contact_pairs_.clear();
+  planar_normal_direction_per_contact_.clear();
   for (auto& pair : options.contact_pair_configs.value()) {
     std::vector<GeometryId> body_A_collision_geoms =
         plant.GetCollisionGeometriesForBody(plant.GetBodyByName(pair.body_A));
@@ -66,6 +67,14 @@ LCSFactory::LCSFactory(
         n_friction_directions_per_contact_.push_back(
             pair.num_friction_directions);
       }
+    }
+    if (pair.num_friction_directions == 1) {
+      DRAKE_DEMAND(pair.planar_normal_direction.has_value());
+      DRAKE_DEMAND(pair.planar_normal_direction.value().size() == 3);
+      planar_normal_direction_per_contact_.push_back(
+          pair.planar_normal_direction.value());
+    } else {
+      planar_normal_direction_per_contact_.push_back({});
     }
   }
   n_lambda_ = multibody::LCSFactory::GetNumContactVariables(
@@ -100,6 +109,30 @@ LCSFactory::LCSFactory(
       mu_(options.mu.value()),
       frictionless_(contact_model_ == ContactModel::kFrictionlessSpring),
       dt_(options.dt) {
+  // Handle planar normal directions for contacts with 1 friction direction
+  // Initialize all with empty default values
+  planar_normal_direction_per_contact_.resize(n_contacts_, {});
+
+  for (int i = 0; i < n_contacts_; ++i) {
+    if (n_friction_directions_per_contact_[i] == 1) {
+      // Planar contact - assign the appropriate normal
+      if (options_.planar_normal_direction.has_value()) {
+        // Single planar normal provided - use for all planar contacts
+        DRAKE_DEMAND(options_.planar_normal_direction.value().size() == 3);
+        planar_normal_direction_per_contact_[i] =
+            options_.planar_normal_direction.value();
+      } else {
+        // Per-contact planar normals provided
+        DRAKE_DEMAND(options_.planar_normal_direction_per_contact.has_value());
+        DRAKE_DEMAND(
+            options_.planar_normal_direction_per_contact.value().size() ==
+            (size_t)n_contacts_);
+        planar_normal_direction_per_contact_[i] =
+            options_.planar_normal_direction_per_contact.value()[i];
+      }
+    }
+    // Non-planar contacts keep the default empty value {}
+  }
   Jt_row_sizes_ = 2 * Eigen::Map<const VectorXi, Eigen::Unaligned>(
                           n_friction_directions_per_contact_.data(),
                           n_friction_directions_per_contact_.size());
@@ -112,14 +145,16 @@ void LCSFactory::ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn,
   Jt.resize(Jt_row_sizes_.sum(),
             n_v_);  // Tangential contact Jacobian
 
-  Eigen::Vector3d planar_normal = {0, 1, 0};
   double phi_i;
   MatrixX<double> J_i;
   for (int i = 0; i < n_contacts_; i++) {
     multibody::GeomGeomCollider collider(plant_, contact_pairs_[i]);
-    if (frictionless_ || n_friction_directions_per_contact_[i] == 1)
+    if (frictionless_ || n_friction_directions_per_contact_[i] == 1) {
+      Eigen::Vector3d planar_normal =
+          Eigen::Map<const Eigen::Vector3d, Eigen::Unaligned>(
+              planar_normal_direction_per_contact_[i].data());
       std::tie(phi_i, J_i) = collider.EvalPlanar(context_, planar_normal);
-    else
+    } else
       std::tie(phi_i, J_i) = collider.EvalPolytope(
           context_, n_friction_directions_per_contact_[i]);
 
