@@ -1,0 +1,247 @@
+#include <chrono>
+#include <iostream>
+#include <string>
+
+#include <Eigen/Dense>
+#include <gtest/gtest.h>
+
+#include "systems/c3_controller.h"
+#include "systems/common/quaternion_error_hessian.h"
+
+using drake::multibody::AddMultibodyPlantSceneGraph;
+using drake::multibody::MultibodyPlant;
+using drake::systems::DiagramBuilder;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+using std::vector;
+
+namespace c3 {
+namespace systems {
+namespace test {
+
+class QuaternionCostTest : public ::testing::Test {
+ protected:
+  void SetUp() override {}
+
+  // Copy function from c3 controller to test, slightly modified to return Q
+  std::vector<MatrixXd> UpdateQuaternionCosts(
+      const Eigen::VectorXd& x_curr, const Eigen::VectorXd& x_des,
+      C3ControllerOptions controller_options) const {
+    std::vector<MatrixXd> Q;
+    std::vector<MatrixXd> R;
+    std::vector<MatrixXd> G;
+    std::vector<MatrixXd> U;
+
+    double discount_factor = 1;
+    for (int i = 0; i < controller_options.lcs_factory_options.N; i++) {
+      Q.push_back(discount_factor * controller_options.c3_options.Q);
+      discount_factor *= controller_options.c3_options.gamma;
+      if (i < controller_options.lcs_factory_options.N) {
+        R.push_back(discount_factor * controller_options.c3_options.R);
+        G.push_back(controller_options.c3_options.G);
+        U.push_back(controller_options.c3_options.U);
+      }
+    }
+    Q.push_back(discount_factor * controller_options.c3_options.Q);
+
+    for (int index : controller_options.quaternion_indices) {
+      Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4);
+      Eigen::VectorXd quat_des_i = x_des.segment(index, 4);
+
+      Eigen::MatrixXd quat_hessian_i =
+          common::hessian_of_squared_quaternion_angle_difference(quat_curr_i,
+                                                                 quat_des_i);
+
+      // Regularize hessian so Q is always PSD
+      double min_eigenval = quat_hessian_i.eigenvalues().real().minCoeff();
+      Eigen::MatrixXd quat_regularizer_1 =
+          std::max(0.0, -min_eigenval) * Eigen::MatrixXd::Identity(4, 4);
+      Eigen::MatrixXd quat_regularizer_2 = quat_des_i * quat_des_i.transpose();
+
+      // Additional regularization term to help with numerical issues
+      Eigen::MatrixXd quat_regularizer_3 =
+          1e-8 * Eigen::MatrixXd::Identity(4, 4);
+
+      double discount_factor = 1;
+      for (int i = 0; i < controller_options.lcs_factory_options.N + 1; i++) {
+        Q[i].block(index, index, 4, 4) =
+            discount_factor * controller_options.quaternion_weight *
+            (quat_hessian_i + quat_regularizer_1 +
+             controller_options.quaternion_regularizer_fraction *
+                 quat_regularizer_2 +
+             quat_regularizer_3);
+        discount_factor *= controller_options.c3_options.gamma;
+      }
+    }
+    return Q;
+  }
+};
+
+TEST_F(QuaternionCostTest, HessianAngleDifferenceTest) {
+  // Construct from initializer list.
+  VectorXd q1(4);
+  q1 << 0.5, 0.5, 0.5, 0.5;
+
+  MatrixXd hessian =
+      common::hessian_of_squared_quaternion_angle_difference(q1, q1);
+  std::cout << hessian << std::endl;
+
+  MatrixXd true_hessian(4, 4);
+  true_hessian << 6, -2, -2, -2, -2, 6, -2, -2, -2, -2, 6, -2, -2, -2, -2, 6;
+
+  EXPECT_EQ(hessian.rows(), 4);
+  EXPECT_EQ(hessian.cols(), 4);
+  EXPECT_TRUE(hessian.isApprox(true_hessian, 1e-4));
+
+  VectorXd q2(4);
+  q2 << 0.707, 0, 0, 0.707;
+
+  hessian = common::hessian_of_squared_quaternion_angle_difference(q1, q2);
+  std::cout << hessian << std::endl;
+
+  true_hessian << 8.28319, -2, -2, 2, -2, 2, -4.28319, -2, -2, -4.28319, 2, -2,
+      2, -2, -2, 8.28319;
+
+  EXPECT_EQ(hessian.rows(), 4);
+  EXPECT_EQ(hessian.cols(), 4);
+  EXPECT_TRUE(hessian.isApprox(true_hessian, 1e-4));
+}
+
+TEST_F(QuaternionCostTest, QuaternionCostMatrixTest) {
+  C3ControllerOptions controller_options =
+      drake::yaml::LoadYamlFile<C3ControllerOptions>(
+          "systems/test/quaternion_cost_test.yaml");
+
+  VectorXd q1(4);
+  q1 << 0.5, 0.5, 0.5, 0.5;
+  VectorXd q2(4);
+  q2 << 0.707, 0, 0, 0.707;
+
+  std::vector<MatrixXd> Q = UpdateQuaternionCosts(q1, q2, controller_options);
+
+  for (int i = 0; i < Q.size(); i++) {
+    // Check each Q is PSD
+    double min_eigenval = Q[i].eigenvalues().real().minCoeff();
+    EXPECT_TRUE(min_eigenval >= 0);
+
+    // Check each expected block has been updated
+    std::vector<int> start_indices = controller_options.quaternion_indices;
+    for (int idx : start_indices) {
+      MatrixXd Q_block = Q[i].block(idx, idx, 4, 4);
+      MatrixXd Q_diag = Q_block.diagonal().asDiagonal();
+      EXPECT_TRUE(!(Q_block.isApprox(Q_diag)));
+    }
+  }
+}
+TEST_F(QuaternionCostTest, HessianSmallAngleDifferenceTest) {
+  VectorXd epsilon1(4);
+  epsilon1 << 0.001, 0, 0, 0;
+
+  VectorXd epsilon2(4);
+  epsilon2 << 0, 0.001, 0, 0;
+
+  VectorXd epsilon3(4);
+  epsilon3 << 0, 0, 0.001, 0;
+
+  VectorXd epsilon4(4);
+  epsilon4 << 0, 0, 0, 0.001;
+
+  for (int i = 0; i < 10; i++) {
+    double roll = 0.6 * i;
+    double pitch = -0.13 * i;
+    double yaw = 0.44 * i;
+
+    Eigen::Quaterniond q = Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()) *
+                           Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
+                           Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
+
+    Eigen::Vector4d q_vec(q.w(), q.x(), q.y(), q.z());
+
+    MatrixXd hessian =
+        common::hessian_of_squared_quaternion_angle_difference(q_vec, q_vec);
+
+    MatrixXd peturbed_hessian =
+        common::hessian_of_squared_quaternion_angle_difference(
+            q_vec, q_vec + epsilon1);
+    EXPECT_TRUE(hessian.isApprox(peturbed_hessian, 1e-2))
+        << "\n hessian:\n"
+        << hessian << "\n perturbed_hessian:\n"
+        << peturbed_hessian << "\n difference:\n"
+        << (hessian - peturbed_hessian);
+
+    peturbed_hessian = common::hessian_of_squared_quaternion_angle_difference(
+        q_vec, q_vec + epsilon2);
+    EXPECT_TRUE(hessian.isApprox(peturbed_hessian, 1e-2))
+        << "\n hessian:\n"
+        << hessian << "\n perturbed_hessian:\n"
+        << peturbed_hessian << "\n difference:\n"
+        << (hessian - peturbed_hessian);
+
+    peturbed_hessian = common::hessian_of_squared_quaternion_angle_difference(
+        q_vec, q_vec + epsilon3);
+    EXPECT_TRUE(hessian.isApprox(peturbed_hessian, 1e-2))
+        << "\n hessian:\n"
+        << hessian << "\n perturbed_hessian:\n"
+        << peturbed_hessian << "\n difference:\n"
+        << (hessian - peturbed_hessian);
+
+    peturbed_hessian = common::hessian_of_squared_quaternion_angle_difference(
+        q_vec, q_vec + epsilon4);
+    EXPECT_TRUE(hessian.isApprox(peturbed_hessian, 1e-2))
+        << "\n hessian:\n"
+        << hessian << "\n perturbed_hessian:\n"
+        << peturbed_hessian << "\n difference:\n"
+        << (hessian - peturbed_hessian);
+
+    peturbed_hessian = common::hessian_of_squared_quaternion_angle_difference(
+        q_vec, q_vec + epsilon1 + epsilon2);
+    EXPECT_TRUE(hessian.isApprox(peturbed_hessian, 1e-2))
+        << "\n hessian:\n"
+        << hessian << "\n perturbed_hessian:\n"
+        << peturbed_hessian << "\n difference:\n"
+        << (hessian - peturbed_hessian);
+
+    peturbed_hessian = common::hessian_of_squared_quaternion_angle_difference(
+        q_vec, q_vec + epsilon2 + epsilon3);
+    EXPECT_TRUE(hessian.isApprox(peturbed_hessian, 1e-2))
+        << "\n hessian:\n"
+        << hessian << "\n perturbed_hessian:\n"
+        << peturbed_hessian << "\n difference:\n"
+        << (hessian - peturbed_hessian);
+
+    peturbed_hessian = common::hessian_of_squared_quaternion_angle_difference(
+        q_vec, q_vec + epsilon3 + epsilon4);
+    EXPECT_TRUE(hessian.isApprox(peturbed_hessian, 1e-2))
+        << "\n hessian:\n"
+        << hessian << "\n perturbed_hessian:\n"
+        << peturbed_hessian << "\n difference:\n"
+        << (hessian - peturbed_hessian);
+
+    peturbed_hessian = common::hessian_of_squared_quaternion_angle_difference(
+        q_vec, q_vec + epsilon4 + epsilon1);
+    EXPECT_TRUE(hessian.isApprox(peturbed_hessian, 1e-2))
+        << "\n hessian:\n"
+        << hessian << "\n perturbed_hessian:\n"
+        << peturbed_hessian << "\n difference:\n"
+        << (hessian - peturbed_hessian);
+
+    peturbed_hessian = common::hessian_of_squared_quaternion_angle_difference(
+        q_vec, q_vec + epsilon3 + epsilon1);
+    EXPECT_TRUE(hessian.isApprox(peturbed_hessian, 1e-2))
+        << "\n hessian:\n"
+        << hessian << "\n perturbed_hessian:\n"
+        << peturbed_hessian << "\n difference:\n"
+        << (hessian - peturbed_hessian);
+
+    peturbed_hessian = common::hessian_of_squared_quaternion_angle_difference(
+        q_vec, q_vec + epsilon4 + epsilon2);
+    EXPECT_TRUE(hessian.isApprox(peturbed_hessian, 1e-2))
+        << "\n hessian:\n"
+        << hessian << "\n perturbed_hessian:\n"
+        << peturbed_hessian << "\n difference:\n"
+        << (hessian - peturbed_hessian);
+  }
+}
+}  // namespace test
+}  // namespace systems
+}  // namespace c3

@@ -175,7 +175,13 @@ PYBIND11_MODULE(systems, m) {
       .def_readwrite("lcs_factory_options",
                      &C3ControllerOptions::lcs_factory_options)
       .def_readwrite("state_prediction_joints",
-                     &C3ControllerOptions::state_prediction_joints);
+                     &C3ControllerOptions::state_prediction_joints)
+      .def_readwrite("quaternion_indices",
+                     &C3ControllerOptions::quaternion_indices)
+      .def_readwrite("quaternion_weight",
+                     &C3ControllerOptions::quaternion_weight)
+      .def_readwrite("quaternion_regularizer_fraction",
+                     &C3ControllerOptions::quaternion_regularizer_fraction);
 
   m.def("LoadC3ControllerOptions", &LoadC3ControllerOptions);
 }

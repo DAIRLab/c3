@@ -7,6 +7,11 @@ state_prediction_joints: []
   # - name : "CartSlider"
   #   max_acceleration : 10
 
+quaternion_indices: []
+#leave empty to disable any quaternion-dependent cost weights
+quaternion_weight: 0.0
+quaternion_regularizer_fraction: 0.0
+
 lcs_factory_options:
   #options are 'stewart_and_trinkle' or 'anitescu'
   # contact_model : 'stewart_and_trinkle'

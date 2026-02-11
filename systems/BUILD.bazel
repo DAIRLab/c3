@@ -43,6 +43,7 @@ cc_library( name = "c3_controller",
         "//core:c3",
         "//core:options",
         "//multibody:lcs_factory",
+        "//systems:quaternion_error_hessian",
         "@drake//:drake_shared_library",
     ],
 )
@@ -90,6 +91,18 @@ cc_library(
 )
 
 
+cc_library(
+    name = "quaternion_error_hessian",
+    srcs = [
+        "common/quaternion_error_hessian.cc"
+    ],
+    hdrs = [
+        "common/quaternion_error_hessian.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
 
 cc_library(
     name = "system_utils",
@@ -117,6 +130,7 @@ cc_test(
         "GUROBI_HOME",
         "GRB_LICENSE_FILE"
     ],
+    size = "small",
 )
 
 cc_test(
@@ -129,6 +143,22 @@ cc_test(
         ":framework",
         "@gtest//:main",
     ],
+    size = "small",
+)
+
+cc_test(
+    name = "quaternion_cost_test",
+    srcs = [
+        "test/quaternion_cost_test.cc"
+    ],
+    data = [
+        "test/quaternion_cost_test.yaml"
+    ],
+    deps = [
+        ":systems",
+        "@gtest//:main",
+    ],
+    size = "small",
 )
 
 filegroup(

@@ -1,0 +1,72 @@
+# yaml parameter file for testing quaternion error Hessian computations
+
+projection_type: "MIQP"
+
+solve_time_filter_alpha: 0.0
+#set to 0 to publish as fast as possible
+publish_frequency: 100
+state_prediction_joints: []
+
+quaternion_indices: [5]
+#leave empty to disable any quaternion-dependent cost weights
+quaternion_weight: 1000
+quaternion_regularizer_fraction: 0.0
+
+lcs_factory_options:
+  # options are 'stewart_and_trinkle' or 'anitescu'
+  contact_model: "anitescu"
+  num_friction_directions: 2
+  num_contacts: 8
+  spring_stiffness: 0
+  mu: [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4]
+  N: 10
+  dt: 0.02
+
+c3_options:
+  warm_start: false
+  end_on_qp_step: true
+  scale_lcs: false
+
+  num_threads: 10
+  delta_option: 1
+
+  M: 1000
+
+  admm_iter: 3
+
+  gamma: 1.0
+  rho_scale: 1.1 #matrix scaling
+  w_Q: 5
+  w_R: 1 #Penalty on all decision variables, assuming scalar
+  w_G: 0.2 #Penalty on all decision variables, assuming scalar
+  w_U: 1 #State Tracking Error, assuming diagonal
+
+
+  q_vector: [1, 1, 1,               
+             1, 1,                    
+             1, 1, 1, 1,    
+             500, 500, 500,                       
+             1, 1, 1,                
+             1, 1,                   
+             0.1, 0.1, 0.1,            
+             1, 1, 1]             
+
+  r_vector: [0.01, 0.01, 0.01, 0.01, 0.01]  
+  
+  #Penalty on matching projected variables
+  g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  g_gamma: [1, 1, 1, 1, 1, 1, 1, 1]
+  g_lambda_n: [1, 1, 1, 1, 1, 1, 1, 1]
+  g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  g_lambda: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+  g_u: [0, 0, 0, 0, 0] 
+  
+
+
+  #Penalty on matching the QP variables
+  u_x: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+  u_gamma: [1, 1, 1, 1, 1, 1, 1, 1]
+  u_lambda_n: [1, 1, 1, 1, 1, 1, 1, 1]
+  u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  u_lambda: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+  u_u: [0, 0, 0, 0, 0]

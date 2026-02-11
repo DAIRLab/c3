@@ -179,6 +179,15 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   void OutputC3Intermediates(const drake::systems::Context<double>& context,
                              C3Output::C3Intermediates* c3_intermediates) const;
 
+  /**
+   * @brief Updates any 4x4 portions of the cost weight matrix corresponding to
+   * quaternion states that are set to have quaternion-dependent costs.
+   * @param x_curr The current state vector.
+   * @param x_des The desired state vector.
+   */
+  void UpdateQuaternionCosts(const VectorXd& x_curr,
+                             const Eigen::VectorXd& x_des) const;
+
   // Input and output port indices.
   drake::systems::InputPortIndex lcs_desired_state_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
@@ -214,10 +223,11 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   std::vector<JointDescription> state_prediction_joints_;
 
   // Cost matrices for optimization.
-  std::vector<Eigen::MatrixXd> Q_;  ///< State cost matrices.
-  std::vector<Eigen::MatrixXd> R_;  ///< Input cost matrices.
-  std::vector<Eigen::MatrixXd> G_;  ///< State-input cross-term matrices.
-  std::vector<Eigen::MatrixXd> U_;  ///< Constraint matrices.
+  mutable std::vector<Eigen::MatrixXd> Q_;  ///< State cost matrices.
+  mutable std::vector<Eigen::MatrixXd> R_;  ///< Input cost matrices.
+  mutable std::vector<Eigen::MatrixXd>
+      G_;  ///< State-input cross-term matrices.
+  mutable std::vector<Eigen::MatrixXd> U_;  ///< Constraint matrices.
 
   int N_;  ///< Horizon length.
 };
