@@ -110,39 +110,28 @@ LCSFactory::LCSFactory(
       frictionless_(contact_model_ == ContactModel::kFrictionlessSpring),
       dt_(options.dt) {
   // Handle planar normal directions for contacts with 1 friction direction
-  if (options_.planar_normal_direction.has_value()) {
-    // Single planar normal provided - replicate for all planar contacts
-    DRAKE_DEMAND(options_.planar_normal_direction.value().size() == 3);
-    planar_normal_direction_per_contact_.clear();
+  // Initialize all with empty default values
+  planar_normal_direction_per_contact_.resize(n_contacts_, {});
 
-    for (int i = 0; i < n_contacts_; ++i) {
-      if (n_friction_directions_per_contact_[i] == 1) {
-        // Planar contact - use the provided normal
-        planar_normal_direction_per_contact_.push_back(
-            options_.planar_normal_direction.value());
+  for (int i = 0; i < n_contacts_; ++i) {
+    if (n_friction_directions_per_contact_[i] == 1) {
+      // Planar contact - assign the appropriate normal
+      if (options_.planar_normal_direction.has_value()) {
+        // Single planar normal provided - use for all planar contacts
+        DRAKE_DEMAND(options_.planar_normal_direction.value().size() == 3);
+        planar_normal_direction_per_contact_[i] =
+            options_.planar_normal_direction.value();
       } else {
-        // Non-planar contact - push empty array (unused)
-        planar_normal_direction_per_contact_.push_back({});
+        // Per-contact planar normals provided
+        DRAKE_DEMAND(options_.planar_normal_direction_per_contact.has_value());
+        DRAKE_DEMAND(
+            options_.planar_normal_direction_per_contact.value().size() ==
+            (size_t)n_contacts_);
+        planar_normal_direction_per_contact_[i] =
+            options_.planar_normal_direction_per_contact.value()[i];
       }
     }
-  } else {
-    // Per-contact planar normals provided - validate them
-    DRAKE_DEMAND(options_.planar_normal_direction_per_contact.has_value());
-    DRAKE_DEMAND(options_.planar_normal_direction_per_contact.value().size() ==
-                 (size_t)n_contacts_);
-
-    // Validate that planar contacts (num_friction_directions == 1) have
-    // valid 3D normal vectors
-    for (size_t i = 0; i < n_contacts_; ++i) {
-      if (n_friction_directions_per_contact_[i] == 1) {
-        planar_normal_direction_per_contact_.push_back(
-            options_.planar_normal_direction_per_contact.value()[i]);
-      } else {
-        // Non-planar contact - ensure normal vector is empty (unused)
-        planar_normal_direction_per_contact_.push_back(
-            {0, 0, 1});  // Default normal (unused)
-      }
-    }
+    // Non-planar contacts keep the default empty value {}
   }
   Jt_row_sizes_ = 2 * Eigen::Map<const VectorXi, Eigen::Unaligned>(
                           n_friction_directions_per_contact_.data(),
