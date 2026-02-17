@@ -74,10 +74,8 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   /**
    * @brief Returns the cost matrices used by the controller.
    * @return The cost matrices to being used in the optimization problem.
-  */
-  const C3::CostMatrices& GetCostMatrices() {
-    return c3_->GetCostMatrices();
-  }
+   */
+  const C3::CostMatrices& GetCostMatrices() { return c3_->GetCostMatrices(); }
 
   /**
    * @brief Updates any 4x4 portions of the cost weight matrix corresponding to
@@ -85,8 +83,8 @@ class C3Controller : public drake::systems::LeafSystem<double> {
    * @param x_curr The current state vector.
    * @param x_des The desired state vector.
    */
-  void UpdateQuaternionCosts(
-      const VectorXd& x_curr, const Eigen::VectorXd& x_des) const;
+  void UpdateQuaternionCosts(const VectorXd& x_curr,
+                             const Eigen::VectorXd& x_des) const;
 
   /**
    * @brief Adds a linear constraint to the controller.

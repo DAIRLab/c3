@@ -3,29 +3,23 @@
 #include <string>
 
 #include <Eigen/Dense>
-#include <gtest/gtest.h>
-#include <Eigen/Dense>
-
 #include <drake/multibody/parsing/parser.h>
+#include <gtest/gtest.h>
 
-#include "systems/c3_controller.h"
-#include "systems/common/quaternion_error_hessian.h"
+#include "core/c3.h"
 #include "systems/c3_controller.h"
 #include "systems/c3_controller_options.h"
-#include "core/c3.h"
+#include "systems/common/quaternion_error_hessian.h"
 
+using c3::systems::C3Controller;
+using c3::systems::C3ControllerOptions;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
-using drake::systems::DiagramBuilder;
-using drake::multibody::AddMultibodyPlantSceneGraph;
-using drake::multibody::MultibodyPlant;
-using drake::multibody::Parser;
-using c3::systems::C3Controller;
-using c3::systems::C3ControllerOptions;
 
 namespace c3 {
 namespace systems {
@@ -33,24 +27,20 @@ namespace test {
 
 class QuaternionCostTest : public ::testing::Test {
  protected:
-
   C3ControllerOptions controller_options_;
   std::unique_ptr<drake::systems::Diagram<double>> diagram_;
   C3Controller* c3_controller_;
 
   void SetUp() override {
-
     DiagramBuilder<double> builder;
-    auto [plant, scene_graph] =
-        AddMultibodyPlantSceneGraph(&builder, 0);
-    Parser parser(&plant, &scene_graph);    
+    auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, 0);
+    Parser parser(&plant, &scene_graph);
     parser.AddModels("systems/test/resources/cube.sdf");
     parser.AddModels("systems/test/resources/plate.sdf");
     plant.Finalize();
 
-    controller_options_ =
-      drake::yaml::LoadYamlFile<C3ControllerOptions>(
-          "systems/test/resources/quaternion_cost_test.yaml");
+    controller_options_ = drake::yaml::LoadYamlFile<C3ControllerOptions>(
+        "systems/test/resources/quaternion_cost_test.yaml");
 
     vector<MatrixXd> Q_dummy;
     vector<MatrixXd> R_dummy;
@@ -69,13 +59,13 @@ class QuaternionCostTest : public ::testing::Test {
     }
     Q_dummy.push_back(discount_factor * controller_options_.c3_options.Q);
 
-    C3::CostMatrices dummy_costs = C3::CostMatrices(Q_dummy, R_dummy, G_dummy, U_dummy);
-    
-    c3_controller_ = builder.AddSystem<C3Controller>(plant, dummy_costs, controller_options_);
+    C3::CostMatrices dummy_costs =
+        C3::CostMatrices(Q_dummy, R_dummy, G_dummy, U_dummy);
+
+    c3_controller_ = builder.AddSystem<C3Controller>(plant, dummy_costs,
+                                                     controller_options_);
     diagram_ = builder.Build();
   }
-
-
 };
 
 TEST_F(QuaternionCostTest, HessianAngleDifferenceTest) {
@@ -83,7 +73,8 @@ TEST_F(QuaternionCostTest, HessianAngleDifferenceTest) {
   VectorXd q1(4);
   q1 << 0.5, 0.5, 0.5, 0.5;
 
-  MatrixXd hessian = common::hessian_of_squared_quaternion_angle_difference(q1, q1);
+  MatrixXd hessian =
+      common::hessian_of_squared_quaternion_angle_difference(q1, q1);
 
   MatrixXd true_hessian(4, 4);
   true_hessian << 6, -2, -2, -2, -2, 6, -2, -2, -2, -2, 6, -2, -2, -2, -2, 6;
@@ -106,7 +97,6 @@ TEST_F(QuaternionCostTest, HessianAngleDifferenceTest) {
 }
 
 TEST_F(QuaternionCostTest, QuaternionCostMatrixTest) {
-
   VectorXd q1(4);
   q1 << 0.5, 0.5, 0.5, 0.5;
   VectorXd q2(4);
@@ -116,7 +106,7 @@ TEST_F(QuaternionCostTest, QuaternionCostMatrixTest) {
 
   C3::CostMatrices output = c3_controller_->GetCostMatrices();
   vector<MatrixXd> Q = output.Q;
-    
+
   for (int i = 0; i < Q.size(); i++) {
     // Check each Q is PSD
     double min_eigenval = Q[i].eigenvalues().real().minCoeff();
@@ -124,8 +114,8 @@ TEST_F(QuaternionCostTest, QuaternionCostMatrixTest) {
 
     // Check each expected block has been updated
     std::vector<int> start_indices;
-    start_indices.push_back(5); // Index of quaternion
-    
+    start_indices.push_back(5);  // Index of quaternion
+
     for (int idx : start_indices) {
       MatrixXd Q_block = Q[i].block(idx, idx, 4, 4);
       MatrixXd Q_diag = Q_block.diagonal().asDiagonal();
