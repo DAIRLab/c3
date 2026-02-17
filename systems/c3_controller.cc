@@ -289,8 +289,10 @@ void C3Controller::UpdateQuaternionCosts(
     quaternion_indices.push_back(start);
   }
 
-  // Early return if no quaternions
-  if (quaternion_indices.size() == 0) {
+  // Early return if no quaternions or cost parameters not set
+  if (quaternion_indices.size() == 0 || 
+      !controller_options_.quaternion_weight.has_value() || 
+      !controller_options_.quaternion_regularizer_fraction.has_value()) {
     return;
   }
 
@@ -315,9 +317,9 @@ void C3Controller::UpdateQuaternionCosts(
     Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
 
     double quaternion_weight = 
-      controller_options_.quaternion_weight.value_or(0.0);
+      controller_options_.quaternion_weight.value();
     double quaternion_regularizer_fraction = 
-      controller_options_.quaternion_regularizer_fraction.value_or(0.0);
+      controller_options_.quaternion_regularizer_fraction.value();
 
     // Replace quaternion blocks in Q
     double discount_factor = 1;
