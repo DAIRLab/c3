@@ -14,7 +14,6 @@
 #include "systems/framework/c3_output.h"
 #include "systems/framework/timestamped_vector.h"
 
-#include <drake/multibody/tree/quaternion_floating_joint.h>
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -81,10 +80,11 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   }
 
   /**
-   * @brief Updates cost matrix blocks using quaternions with a hessian approximation
-   * @param x_curr Current x value
-   * @param x_des Desired x value
-  */
+   * @brief Updates any 4x4 portions of the cost weight matrix corresponding to
+   * quaternion states that are set to have quaternion-dependent costs.
+   * @param x_curr The current state vector.
+   * @param x_des The desired state vector.
+   */
   void UpdateQuaternionCosts(
       const VectorXd& x_curr, const Eigen::VectorXd& x_des) const;
 
@@ -195,15 +195,6 @@ class C3Controller : public drake::systems::LeafSystem<double> {
    */
   void OutputC3Intermediates(const drake::systems::Context<double>& context,
                              C3Output::C3Intermediates* c3_intermediates) const;
-
-  /**
-   * @brief Updates any 4x4 portions of the cost weight matrix corresponding to
-   * quaternion states that are set to have quaternion-dependent costs.
-   * @param x_curr The current state vector.
-   * @param x_des The desired state vector.
-   */
-  void UpdateQuaternionCosts(const VectorXd& x_curr,
-                             const Eigen::VectorXd& x_des) const;
 
   // Input and output port indices.
   drake::systems::InputPortIndex lcs_desired_state_input_port_;

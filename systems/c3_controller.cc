@@ -13,9 +13,7 @@
 
 namespace c3 {
 
-using drake::multibody::QuaternionFloatingJoint;
 using drake::multibody::ModelInstanceIndex;
-using drake::multibody::JointIndex;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
@@ -302,7 +300,6 @@ void C3Controller::UpdateQuaternionCosts(
   vector<MatrixXd> G = costs.G;
   vector<MatrixXd> U = costs.U;
 
-
   for (int index : quaternion_indices) {
     Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4);
     Eigen::VectorXd quat_des_i = x_des.segment(index, 4);
@@ -314,8 +311,6 @@ void C3Controller::UpdateQuaternionCosts(
     Eigen::MatrixXd quat_regularizer_1 = std::max(0.0, -min_eigenval) * Eigen::MatrixXd::Identity(4, 4);
     Eigen::MatrixXd quat_regularizer_2 = quat_des_i * quat_des_i.transpose();
 
-    // Additional regularization term to help with numerical issues
-    Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
     // Additional regularization term to help with numerical issues
     Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
 
