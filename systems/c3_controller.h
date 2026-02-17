@@ -14,6 +14,7 @@
 #include "systems/framework/c3_output.h"
 #include "systems/framework/timestamped_vector.h"
 
+#include <drake/multibody/tree/quaternion_floating_joint.h>
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -70,6 +71,22 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   void UpdateCostMatrices(C3::CostMatrices& costs) {
     c3_->UpdateCostMatrices(costs);
   }
+
+  /**
+   * @brief Returns the cost matrices used by the controller.
+   * @return The cost matrices to being used in the optimization problem.
+  */
+  const C3::CostMatrices& GetCostMatrices() {
+    return c3_->GetCostMatrices();
+  }
+
+  /**
+   * @brief Updates cost matrix blocks using quaternions with a hessian approximation
+   * @param x_curr Current x value
+   * @param x_des Desired x value
+  */
+  void UpdateQuaternionCosts(
+      const VectorXd& x_curr, const Eigen::VectorXd& x_des) const;
 
   /**
    * @brief Adds a linear constraint to the controller.

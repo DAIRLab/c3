@@ -13,7 +13,9 @@
 
 namespace c3 {
 
+using drake::multibody::QuaternionFloatingJoint;
 using drake::multibody::ModelInstanceIndex;
+using drake::multibody::JointIndex;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
@@ -161,9 +163,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
 
   // Update cost matrices with quaternion cost blocks
   UpdateQuaternionCosts(x0, desired_state.value());
-  C3::CostMatrices new_costs(Q_, R_, G_, U_);
-  c3_->UpdateCostMatrices(new_costs);
-
+  
   // Update LCS and target in the C3 problem
   c3_->UpdateLCS(lcs);
   c3_->UpdateTarget(target);
@@ -188,6 +188,8 @@ drake::systems::EventStatus C3Controller::ComputePlan(
 
   return drake::systems::EventStatus::Succeeded();
 }
+
+
 
 void C3Controller::ResolvePredictedState(drake::VectorX<double>& x0,
                                          double& filtered_solve_time) const {
@@ -278,53 +280,64 @@ void C3Controller::OutputC3Intermediates(
   }
 }
 
-void C3Controller::UpdateQuaternionCosts(const Eigen::VectorXd& x_curr,
-                                         const Eigen::VectorXd& x_des) const {
-  Q_.clear();
-  R_.clear();
-  G_.clear();
-  U_.clear();
+void C3Controller::UpdateQuaternionCosts(
+    const Eigen::VectorXd& x_curr, const Eigen::VectorXd& x_des) const {
 
-  double discount_factor = 1;
-  for (int i = 0; i < N_; i++) {
-    Q_.push_back(discount_factor * controller_options_.c3_options.Q);
-    discount_factor *= controller_options_.c3_options.gamma;
-    if (i < N_) {
-      R_.push_back(discount_factor * controller_options_.c3_options.R);
-      G_.push_back(controller_options_.c3_options.G);
-      U_.push_back(controller_options_.c3_options.U);
-    }
+  // Extract quaternion indices
+  vector<int> quaternion_indices;
+  for (const auto& body_idx : plant_.GetFloatingBaseBodies()) {
+    const auto& body = plant_.get_body(body_idx);
+    int start = body.floating_positions_start();
+    quaternion_indices.push_back(start);
   }
-  Q_.push_back(discount_factor * controller_options_.c3_options.Q);
 
-  for (int index : controller_options_.quaternion_indices) {
+  // Early return if no quaternions
+  if (quaternion_indices.size() == 0) {
+    return;
+  }
+
+  C3::CostMatrices costs = c3_->GetCostMatrices();
+  vector<MatrixXd> Q = costs.Q;
+  vector<MatrixXd> R = costs.R;
+  vector<MatrixXd> G = costs.G;
+  vector<MatrixXd> U = costs.U;
+
+
+  for (int index : quaternion_indices) {
     Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4);
     Eigen::VectorXd quat_des_i = x_des.segment(index, 4);
 
-    Eigen::MatrixXd quat_hessian_i =
-        common::hessian_of_squared_quaternion_angle_difference(quat_curr_i,
-                                                               quat_des_i);
+    Eigen::MatrixXd quat_hessian_i = common::hessian_of_squared_quaternion_angle_difference(quat_curr_i, quat_des_i);
 
     // Regularize hessian so Q is always PSD
     double min_eigenval = quat_hessian_i.eigenvalues().real().minCoeff();
-    Eigen::MatrixXd quat_regularizer_1 =
-        std::max(0.0, -min_eigenval) * Eigen::MatrixXd::Identity(4, 4);
+    Eigen::MatrixXd quat_regularizer_1 = std::max(0.0, -min_eigenval) * Eigen::MatrixXd::Identity(4, 4);
     Eigen::MatrixXd quat_regularizer_2 = quat_des_i * quat_des_i.transpose();
 
     // Additional regularization term to help with numerical issues
     Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
+    // Additional regularization term to help with numerical issues
+    Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
 
+    double quaternion_weight = 
+      controller_options_.quaternion_weight.value_or(0.0);
+    double quaternion_regularizer_fraction = 
+      controller_options_.quaternion_regularizer_fraction.value_or(0.0);
+
+    // Replace quaternion blocks in Q
     double discount_factor = 1;
     for (int i = 0; i < N_ + 1; i++) {
-      Q_[i].block(index, index, 4, 4) =
-          discount_factor * controller_options_.quaternion_weight *
-          (quat_hessian_i + quat_regularizer_1 +
-           controller_options_.quaternion_regularizer_fraction *
-               quat_regularizer_2 +
-           quat_regularizer_3);
+      Q[i].block(index, index, 4, 4) = 
+        discount_factor * quaternion_weight * 
+        (quat_hessian_i + quat_regularizer_1 + 
+          quaternion_regularizer_fraction * quat_regularizer_2 + quat_regularizer_3);
       discount_factor *= controller_options_.c3_options.gamma;
     }
   }
+  
+  // Set C3 cost matrices
+  C3::CostMatrices new_costs(Q, R, G, U);
+  c3_->UpdateCostMatrices(new_costs);
 }
 
 }  // namespace systems

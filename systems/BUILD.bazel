@@ -152,9 +152,12 @@ cc_test(
         "test/quaternion_cost_test.cc"
     ],
     data = [
-        "test/quaternion_cost_test.yaml"
+        "test/resources/cube.sdf",
+        "test/resources/plate.sdf",
+        "test/resources/quaternion_cost_test.yaml",
     ],
     deps = [
+        "//core:c3",
         ":systems",
         "@gtest//:main",
     ],
