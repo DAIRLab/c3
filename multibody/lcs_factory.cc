@@ -176,10 +176,12 @@ LCS LCSFactory::GenerateLCS() {
   // Get forces applied to the plant_
   MultibodyForces<AutoDiffXd> f_app(plant_ad_);
   plant_ad_.CalcForceElementsContribution(context_ad_, &f_app);
+  AutoDiffVecXd f_generalized;
+  plant_ad_.CalcGeneralizedForces(context_ad_, f_app, &f_generalized);
 
   // f(q, v, u) =  M(q)⁻¹(τ(u) + τ₍g₎ + fₐₚₚ(q, v, u) - C(q, v))
   AutoDiffVecXd f_qvu =
-      M.ldlt().solve(tau_g + tau_u + f_app.generalized_forces() - C);
+      M.ldlt().solve(tau_u + f_generalized - C);
 
   // f(q*, v*, u*)
   VectorXd f_qvu_norminal = ExtractValue(f_qvu);
