@@ -87,6 +87,13 @@ C3Controller::C3Controller(
     drake::log()->error("Unknown projection type : {}",
                         controller_options_.projection_type);
   }
+
+  for (const auto& body_idx : plant_.GetFloatingBaseBodies()) {
+    const auto& body = plant_.get_body(body_idx);
+    int start = body.floating_positions_start();
+    quaternion_indices_.push_back(start);
+  }
+
   DRAKE_THROW_UNLESS(c3_ != nullptr);
 
   // Declare input ports
@@ -278,16 +285,8 @@ void C3Controller::OutputC3Intermediates(
 
 void C3Controller::UpdateQuaternionCosts(const Eigen::VectorXd& x_curr,
                                          const Eigen::VectorXd& x_des) const {
-  // Extract quaternion indices
-  vector<int> quaternion_indices;
-  for (const auto& body_idx : plant_.GetFloatingBaseBodies()) {
-    const auto& body = plant_.get_body(body_idx);
-    int start = body.floating_positions_start();
-    quaternion_indices.push_back(start);
-  }
-
   // Early return if no quaternions or cost parameters not set
-  if (quaternion_indices.size() == 0 ||
+  if (quaternion_indices_.size() == 0 ||
       !controller_options_.quaternion_weight.has_value() ||
       !controller_options_.quaternion_regularizer_fraction.has_value()) {
     return;
@@ -299,7 +298,7 @@ void C3Controller::UpdateQuaternionCosts(const Eigen::VectorXd& x_curr,
   vector<MatrixXd> G = costs.G;
   vector<MatrixXd> U = costs.U;
 
-  for (int index : quaternion_indices) {
+  for (int index : quaternion_indices_) {
     Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4);
     Eigen::VectorXd quat_des_i = x_des.segment(index, 4);
 

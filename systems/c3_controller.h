@@ -227,6 +227,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex filtered_solve_time_index_;
 
   std::vector<JointDescription> state_prediction_joints_;
+  std::vector<int> quaternion_indices_;  // indices for quaternion-valued joints
 
   // Cost matrices for optimization.
   mutable std::vector<Eigen::MatrixXd> Q_;  ///< State cost matrices.
