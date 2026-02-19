@@ -62,6 +62,12 @@ C3Controller::C3Controller(
     state_prediction_joints_.push_back(joint_description);
   }
 
+  for (const auto& body_idx : plant_.GetFloatingBaseBodies()) {
+    const auto& body = plant_.get_body(body_idx);
+    int start = body.floating_positions_start();
+    quaternion_indices_.push_back(start);
+  }
+
   // Determine the size of lambda based on the contact model
   n_lambda_ = multibody::LCSFactory::GetNumContactVariables(
       controller_options_.lcs_factory_options);
@@ -86,12 +92,6 @@ C3Controller::C3Controller(
   } else {
     drake::log()->error("Unknown projection type : {}",
                         controller_options_.projection_type);
-  }
-
-  for (const auto& body_idx : plant_.GetFloatingBaseBodies()) {
-    const auto& body = plant_.get_body(body_idx);
-    int start = body.floating_positions_start();
-    quaternion_indices_.push_back(start);
   }
 
   DRAKE_THROW_UNLESS(c3_ != nullptr);
