@@ -426,6 +426,189 @@ GTEST_TEST(GeomGeomColliderTest, SphereMeshDistance) {
   EXPECT_TRUE(J_contact.allFinite());
 }
 
+// Parameterized test for GetNClosestContactPairs with different values of N
+class GetNClosestContactPairsTest
+    : public ::testing::TestWithParam<unsigned int> {
+ protected:
+  void SetUp() override {
+    // Setup plant with scene graph for collision detection
+    DiagramBuilder<double> builder;
+    std::tie(plant_ptr, scene_graph) =
+        AddMultibodyPlantSceneGraph(&builder, 0.0);
+
+    // Use fixed seed for reproducibility
+    std::mt19937 rng(42);
+    std::uniform_real_distribution<double> height_dist(0.05, 0.5);
+
+    // Add 5 cubes at random heights
+    for (int i = 0; i < 5; ++i) {
+      std::string cube_name = "cube_" + std::to_string(i);
+      object_names.push_back(cube_name);
+
+      double height = height_dist(rng);
+
+      // Create cube shape (0.1m x 0.1m x 0.1m)
+      auto cube_shape = drake::geometry::Box(0.1, 0.1, 0.1);
+      const auto& cube_body = plant_ptr->AddRigidBody(
+          cube_name, drake::multibody::SpatialInertia<double>::MakeUnitary());
+
+      // Position cube at height above ground
+      drake::math::RigidTransformd cube_pose(
+          Eigen::Quaterniond::Identity(),
+          Eigen::Vector3d(i * 0.2, 0.0, height));
+
+      plant_ptr->RegisterCollisionGeometry(
+          cube_body, drake::math::RigidTransformd(), cube_shape,
+          cube_name + "_collision",
+          drake::multibody::CoulombFriction<double>(0.5, 0.5));
+
+      plant_ptr->SetDefaultFreeBodyPose(cube_body, cube_pose);
+
+      // Store height for this object
+      object_heights[cube_name] = height;
+    }
+
+    // Add 5 spheres at random heights
+    for (int i = 0; i < 5; ++i) {
+      std::string sphere_name = "sphere_" + std::to_string(i);
+      object_names.push_back(sphere_name);
+
+      double height = height_dist(rng);
+
+      // Create sphere shape (radius = 0.05m)
+      auto sphere_shape = drake::geometry::Sphere(0.05);
+      const auto& sphere_body = plant_ptr->AddRigidBody(
+          sphere_name, drake::multibody::SpatialInertia<double>::MakeUnitary());
+
+      // Position sphere at height above ground (offset in y direction)
+      drake::math::RigidTransformd sphere_pose(
+          Eigen::Quaterniond::Identity(),
+          Eigen::Vector3d(i * 0.2, 0.3, height));
+
+      plant_ptr->RegisterCollisionGeometry(
+          sphere_body, drake::math::RigidTransformd(), sphere_shape,
+          sphere_name + "_collision",
+          drake::multibody::CoulombFriction<double>(0.5, 0.5));
+
+      plant_ptr->SetDefaultFreeBodyPose(sphere_body, sphere_pose);
+
+      // Store height for this object
+      object_heights[sphere_name] = height;
+    }
+
+    // Add ground plane (table)
+    double table_thickness = 0.05;
+    double table_width = 2.0;
+    auto table_shape =
+        drake::geometry::Box(table_width, table_width, table_thickness);
+    const auto& table_body = plant_ptr->AddRigidBody(
+        "table", drake::multibody::SpatialInertia<double>::MakeUnitary());
+
+    drake::math::RigidTransformd table_pose(
+        Eigen::Quaterniond::Identity(),
+        Eigen::Vector3d(0.0, 0.0, -table_thickness / 2.0));
+
+    plant_ptr->RegisterCollisionGeometry(
+        table_body, drake::math::RigidTransformd(), table_shape,
+        "table_collision", drake::multibody::CoulombFriction<double>(1.0, 1.0));
+
+    plant_ptr->WeldFrames(plant_ptr->world_frame(), table_body.body_frame(),
+                          table_pose);
+
+    plant_ptr->Finalize();
+
+    // Build diagram and get context
+    diagram = builder.Build();
+    diagram_context = diagram->CreateDefaultContext();
+    context =
+        &diagram->GetMutableSubsystemContext(*plant_ptr, diagram_context.get());
+
+    // Create contact pairs between all objects and table
+    auto table_geoms = plant_ptr->GetCollisionGeometriesForBody(
+        plant_ptr->GetBodyByName("table"));
+
+    for (const auto& object_name : object_names) {
+      auto object_geoms = plant_ptr->GetCollisionGeometriesForBody(
+          plant_ptr->GetBodyByName(object_name));
+
+      if (!object_geoms.empty() && !table_geoms.empty()) {
+        auto pair = SortedPair<GeometryId>(object_geoms[0], table_geoms[0]);
+        all_pairs.push_back(pair);
+
+        // Map contact pair to object height (proxy for distance)
+        pair_to_distance[pair] = object_heights[object_name];
+      }
+    }
+
+    ASSERT_EQ(all_pairs.size(), 10);  // 5 cubes + 5 spheres
+  }
+
+  MultibodyPlant<double>* plant_ptr;
+  SceneGraph<double>* scene_graph;
+  std::unique_ptr<Diagram<double>> diagram;
+  std::unique_ptr<Context<double>> diagram_context;
+  Context<double>* context;
+
+  std::vector<std::string> object_names;
+  std::map<std::string, double> object_heights;
+  std::vector<SortedPair<GeometryId>> all_pairs;
+  std::map<SortedPair<GeometryId>, double> pair_to_distance;
+};
+
+TEST_P(GetNClosestContactPairsTest, SelectsClosestN) {
+  unsigned int N = GetParam();
+
+  // Handle case where N exceeds available pairs
+  if (N > all_pairs.size()) {
+    // DRAKE_DEMAND aborts the process, not throws an exception
+    EXPECT_DEATH(
+        LCSFactory::GetNClosestContactPairs(*plant_ptr, *context, all_pairs, N),
+        "condition 'N <= contact_pairs.size\\(\\)' failed");
+    return;
+  }
+
+  // Get N closest contact pairs
+  auto selected =
+      LCSFactory::GetNClosestContactPairs(*plant_ptr, *context, all_pairs, N);
+  ASSERT_EQ(selected.size(), N);
+
+  if (N == 0) {
+    // If N=0, no pairs should be selected
+    EXPECT_TRUE(selected.empty());
+    return;
+  }
+
+  // Get distances for selected pairs
+  std::vector<double> selected_distances;
+  selected_distances.reserve(selected.size());
+  for (const auto& pair : selected) {
+    ASSERT_TRUE(pair_to_distance.count(pair) > 0);
+    selected_distances.push_back(pair_to_distance.at(pair));
+  }
+
+  // Sort selected distances
+  std::sort(selected_distances.begin(), selected_distances.end());
+
+  // Get all distances and sort them
+  std::vector<double> all_distances;
+  all_distances.reserve(all_pairs.size());
+  for (const auto& [pair, distance] : pair_to_distance) {
+    all_distances.push_back(distance);
+  }
+  std::sort(all_distances.begin(), all_distances.end());
+
+  // Verify selected distances match the N smallest
+  for (size_t i = 0; i < N; ++i) {
+    EXPECT_NEAR(selected_distances[i], all_distances[i], 1e-6)
+        << "Selected distance at index " << i << " is " << selected_distances[i]
+        << " but expected " << all_distances[i];
+  }
+}
+
+// Test with N = 1, 2, 3, 5, 7, 10 (all), and 15 (exceeds total)
+INSTANTIATE_TEST_SUITE_P(DifferentSubsetSizes, GetNClosestContactPairsTest,
+                         ::testing::Values(0, 1, 5, 10, 15));
+
 }  // namespace test
 }  // namespace multibody
 }  // namespace c3
