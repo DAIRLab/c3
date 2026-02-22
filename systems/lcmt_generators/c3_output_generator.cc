@@ -22,8 +22,6 @@ C3OutputGenerator::C3OutputGenerator() {
       this->DeclareAbstractInputPort("c3_intermediates",
                                      drake::Value<C3Output::C3Intermediates>{})
           .get_index();
-
-  this->set_name("c3_output_publisher");
   // Declare output port for the LCM message.
   c3_output_port_ =
       this->DeclareAbstractOutputPort("lcmt_c3_output", c3::lcmt_output(),
