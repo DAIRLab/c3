@@ -515,8 +515,14 @@ std::vector<LCSContactDescription> LCSFactory::GetContactDescriptions() {
   for (int i = 0; i < n_contacts_; i++) {
     multibody::GeomGeomCollider collider(plant_, contact_pairs_[i]);
     auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context_);
+    Eigen::Vector3d planar_normal;
+    // For frictionless or single friction direction contacts, the force basis
+    // is just the contact normal
+    if (n_friction_directions_per_contact_[i] == 1)
+      planar_normal = Eigen::Map<const Eigen::Vector3d, Eigen::Unaligned>(
+          planar_normal_direction_per_contact_[i].data());
     auto force_basis = collider.CalcForceBasisInWorldFrame(
-        context_, n_friction_directions_per_contact_[i]);
+        context_, n_friction_directions_per_contact_[i], planar_normal);
 
     for (int j = 0; j < force_basis.rows(); j++) {
       LCSContactDescription contact_description = {
