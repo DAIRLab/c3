@@ -2,7 +2,6 @@
 
 #include <iostream>
 
-#include "multibody/geom_geom_collider.h"
 #include "multibody/multibody_utils.h"
 
 #include "drake/common/text_logging.h"
@@ -196,6 +195,7 @@ LCSFactory::LCSFactory(
       }
     }
     // Non-planar contacts keep the default empty value {}
+    geom_geom_colliders_per_contact_.emplace_back(plant_, contact_pairs_[i]);
   }
   Jt_row_sizes_ = 2 * Eigen::Map<const VectorXi, Eigen::Unaligned>(
                           n_friction_directions_per_contact_.data(),
@@ -212,14 +212,14 @@ void LCSFactory::ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn,
   double phi_i;
   MatrixX<double> J_i;
   for (int i = 0; i < n_contacts_; i++) {
-    multibody::GeomGeomCollider collider(plant_, contact_pairs_[i]);
     if (frictionless_ || n_friction_directions_per_contact_[i] == 1) {
       Eigen::Vector3d planar_normal =
           Eigen::Map<const Eigen::Vector3d, Eigen::Unaligned>(
               planar_normal_direction_per_contact_[i].data());
-      std::tie(phi_i, J_i) = collider.EvalPlanar(context_, planar_normal);
+      std::tie(phi_i, J_i) = geom_geom_colliders_per_contact_[i].EvalPlanar(
+          context_, planar_normal);
     } else
-      std::tie(phi_i, J_i) = collider.EvalPolytope(
+      std::tie(phi_i, J_i) = geom_geom_colliders_per_contact_[i].EvalPolytope(
           context_, n_friction_directions_per_contact_[i]);
 
     // Signed distance value for contact i
@@ -513,16 +513,17 @@ std::vector<LCSContactDescription> LCSFactory::GetContactDescriptions() {
   std::vector<LCSContactDescription> tangential_contact_descriptions;
 
   for (int i = 0; i < n_contacts_; i++) {
-    multibody::GeomGeomCollider collider(plant_, contact_pairs_[i]);
-    auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context_);
+    auto [p_WCa, p_WCb] =
+        geom_geom_colliders_per_contact_[i].CalcWitnessPoints(context_);
     Eigen::Vector3d planar_normal;
     // For frictionless or single friction direction contacts, the force basis
     // is just the contact normal
     if (n_friction_directions_per_contact_[i] == 1)
       planar_normal = Eigen::Map<const Eigen::Vector3d, Eigen::Unaligned>(
           planar_normal_direction_per_contact_[i].data());
-    auto force_basis = collider.CalcForceBasisInWorldFrame(
-        context_, n_friction_directions_per_contact_[i], planar_normal);
+    auto force_basis =
+        geom_geom_colliders_per_contact_[i].CalcForceBasisInWorldFrame(
+            context_, n_friction_directions_per_contact_[i], planar_normal);
 
     for (int j = 0; j < force_basis.rows(); j++) {
       LCSContactDescription contact_description = {
@@ -538,12 +539,63 @@ std::vector<LCSContactDescription> LCSFactory::GetContactDescriptions() {
     }
   }
 
+  // ===========================================================================
+  // Contact Force Variable Stacking Convention
+  // ===========================================================================
+  //
+  // The order in which contact force variables (λ) are stacked depends on the
+  // contact model. This ordering is crucial for understanding the structure of
+  // the LCS matrices (D, E, F, H, c).
+  //
+  // Stewart-Trinkle Model (n_λ = 2*n_contacts + n_tangential):
+  // -----------------------------------------------------------
+  // λ = [γ₁, γ₂, ..., γₙ,                    <- Slack variables (n_contacts)
+  //      λₙ₁, λₙ₂, ..., λₙₙ,                 <- Normal forces (n_contacts)
+  //      λₜ₁₁, λₜ₁₂, ..., λₜ₁ₘ₁,            <- Tangential forces for contact 1
+  //      λₜ₂₁, λₜ₂₂, ..., λₜ₂ₘ₂,            <- Tangential forces for contact 2
+  //      ...
+  //      λₜₙ₁, λₜₙ₂, ..., λₜₙₘₙ]            <- Tangential forces for contact n
+  //
+  // where:
+  //   - n = n_contacts (number of contact pairs)
+  //   - mᵢ = 2 * num_friction_directions[i] (tangential force components per
+  //   contact)
+  //   - γᵢ are slack variables for the friction cone constraints
+  //
+  // Example with 2 contacts, 2 friction directions each:
+  //   λ = [γ₁, γ₂, λₙ₁, λₙ₂, λₜ₁₁, λₜ₁₂, λₜ₁₃, λₜ₁₄, λₜ₂₁, λₜ₂₂, λₜ₂₃, λₜ₂₄]
+  //       ↑─────↑  ↑─────↑  ↑─────────────────────↑  ↑─────────────────────↑
+  //       slacks  normals  tangential (contact 1)   tangential (contact 2)
+  //
+  // Anitescu Model (n_λ = n_tangential):
+  // -------------------------------------
+  // λ = [λc₁₁, λc₁₂, ..., λc₁ₘ₁,          <- Combined forces for contact 1
+  //      λc₂₁, λc₂₂, ..., λc₂ₘ₂,          <- Combined forces for contact 2
+  //      ...
+  //      λcₙ₁, λcₙ₂, ..., λcₙₘₙ]          <- Combined forces for contact n
+  //
+  // where each λcᵢⱼ represents a combined normal-tangential force:
+  //   λcᵢⱼ acts along the direction: μᵢ * tangent_directionᵢⱼ +
+  //   normal_directionᵢ
+  //
+  // Example with 2 contacts, 2 friction directions each:
+  //   λ = [λc₁₁, λc₁₂, λc₁₃, λc₁₄, λc₂₁, λc₂₂, λc₂₃, λc₂₄]
+  //       ↑─────────────────────↑  ↑─────────────────────↑
+  //       combined (contact 1)     combined (contact 2)
+  //
+  // Frictionless Spring Model (n_λ = n_contacts):
+  // ----------------------------------------------
+  // λ = [λₙ₁, λₙ₂, ..., λₙₙ]                <- Normal forces only
+  //
+  // ===========================================================================
+
   std::vector<LCSContactDescription> contact_descriptions;
   if (contact_model_ == ContactModel::kFrictionlessSpring)
     contact_descriptions.insert(contact_descriptions.end(),
                                 normal_contact_descriptions.begin(),
                                 normal_contact_descriptions.end());
   else if (contact_model_ == ContactModel::kStewartAndTrinkle) {
+    // Stack as: [slack variables, normal forces, tangential forces]
     for (int i = 0; i < n_contacts_; i++)
       contact_descriptions.push_back(
           LCSContactDescription::CreateSlackVariableDescription());
@@ -554,9 +606,13 @@ std::vector<LCSContactDescription> LCSFactory::GetContactDescriptions() {
                                 tangential_contact_descriptions.begin(),
                                 tangential_contact_descriptions.end());
   } else if (contact_model_ == ContactModel::kAnitescu) {
+    // Start with tangential basis vectors
     contact_descriptions.insert(contact_descriptions.end(),
                                 tangential_contact_descriptions.begin(),
                                 tangential_contact_descriptions.end());
+
+    // For each contact, modify tangential force bases to include normal
+    // component resulting in combined friction cone approximation vectors
     for (int normal_index = 0; normal_index < n_contacts_; normal_index++) {
       // Jt_row_sizes_ gives number of friction directions per contact
       for (int i = 0; i < Jt_row_sizes_(normal_index); i++) {
@@ -564,6 +620,10 @@ std::vector<LCSContactDescription> LCSFactory::GetContactDescriptions() {
         DRAKE_ASSERT(
             contact_descriptions.at(tangential_index).witness_point_A ==
             normal_contact_descriptions.at(normal_index).witness_point_A);
+
+        // Combine tangential and normal force directions:
+        // force_basis = μ * tangent_direction + normal_direction
+        // This creates the edges of the linearized friction cone
         contact_descriptions.at(tangential_index).force_basis =
             mu_[normal_index] *
                 contact_descriptions.at(tangential_index).force_basis +
