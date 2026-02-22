@@ -20,7 +20,6 @@ C3TrajectoryGenerator::C3TrajectoryGenerator(C3TrajectoryGeneratorConfig config)
               "lcmt_c3_trajectory", &C3TrajectoryGenerator::GenerateTrajectory)
           .get_index();
 
-  // this->set_name("c3_trajectory_generator");
 }
 
 void C3TrajectoryGenerator::GenerateTrajectory(

@@ -34,7 +34,6 @@ ContactForceGenerator::ContactForceGenerator() {
               drake::Value<std::vector<LCSContactDescription>>())
           .get_index();
 
-  this->set_name("c3_contact_force_generator");
   // Declare output port for publishing contact forces.
   contact_force_output_port_ =
       this->DeclareAbstractOutputPort("lcmt_force", lcmt_contact_forces(),
