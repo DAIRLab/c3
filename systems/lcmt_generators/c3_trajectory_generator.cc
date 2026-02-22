@@ -19,7 +19,6 @@ C3TrajectoryGenerator::C3TrajectoryGenerator(C3TrajectoryGeneratorConfig config)
       this->DeclareAbstractOutputPort(
               "lcmt_c3_trajectory", &C3TrajectoryGenerator::GenerateTrajectory)
           .get_index();
-
 }
 
 void C3TrajectoryGenerator::GenerateTrajectory(

@@ -329,7 +329,7 @@ TEST_P(LCSFactoryParameterizedPivotingTest, CheckContactDescriptionSizes) {
     case ContactModel::kStewartAndTrinkle:
       // Normal + tangential directions for all contacts
       EXPECT_EQ(contact_descriptions.size(),
-                2*n_contacts + n_tangential_directions);
+                2 * n_contacts + n_tangential_directions);
       break;
     case ContactModel::kFrictionlessSpring:
       // Normal directions only

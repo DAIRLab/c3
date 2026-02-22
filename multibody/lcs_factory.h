@@ -7,6 +7,7 @@
 #include <Eigen/Dense>
 
 #include "core/lcs.h"
+#include "multibody/geom_geom_collider.h"
 #include "multibody/lcs_factory_options.h"
 
 #include "drake/common/sorted_pair.h"
@@ -336,6 +337,7 @@ class LCSFactory {
   LCSFactoryOptions options_;
 
   int n_contacts_;  ///< Number of contact points.
+  std::vector<GeomGeomCollider<double>> geom_geom_colliders_per_contact_;
   std::vector<int>
       n_friction_directions_per_contact_;  ///< Number of friction directions.
   std::vector<std::array<double, 3>>
