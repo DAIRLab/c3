@@ -318,7 +318,7 @@ std::pair<double, vector<VectorXd>> C3::CalculateCost(
   state_trajectory_downsampled[N_] = state_trajectory[N_ * timestep_split];
 
   // Compute the cost based on the downsampled trajectory.
-  // TODO @bibit:  doesn't handle (u-u_prev)^T R (u-u_prev)
+  // NOTE: this doesn't handle (u-u_prev)^T R (u-u_prev)
   double cost = 0.0;
   for (int i = 0; i < N_ + 1; i++) {
     VectorXd x_des = x_desired_.at(i);
