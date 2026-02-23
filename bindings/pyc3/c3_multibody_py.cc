@@ -74,10 +74,12 @@ PYBIND11_MODULE(multibody, m) {
                       &c3::multibody::LCSFactory::GetNumContactVariables),
                   py::arg("contact_model"), py::arg("num_contacts"),
                   py::arg("num_friction_directions"))
-      .def_static("GetNumContactVariables",
-                  py::overload_cast<const c3::LCSFactoryOptions>(
-                      &c3::multibody::LCSFactory::GetNumContactVariables),
-                  py::arg("options"));
+      .def_static(
+          "GetNumContactVariables",
+          py::overload_cast<const drake::multibody::MultibodyPlant<double>&,
+                            const c3::LCSFactoryOptions&>(
+              &c3::multibody::LCSFactory::GetNumContactVariables),
+          py::arg("plant"), py::arg("options"));
 
   py::class_<ContactPairConfig>(m, "ContactPairConfig")
       .def(py::init<>())

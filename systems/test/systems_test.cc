@@ -356,8 +356,9 @@ TEST_F(LCSFactorySystemTest, OutputLCSIsValid) {
   const auto& lcs = lcs_output->get_data(0)->get_value<c3::LCS>();
   EXPECT_EQ(lcs.num_states(), plant->num_positions() + plant->num_velocities());
   EXPECT_EQ(lcs.num_inputs(), plant->num_actuators());
-  EXPECT_EQ(lcs.num_lambdas(), LCSFactory::GetNumContactVariables(
-                                   controller_options.lcs_factory_options));
+  EXPECT_EQ(lcs.num_lambdas(),
+            LCSFactory::GetNumContactVariables(
+                *plant, controller_options.lcs_factory_options));
   EXPECT_EQ(lcs.dt(), controller_options.lcs_factory_options.dt);
   EXPECT_EQ(lcs.N(), controller_options.lcs_factory_options.N);
 }

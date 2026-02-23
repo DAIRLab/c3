@@ -66,8 +66,10 @@ struct TrajectoryDescription {
   };
 
   std::string trajectory_name;  // Name of the trajectory for LCM publishing
-  std::string variable_type;    // Type of C3 variable: "state", "input", or "force"
-  std::vector<index_range> indices;  // List of index ranges to extract and concatenate
+  std::string
+      variable_type;  // Type of C3 variable: "state", "input", or "force"
+  std::vector<index_range>
+      indices;  // List of index ranges to extract and concatenate
 
   template <typename Archive>
   void Serialize(Archive* a) {
