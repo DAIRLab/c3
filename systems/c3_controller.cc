@@ -4,6 +4,7 @@
 
 #include <Eigen/Dense>
 
+#include "common/quaternion_error_hessian.h"
 #include "core/c3_miqp.h"
 #include "core/c3_plus.h"
 #include "core/c3_qp.h"
@@ -62,6 +63,12 @@ C3Controller::C3Controller(
     state_prediction_joints_.push_back(joint_description);
   }
 
+  for (const auto& body_idx : plant_.GetFloatingBaseBodies()) {
+    const auto& body = plant_.get_body(body_idx);
+    int start = body.floating_positions_start();
+    quaternion_indices_.push_back(start);
+  }
+
   // Determine the size of lambda based on the contact model
   n_lambda_ = multibody::LCSFactory::GetNumContactVariables(
       controller_options_.lcs_factory_options);
@@ -91,6 +98,7 @@ C3Controller::C3Controller(
     drake::log()->error("Unknown projection type : {}",
                         controller_options_.projection_type);
   }
+
   DRAKE_THROW_UNLESS(c3_ != nullptr);
 
   // Declare input ports
@@ -162,6 +170,9 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   // Clamp predicted state if state prediction joints are defined
   if (!state_prediction_joints_.empty())
     ResolvePredictedState(x0, filtered_solve_time);
+
+  // Update cost matrices with quaternion cost blocks
+  UpdateQuaternionCosts(x0, desired_state.value());
 
   // Update LCS and target in the C3 problem
   c3_->UpdateLCS(lcs);
@@ -275,6 +286,59 @@ void C3Controller::OutputC3Intermediates(
     c3_intermediates->delta_.col(i) = delta[i].cast<float>();
     c3_intermediates->w_.col(i) = w[i].cast<float>();
   }
+}
+
+void C3Controller::UpdateQuaternionCosts(const Eigen::VectorXd& x_curr,
+                                         const Eigen::VectorXd& x_des) const {
+  // Early return if no quaternions or cost parameters not set
+  if (quaternion_indices_.size() == 0 ||
+      !controller_options_.quaternion_weight.has_value() ||
+      !controller_options_.quaternion_regularizer_fraction.has_value()) {
+    return;
+  }
+
+  C3::CostMatrices costs = c3_->GetCostMatrices();
+  vector<MatrixXd> Q = costs.Q;
+  vector<MatrixXd> R = costs.R;
+  vector<MatrixXd> G = costs.G;
+  vector<MatrixXd> U = costs.U;
+
+  for (int index : quaternion_indices_) {
+    Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4);
+    Eigen::VectorXd quat_des_i = x_des.segment(index, 4);
+
+    Eigen::MatrixXd quat_hessian_i =
+        common::hessian_of_squared_quaternion_angle_difference(quat_curr_i,
+                                                               quat_des_i);
+
+    // Regularize hessian so Q is always PSD
+    double min_eigenval = quat_hessian_i.eigenvalues().real().minCoeff();
+    Eigen::MatrixXd quat_regularizer_1 =
+        std::max(0.0, -min_eigenval) * Eigen::MatrixXd::Identity(4, 4);
+    Eigen::MatrixXd quat_regularizer_2 = quat_des_i * quat_des_i.transpose();
+
+    // Additional regularization term to help with numerical issues
+    Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
+
+    double quaternion_weight = controller_options_.quaternion_weight.value();
+    double quaternion_regularizer_fraction =
+        controller_options_.quaternion_regularizer_fraction.value();
+
+    // Replace quaternion blocks in Q
+    double discount_factor = 1;
+    for (int i = 0; i < N_ + 1; i++) {
+      Q[i].block(index, index, 4, 4) =
+          discount_factor * quaternion_weight *
+          (quat_hessian_i + quat_regularizer_1 +
+           quaternion_regularizer_fraction * quat_regularizer_2 +
+           quat_regularizer_3);
+      discount_factor *= controller_options_.c3_options.gamma;
+    }
+  }
+
+  // Set C3 cost matrices
+  C3::CostMatrices new_costs(Q, R, G, U);
+  c3_->UpdateCostMatrices(new_costs);
 }
 
 }  // namespace systems

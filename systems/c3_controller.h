@@ -72,6 +72,21 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   }
 
   /**
+   * @brief Returns the cost matrices used by the controller.
+   * @return The cost matrices to being used in the optimization problem.
+   */
+  const C3::CostMatrices& GetCostMatrices() { return c3_->GetCostMatrices(); }
+
+  /**
+   * @brief Updates any 4x4 portions of the cost weight matrix corresponding to
+   * quaternion states that are set to have quaternion-dependent costs.
+   * @param x_curr The current state vector.
+   * @param x_des The desired state vector.
+   */
+  void UpdateQuaternionCosts(const VectorXd& x_curr,
+                             const Eigen::VectorXd& x_des) const;
+
+  /**
    * @brief Adds a linear constraint to the controller.
    * @param A The constraint matrix.
    * @param lower_bound The lower bound of the constraint.
@@ -212,12 +227,14 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex filtered_solve_time_index_;
 
   std::vector<JointDescription> state_prediction_joints_;
+  std::vector<int> quaternion_indices_;  // indices for quaternion-valued joints
 
   // Cost matrices for optimization.
-  std::vector<Eigen::MatrixXd> Q_;  ///< State cost matrices.
-  std::vector<Eigen::MatrixXd> R_;  ///< Input cost matrices.
-  std::vector<Eigen::MatrixXd> G_;  ///< State-input cross-term matrices.
-  std::vector<Eigen::MatrixXd> U_;  ///< Constraint matrices.
+  mutable std::vector<Eigen::MatrixXd> Q_;  ///< State cost matrices.
+  mutable std::vector<Eigen::MatrixXd> R_;  ///< Input cost matrices.
+  mutable std::vector<Eigen::MatrixXd>
+      G_;  ///< State-input cross-term matrices.
+  mutable std::vector<Eigen::MatrixXd> U_;  ///< Constraint matrices.
 
   int N_;  ///< Horizon length.
 };
