@@ -28,6 +28,94 @@ using Eigen::VectorXd;
 namespace c3 {
 namespace multibody {
 
+// Helper function to expand contact_pair_configs into per-contact arrays
+struct ExpandedContactConfig {
+  std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_geoms;
+  std::vector<int> num_friction_directions_per_contact;
+  std::vector<double> mu;
+  std::vector<std::optional<std::array<double, 3>>>
+      planar_normal_direction_per_contact;
+  int num_contacts() const { return contact_geoms.size(); }
+};
+
+ExpandedContactConfig ExpandContactPairConfigs(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::systems::Context<double>& context,
+    const std::vector<ContactPairConfig>& configs) {
+  ExpandedContactConfig result;
+
+  for (const auto& pair : configs) {
+    std::vector<GeometryId> body_A_collision_geoms =
+        plant.GetCollisionGeometriesForBody(plant.GetBodyByName(pair.body_A));
+    std::vector<GeometryId> body_B_collision_geoms =
+        plant.GetCollisionGeometriesForBody(plant.GetBodyByName(pair.body_B));
+
+    // Resolve indices: use all geometries if not provided or if empty
+    std::vector<int> body_A_indices =
+        pair.body_A_collision_geom_indices.value_or(std::vector<int>{});
+    std::vector<int> body_B_indices =
+        pair.body_B_collision_geom_indices.value_or(std::vector<int>{});
+
+    if (body_A_indices.empty()) {
+      // Use all geometries for body A
+      body_A_indices.resize(body_A_collision_geoms.size());
+      std::iota(body_A_indices.begin(), body_A_indices.end(), 0);
+    } else {
+      // Validate provided indices for body A
+      for (int idx : body_A_indices) {
+        DRAKE_DEMAND(idx >= 0 &&
+                     idx < static_cast<int>(body_A_collision_geoms.size()));
+      }
+    }
+
+    if (body_B_indices.empty()) {
+      // Use all geometries for body B
+      body_B_indices.resize(body_B_collision_geoms.size());
+      std::iota(body_B_indices.begin(), body_B_indices.end(), 0);
+    } else {
+      // Validate provided indices for body B
+      for (int idx : body_B_indices) {
+        DRAKE_DEMAND(idx >= 0 &&
+                     idx < static_cast<int>(body_B_collision_geoms.size()));
+      }
+    }
+
+    // Create contact pairs for all combinations and replicate properties
+    std::vector<drake::SortedPair<drake::geometry::GeometryId>>
+        AB_geometric_pairs;
+    for (int i : body_A_indices) {
+      for (int j : body_B_indices) {
+        AB_geometric_pairs.emplace_back(body_A_collision_geoms[i],
+                                        body_B_collision_geoms[j]);
+      }
+    }
+
+    // If no limit on the number of contact pairs is specified, or if the limit
+    // is equal to the total number of pairs, return all pairs.
+    if (pair.num_active_contact_pairs.has_value() &&
+        pair.num_active_contact_pairs.value() != AB_geometric_pairs.size()) {
+      AB_geometric_pairs = LCSFactory::GetNClosestContactPairs(
+          plant, context, AB_geometric_pairs,
+          pair.num_active_contact_pairs.value());
+    }
+
+    result.contact_geoms.insert(result.contact_geoms.end(),
+                                AB_geometric_pairs.begin(),
+                                AB_geometric_pairs.end());
+    int n_active_contacts = AB_geometric_pairs.size();
+    result.mu.insert(result.mu.end(), n_active_contacts, pair.mu);
+    result.num_friction_directions_per_contact.insert(
+        result.num_friction_directions_per_contact.end(), n_active_contacts,
+        pair.num_friction_directions);
+    result.planar_normal_direction_per_contact.insert(
+        result.planar_normal_direction_per_contact.end(), n_active_contacts,
+        pair.planar_normal_direction.value_or(std::array<double, 3>{}));
+  }
+
+  return result;
+}
+
+// Constructor 1: Takes only LCSFactoryOptions with contact_pair_configs
 LCSFactory::LCSFactory(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>& context,
@@ -48,69 +136,94 @@ LCSFactory::LCSFactory(
       dt_(options.dt) {
   DRAKE_DEMAND(options.contact_pair_configs.has_value());
 
-  n_contacts_ = 0;
+  // Expand contact_pair_configs into per-contact arrays using plant
+  auto expanded = ExpandContactPairConfigs(
+      plant, context, options.contact_pair_configs.value());
 
-  mu_.clear();
-  n_friction_directions_per_contact_.clear();
-  contact_pairs_.clear();
-  planar_normal_direction_per_contact_.clear();
+  contact_pairs_ = expanded.contact_geoms;
+  n_contacts_ = contact_pairs_.size();
+  mu_ = expanded.mu;
 
-  // Process each contact pair configuration to populate contact pairs, friction
-  // coefficients, and friction directions. This allows for different friction
-  // properties for different pairs of bodies.
-  for (auto& pair : options.contact_pair_configs.value()) {
-    std::vector<SortedPair<GeometryId>> collision_geom_pairs;
-    std::vector<GeometryId> body_A_collision_geoms =
-        plant_.GetCollisionGeometriesForBody(plant_.GetBodyByName(pair.body_A));
-    std::vector<GeometryId> body_B_collision_geoms =
-        plant_.GetCollisionGeometriesForBody(plant_.GetBodyByName(pair.body_B));
+  // Create contact evaluators
+  InitializeContactEvaluators(expanded.num_friction_directions_per_contact,
+                              expanded.planar_normal_direction_per_contact);
+}
 
-    // If no specific indices are provided, use all collision geometries for
-    // each body.
-    if (pair.body_A_collision_geom_indices.empty()) {
-      pair.body_A_collision_geom_indices.resize(body_A_collision_geoms.size());
-      std::iota(pair.body_A_collision_geom_indices.begin(),
-                pair.body_A_collision_geom_indices.end(), 0);
+// Constructor 2: Takes explicit contact_geoms with per-contact arrays
+LCSFactory::LCSFactory(
+    const MultibodyPlant<double>& plant, Context<double>& context,
+    const MultibodyPlant<AutoDiffXd>& plant_ad, Context<AutoDiffXd>& context_ad,
+    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+        contact_geoms,
+    const LCSFactoryOptions& options)
+    : plant_(plant),
+      context_(context),
+      plant_ad_(plant_ad),
+      context_ad_(context_ad),
+      contact_pairs_(contact_geoms),
+      options_(options),
+      n_contacts_(contact_geoms.size()),
+      contact_model_(GetContactModelMap().at(options_.contact_model)),
+      n_q_(plant_.num_positions()),
+      n_v_(plant_.num_velocities()),
+      n_x_(n_q_ + n_v_),
+      n_u_(plant_.num_actuators()),
+      frictionless_(contact_model_ == ContactModel::kFrictionlessSpring),
+      dt_(options.dt) {
+  // Resolve configuration using options resolver methods
+  std::vector<int> friction_dirs = options_.ResolveNumFrictionDirections();
+  mu_ = options_.ResolveMu();
+  std::vector<std::optional<std::array<double, 3>>> planar_normals =
+      options_.ResolvePlanarNormals();
+
+  DRAKE_DEMAND(friction_dirs.size() == (size_t)n_contacts_);
+  DRAKE_DEMAND(mu_.size() == (size_t)n_contacts_);
+  DRAKE_DEMAND(planar_normals.size() == (size_t)n_contacts_);
+
+  // Create contact evaluators
+  InitializeContactEvaluators(friction_dirs, planar_normals);
+}
+
+// Common initialization logic for contact evaluators
+void LCSFactory::InitializeContactEvaluators(
+    const std::vector<int>& friction_dirs,
+    const std::vector<std::optional<std::array<double, 3>>>& planar_normals) {
+  DRAKE_DEMAND(friction_dirs.size() == (size_t)n_contacts_);
+  DRAKE_DEMAND(planar_normals.size() == (size_t)n_contacts_);
+
+  contact_evaluators_.clear();
+  contact_evaluators_.reserve(n_contacts_);
+
+  for (int i = 0; i < n_contacts_; ++i) {
+    if (frictionless_ || friction_dirs[i] == 1) {
+      // Planar contact
+      DRAKE_DEMAND(planar_normals[i].has_value());
+      Eigen::Vector3d planar_normal =
+          Eigen::Map<const Eigen::Vector3d>(planar_normals[i].value().data());
+      contact_evaluators_.push_back(
+          std::make_unique<PlanarContactEvaluator<double>>(
+              plant_, contact_pairs_[i], planar_normal));
+    } else {
+      // Polytope contact
+      contact_evaluators_.push_back(
+          std::make_unique<PolytopeContactEvaluator<double>>(
+              plant_, contact_pairs_[i], friction_dirs[i]));
     }
-    if (pair.body_B_collision_geom_indices.empty()) {
-      pair.body_B_collision_geom_indices.resize(body_B_collision_geoms.size());
-      std::iota(pair.body_B_collision_geom_indices.begin(),
-                pair.body_B_collision_geom_indices.end(), 0);
-    }
+  }
 
-    for (int i : pair.body_A_collision_geom_indices) {
-      for (int j : pair.body_B_collision_geom_indices) {
-        collision_geom_pairs.emplace_back(SortedPair<GeometryId>(
-            body_A_collision_geoms[i], body_B_collision_geoms[j]));
-      }
-    }
-
-    // If no limit on the number of contact pairs is specified, or if the limit
-    // is equal to the total number of pairs, return all pairs.
-    if (pair.num_active_contact_pairs.has_value() &&
-        pair.num_active_contact_pairs.value() != collision_geom_pairs.size())
-      collision_geom_pairs =
-          GetNClosestContactPairs(plant_, context_, collision_geom_pairs,
-                                  pair.num_active_contact_pairs.value());
-
-    contact_pairs_.insert(contact_pairs_.end(), collision_geom_pairs.begin(),
-                          collision_geom_pairs.end());
-    mu_.insert(mu_.end(), collision_geom_pairs.size(), pair.mu);
-    n_friction_directions_per_contact_.insert(
-        n_friction_directions_per_contact_.end(), collision_geom_pairs.size(),
-        pair.num_friction_directions);
-    planar_normal_direction_per_contact_.insert(
-        planar_normal_direction_per_contact_.end(), collision_geom_pairs.size(),
-        pair.planar_normal_direction.value_or(std::array<double, 3>{}));
-
-    n_contacts_ += collision_geom_pairs.size();
+  // Calculate n_lambda_ and Jt_row_sizes_ from evaluators
+  std::vector<int> n_friction_directions_from_evaluators;
+  for (const auto& evaluator : contact_evaluators_) {
+    n_friction_directions_from_evaluators.push_back(
+        evaluator->GetNumFrictionDirections());
   }
 
   n_lambda_ = multibody::LCSFactory::GetNumContactVariables(
-      contact_model_, n_contacts_, n_friction_directions_per_contact_);
+      contact_model_, n_contacts_, n_friction_directions_from_evaluators);
+
   Jt_row_sizes_ = 2 * Eigen::Map<const VectorXi, Eigen::Unaligned>(
-                          n_friction_directions_per_contact_.data(),
-                          n_friction_directions_per_contact_.size());
+                          n_friction_directions_from_evaluators.data(),
+                          n_friction_directions_from_evaluators.size());
 }
 
 std::vector<SortedPair<GeometryId>> LCSFactory::GetNClosestContactPairs(
@@ -147,61 +260,6 @@ std::vector<SortedPair<GeometryId>> LCSFactory::GetNClosestContactPairs(
   return active_contact_pairs;
 }
 
-LCSFactory::LCSFactory(
-    const MultibodyPlant<double>& plant, Context<double>& context,
-    const MultibodyPlant<AutoDiffXd>& plant_ad, Context<AutoDiffXd>& context_ad,
-    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-        contact_geoms,
-    const LCSFactoryOptions& options)
-    : plant_(plant),
-      context_(context),
-      plant_ad_(plant_ad),
-      context_ad_(context_ad),
-      contact_pairs_(contact_geoms),
-      options_(options),
-      n_contacts_(contact_geoms.size()),
-      n_friction_directions_per_contact_(
-          options_.num_friction_directions_per_contact.value()),
-      contact_model_(GetContactModelMap().at(options_.contact_model)),
-      n_q_(plant_.num_positions()),
-      n_v_(plant_.num_velocities()),
-      n_x_(n_q_ + n_v_),
-      n_lambda_(multibody::LCSFactory::GetNumContactVariables(
-          contact_model_, n_contacts_, n_friction_directions_per_contact_)),
-      n_u_(plant_.num_actuators()),
-      mu_(options.mu.value()),
-      frictionless_(contact_model_ == ContactModel::kFrictionlessSpring),
-      dt_(options.dt) {
-  // Handle planar normal directions for contacts with 1 friction direction
-  // Initialize all with empty default values
-  planar_normal_direction_per_contact_.resize(n_contacts_, {});
-
-  for (int i = 0; i < n_contacts_; ++i) {
-    if (n_friction_directions_per_contact_[i] == 1) {
-      // Planar contact - assign the appropriate normal
-      if (options_.planar_normal_direction.has_value()) {
-        // Single planar normal provided - use for all planar contacts
-        DRAKE_DEMAND(options_.planar_normal_direction.value().size() == 3);
-        planar_normal_direction_per_contact_[i] =
-            options_.planar_normal_direction.value();
-      } else {
-        // Per-contact planar normals provided
-        DRAKE_DEMAND(options_.planar_normal_direction_per_contact.has_value());
-        DRAKE_DEMAND(
-            options_.planar_normal_direction_per_contact.value().size() ==
-            (size_t)n_contacts_);
-        planar_normal_direction_per_contact_[i] =
-            options_.planar_normal_direction_per_contact.value()[i];
-      }
-    }
-    // Non-planar contacts keep the default empty value {}
-    geom_geom_colliders_per_contact_.emplace_back(plant_, contact_pairs_[i]);
-  }
-  Jt_row_sizes_ = 2 * Eigen::Map<const VectorXi, Eigen::Unaligned>(
-                          n_friction_directions_per_contact_.data(),
-                          n_friction_directions_per_contact_.size());
-}
-
 void LCSFactory::ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn,
                                         MatrixXd& Jt) {
   phi.resize(n_contacts_);       // Signed distance values for contacts
@@ -212,15 +270,8 @@ void LCSFactory::ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn,
   double phi_i;
   MatrixX<double> J_i;
   for (int i = 0; i < n_contacts_; i++) {
-    if (frictionless_ || n_friction_directions_per_contact_[i] == 1) {
-      Eigen::Vector3d planar_normal =
-          Eigen::Map<const Eigen::Vector3d, Eigen::Unaligned>(
-              planar_normal_direction_per_contact_[i].data());
-      std::tie(phi_i, J_i) = geom_geom_colliders_per_contact_[i].EvalPlanar(
-          context_, planar_normal);
-    } else
-      std::tie(phi_i, J_i) = geom_geom_colliders_per_contact_[i].EvalPolytope(
-          context_, n_friction_directions_per_contact_[i]);
+    // Use polymorphic Eval method
+    auto [phi_i, J_i] = contact_evaluators_[i]->Eval(context_);
 
     // Signed distance value for contact i
     phi(i) = phi_i;
@@ -360,7 +411,8 @@ LCS LCSFactory::GenerateLCS() {
   } else if (contact_model_ ==
              ContactModel::kFrictionlessSpring) {  // Frictionless spring
     FormulateFrictionlessSpringContactDynamics(
-        phi, Jn, qdotNv, options_.spring_stiffness, M, D, E, F, H, c);
+        phi, Jn, qdotNv, options_.spring_stiffness.value_or(1.0), M, D, E, F, H,
+        c);
   } else {
     throw std::out_of_range("Unsupported contact model.");
   }
@@ -513,29 +565,20 @@ std::vector<LCSContactDescription> LCSFactory::GetContactDescriptions() {
   std::vector<LCSContactDescription> tangential_contact_descriptions;
 
   for (int i = 0; i < n_contacts_; i++) {
-    auto [p_WCa, p_WCb] =
-        geom_geom_colliders_per_contact_[i].CalcWitnessPoints(context_);
-    Eigen::Vector3d planar_normal;
-    // For frictionless or single friction direction contacts, the force basis
-    // is just the contact normal
-    if (n_friction_directions_per_contact_[i] == 1)
-      planar_normal = Eigen::Map<const Eigen::Vector3d, Eigen::Unaligned>(
-          planar_normal_direction_per_contact_[i].data());
-    auto force_basis =
-        geom_geom_colliders_per_contact_[i].CalcForceBasisInWorldFrame(
-            context_, n_friction_directions_per_contact_[i], planar_normal);
+    auto [p_WCa, p_WCb] = contact_evaluators_[i]->CalcWitnessPoints(context_);
+    auto force_basis = contact_evaluators_[i]->CalcForceBasis(context_);
 
     for (int j = 0; j < force_basis.rows(); j++) {
       LCSContactDescription contact_description = {
           .witness_point_A = p_WCa,
           .witness_point_B = p_WCb,
           .force_basis = force_basis.row(j)};
-      if (j == 0)
-        // Normal contact
+
+      if (j == 0) {
         normal_contact_descriptions.push_back(contact_description);
-      else
-        // Tangential contact
+      } else {
         tangential_contact_descriptions.push_back(contact_description);
+      }
     }
   }
 
@@ -772,35 +815,33 @@ int LCSFactory::GetNumContactVariables(ContactModel contact_model,
                                 num_friction_directions_per_contact);
 }
 
-int LCSFactory::GetNumContactVariables(const LCSFactoryOptions options) {
+int LCSFactory::GetNumContactVariables(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const LCSFactoryOptions& options) {
   multibody::ContactModel contact_model =
       GetContactModelMap().at(options.contact_model);
-  std::vector<int> n_friction_directions_per_contact;
-  if (options.num_friction_directions_per_contact.has_value()) {
+
+  int n_contacts = options.ResolveNumContacts();
+  std::vector<int> n_friction_directions_per_contact =
+      options.ResolveNumFrictionDirections();
+  if (options.contact_pair_configs.has_value()) {
+    // If contact pair configs are provided, they take precedence over the
+    // options for number of contacts and friction directions. We can expand the
+    // contact pair configs to get the actual number of contacts and friction
+    // directions per contact.
+
+    // Use default context since we only need the geometry query results to
+    // expand the contact pair configs, and the geometry query results do not
+    // depend on the state of the plant.
+    auto context = plant.CreateDefaultContext();
+    auto expanded = ExpandContactPairConfigs(
+        plant, *context, options.contact_pair_configs.value());
+    n_contacts = expanded.num_contacts();
     n_friction_directions_per_contact =
-        options.num_friction_directions_per_contact.value();
-  } else if (options.contact_pair_configs.has_value()) {
-    for (auto& pair_config : options.contact_pair_configs.value()) {
-      std::vector<int> n_friction_directions_for_contact(
-          pair_config.body_A_collision_geom_indices.size() *
-              pair_config.body_B_collision_geom_indices.size(),
-          pair_config.num_friction_directions);
-      n_friction_directions_per_contact.insert(
-          n_friction_directions_per_contact.end(),
-          n_friction_directions_for_contact.begin(),
-          n_friction_directions_for_contact.end());
-    }
-  } else if (options.num_friction_directions.has_value()) {
-    n_friction_directions_per_contact = std::vector<int>(
-        options.num_contacts, options.num_friction_directions.value());
-  } else {
-    throw std::runtime_error(
-        "LCSFactoryOptions must specify num_friction_directions_per_contact, "
-        "num_friction_directions, or contact_pair_configs.");
+        expanded.num_friction_directions_per_contact;
   }
-  DRAKE_DEMAND(n_friction_directions_per_contact.size() ==
-               (size_t)options.num_contacts);
-  return GetNumContactVariables(contact_model, options.num_contacts,
+
+  return GetNumContactVariables(contact_model, n_contacts,
                                 n_friction_directions_per_contact);
 }
 

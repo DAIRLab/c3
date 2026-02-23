@@ -7,6 +7,7 @@
 #include <Eigen/Dense>
 
 #include "core/lcs.h"
+#include "multibody/contact_evaluator.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/lcs_factory_options.h"
 
@@ -223,13 +224,32 @@ class LCSFactory {
    * This is the preferred overload as it encapsulates all contact model and
    * friction configuration in a single options object.
    *
+   * @param plant The MultibodyPlant to analyze for contact information.
    * @param options The LCS options specifying contact model and friction
    * properties.
    * @return int The number of contact variables.
    */
-  static int GetNumContactVariables(const LCSFactoryOptions options);
+  static int GetNumContactVariables(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const LCSFactoryOptions& options);
 
  private:
+  /**
+   * @brief Initializes contact evaluators for all contact pairs.
+   *
+   * This method creates and configures ContactEvaluator objects for each
+   * contact pair, setting up the friction directions and planar normal
+   * constraints as specified.
+   *
+   * @param friction_dirs Vector specifying the number of friction directions
+   * for each contact.
+   * @param planar_normals Vector of optional planar normal vectors for each
+   * contact. If specified, constrains the contact normal to lie in a plane.
+   */
+  void InitializeContactEvaluators(
+      const std::vector<int>& friction_dirs,
+      const std::vector<std::optional<std::array<double, 3>>>& planar_normals);
+
   /**
    * @brief Formulates the contact dynamics for the frictionless spring contact
    * model.
@@ -337,19 +357,13 @@ class LCSFactory {
   LCSFactoryOptions options_;
 
   int n_contacts_;  ///< Number of contact points.
-  std::vector<GeomGeomCollider<double>> geom_geom_colliders_per_contact_;
-  std::vector<int>
-      n_friction_directions_per_contact_;  ///< Number of friction directions.
-  std::vector<std::array<double, 3>>
-      planar_normal_direction_per_contact_;  ///< Optional normal vector for
-                                             ///< planar contact for each
-                                             ///< contact.
-  ContactModel contact_model_;               ///< The contact model being used.
-  int n_q_;       ///< Number of configuration variables.
-  int n_v_;       ///< Number of velocity variables.
-  int n_x_;       ///< Number of state variables.
-  int n_lambda_;  ///< Number of contact force variables.
-  int n_u_;       ///< Number of input variables.
+  std::vector<std::unique_ptr<ContactEvaluator<double>>> contact_evaluators_;
+  ContactModel contact_model_;  ///< The contact model being used.
+  int n_q_;                     ///< Number of configuration variables.
+  int n_v_;                     ///< Number of velocity variables.
+  int n_x_;                     ///< Number of state variables.
+  int n_lambda_;                ///< Number of contact force variables.
+  int n_u_;                     ///< Number of input variables.
 
   std::vector<double> mu_;  ///< Vector of friction coefficients.
   bool frictionless_;       ///< Flag indicating frictionless contacts.

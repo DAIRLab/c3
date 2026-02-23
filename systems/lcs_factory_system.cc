@@ -53,7 +53,7 @@ void LCSFactorySystem::InitializeSystem(
   this->set_name("lcs_factory_system");
 
   n_x_ = plant.num_positions() + plant.num_velocities();
-  n_lambda_ = multibody::LCSFactory::GetNumContactVariables(options);
+  n_lambda_ = multibody::LCSFactory::GetNumContactVariables(plant, options);
   n_u_ = plant.num_actuators();
 
   lcs_state_input_port_ =
