@@ -31,14 +31,26 @@ using drake::solvers::OsqpSolver;
 using drake::solvers::OsqpSolverDetails;
 using drake::solvers::Solve;
 
-C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
-                               const std::vector<Eigen::MatrixXd>& R,
-                               const std::vector<Eigen::MatrixXd>& G,
-                               const std::vector<Eigen::MatrixXd>& U) {
+C3::CostMatrices::CostMatrices(const vector<MatrixXd>& Q,
+                               const vector<MatrixXd>& R,
+                               const vector<MatrixXd>& G,
+                               const vector<MatrixXd>& U,
+                               const vector<MatrixXd>& Q_evaluation,
+                               const vector<MatrixXd>& R_evaluation) {
   this->Q = Q;
   this->R = R;
   this->G = G;
   this->U = U;
+  if (Q_evaluation.empty()) {
+    this->Q_evaluation = Q;
+  } else {
+    this->Q_evaluation = Q_evaluation;
+  }
+  if (R_evaluation.empty()) {
+    this->R_evaluation = R;
+  } else {
+    this->R_evaluation = R_evaluation;
+  }
 }
 
 C3::C3(const LCS& lcs, const CostMatrices& costs,
@@ -51,6 +63,7 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
       n_u_(lcs.num_inputs()),
       n_z_(z_size),
       lcs_(lcs),
+      cost_lcs_(lcs),
       cost_matrices_(costs),
       x_desired_(x_desired),
       options_(options),
@@ -82,19 +95,19 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
 
-  z_sol_ = std::make_unique<std::vector<VectorXd>>();
-  x_sol_ = std::make_unique<std::vector<VectorXd>>();
-  lambda_sol_ = std::make_unique<std::vector<VectorXd>>();
-  u_sol_ = std::make_unique<std::vector<VectorXd>>();
-  w_sol_ = std::make_unique<std::vector<VectorXd>>();
-  delta_sol_ = std::make_unique<std::vector<VectorXd>>();
+  z_sol_ = std::make_unique<vector<VectorXd>>();
+  x_sol_ = std::make_unique<vector<VectorXd>>();
+  lambda_sol_ = std::make_unique<vector<VectorXd>>();
+  u_sol_ = std::make_unique<vector<VectorXd>>();
+  w_sol_ = std::make_unique<vector<VectorXd>>();
+  delta_sol_ = std::make_unique<vector<VectorXd>>();
   for (int i = 0; i < N_; ++i) {
-    x_sol_->push_back(Eigen::VectorXd::Zero(n_x_));
-    lambda_sol_->push_back(Eigen::VectorXd::Zero(n_lambda_));
-    u_sol_->push_back(Eigen::VectorXd::Zero(n_u_));
-    z_sol_->push_back(Eigen::VectorXd::Zero(n_z_));
-    w_sol_->push_back(Eigen::VectorXd::Zero(n_z_));
-    delta_sol_->push_back(Eigen::VectorXd::Zero(n_z_));
+    x_sol_->push_back(VectorXd::Zero(n_x_));
+    lambda_sol_->push_back(VectorXd::Zero(n_lambda_));
+    u_sol_->push_back(VectorXd::Zero(n_u_));
+    z_sol_->push_back(VectorXd::Zero(n_z_));
+    w_sol_->push_back(VectorXd::Zero(n_z_));
+    delta_sol_->push_back(VectorXd::Zero(n_z_));
   }
 
   z_.resize(N_);
@@ -183,13 +196,11 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
 
 C3::CostMatrices C3::CreateCostMatricesFromC3Options(const C3Options& options,
                                                      int N) {
-  std::vector<Eigen::MatrixXd> Q;  // State cost matrices.
-  std::vector<Eigen::MatrixXd> R;  // Input cost matrices.
+  vector<MatrixXd> Q;  // State cost matrices.
+  vector<MatrixXd> R;  // Input cost matrices.
 
-  std::vector<MatrixXd> G(N,
-                          options.G);  // State-input cross-term matrices.
-  std::vector<MatrixXd> U(N,
-                          options.U);  // Constraint matrices.
+  vector<MatrixXd> G(N, options.G);  // State-input cross-term matrices.
+  vector<MatrixXd> U(N, options.U);  // Constraint matrices.
 
   double discount_factor = 1.0;
   for (int i = 0; i < N; ++i) {
@@ -213,6 +224,119 @@ void C3::ScaleLCS() {
   AnDn_ = lcs_.ScaleComplementarityDynamics();
 }
 
+void C3::UpdateCostLCS(const LCS& cost_lcs) {
+  DRAKE_DEMAND(lcs_.num_states() == cost_lcs.num_states());
+  DRAKE_DEMAND(lcs_.num_inputs() == cost_lcs.num_inputs());
+  DRAKE_DEMAND(lcs_.N() <= cost_lcs.N());
+  DRAKE_DEMAND(lcs_.dt() >= cost_lcs.dt());
+  DRAKE_DEMAND(lcs_.N() * lcs_.dt() == cost_lcs.N() * cost_lcs.dt());
+
+  int timestep_split = cost_lcs.N() / lcs_.N();
+  DRAKE_DEMAND(cost_lcs.dt() * timestep_split == lcs_.dt());
+  DRAKE_DEMAND(lcs_.N() * timestep_split == cost_lcs.N());
+
+  // Update the stored LCS object.
+  cost_lcs_ = cost_lcs;
+}
+
+std::pair<double, vector<VectorXd>> C3::CalculateCost(
+    const CostComputationType& cost_type, const VectorXd& Kp,
+    const VectorXd& Kd) {
+  DRAKE_DEMAND(cost_type == CostComputationType::SIM_IMPEDANCE ||
+               cost_type == CostComputationType::SIM_OBJECT_LCS_ROBOT_PLAN);
+
+  int timestep_split = cost_lcs_.N() / lcs_.N();
+
+  // Get the C3 plan.
+  vector<VectorXd> planned_state_trajectory_coarse = GetStateSolution();
+  vector<VectorXd> planned_input_trajectory_coarse = GetInputSolution();
+
+  // Compute the new trajectory used for cost evaluation.
+  vector<VectorXd> state_trajectory(N_ * timestep_split + 1,
+                                    VectorXd::Zero(n_x_));
+  vector<VectorXd> input_trajectory(N_ * timestep_split, VectorXd::Zero(n_u_));
+  if (cost_type == CostComputationType::SIM_IMPEDANCE) {
+    // Ensure the Kp and Kd vectors encode the actuated position and velocity
+    // indices within the state vector.
+    DRAKE_DEMAND(Kp.rows() == Kd.rows() && Kp.rows() == n_x_);
+    DRAKE_DEMAND((Kp.array() != 0.0).count() == n_u_);
+    DRAKE_DEMAND((Kd.array() != 0.0).count() == n_u_);
+    MatrixXd Kp_mat = MatrixXd::Zero(n_u_, n_x_);
+    MatrixXd Kd_mat = MatrixXd::Zero(n_u_, n_x_);
+    int kp_i = 0;
+    int kd_i = 0;
+    for (int i = 0; i < n_x_; ++i) {
+      if (Kp(i) != 0) {
+        Kp_mat(kp_i, i) = Kp(i);
+        kp_i++;
+      }
+      if (Kd(i) != 0) {
+        Kd_mat(kd_i, i) = Kd(i);
+        kd_i++;
+      }
+    }
+
+    state_trajectory[0] = planned_state_trajectory_coarse[0];
+    for (int i = 0; i < N_ * timestep_split; i++) {
+      VectorXd x = planned_state_trajectory_coarse.at(i / timestep_split);
+      VectorXd u = planned_input_trajectory_coarse.at(i / timestep_split);
+      VectorXd x_des = x_desired_.at(i / timestep_split);
+      VectorXd x_curr = state_trajectory.at(i);
+      input_trajectory[i] =
+          planned_input_trajectory_coarse.at(i / timestep_split);
+      input_trajectory[i] += Kp_mat * (x - x_curr) + Kd_mat * (x - x_curr);
+      state_trajectory[i + 1] = cost_lcs_.Simulate(x_curr, input_trajectory[i]);
+    }
+  } else if (cost_type == CostComputationType::SIM_OBJECT_LCS_ROBOT_PLAN) {
+    state_trajectory[0] = planned_state_trajectory_coarse[0];
+    for (int i = 0; i < N_ * timestep_split; i++) {
+      VectorXd x_curr = state_trajectory.at(i);
+      input_trajectory[i] =
+          planned_input_trajectory_coarse.at(i / timestep_split);
+      state_trajectory[i + 1] = cost_lcs_.Simulate(x_curr, input_trajectory[i]);
+    }
+    // Replace the simulated robot states with the planned ones.
+    for (int i = 0; i < N_ * timestep_split; i++) {
+      state_trajectory[i].segment(0, n_u_) =
+          planned_state_trajectory_coarse.at(i / timestep_split)
+              .segment(0, n_u_);
+    }
+    state_trajectory[N_ * timestep_split].segment(0, n_u_) =
+        cost_lcs_
+            .Simulate(state_trajectory[N_ * timestep_split - 1],
+                      input_trajectory[N_ * timestep_split - 1])
+            .segment(0, n_u_);
+  }
+
+  // Downsample the state trajectory to match the C3 plan timesteps.
+  vector<VectorXd> state_trajectory_downsampled(N_ + 1, VectorXd::Zero(n_x_));
+  vector<VectorXd> input_trajectory_downsampled(N_, VectorXd::Zero(n_u_));
+  for (int i = 0; i < N_ * timestep_split; i += timestep_split) {
+    state_trajectory_downsampled[i / timestep_split] = state_trajectory[i];
+    input_trajectory_downsampled[i / timestep_split] = input_trajectory[i];
+  }
+  state_trajectory_downsampled[N_] = state_trajectory[N_ * timestep_split];
+
+  // Compute the cost based on the downsampled trajectory.
+  // TODO @bibit:  doesn't handle (u-u_prev)^T R (u-u_prev)
+  double cost = 0.0;
+  for (int i = 0; i < N_ + 1; i++) {
+    VectorXd x_des = x_desired_.at(i);
+    cost += (state_trajectory_downsampled[i] - x_des).transpose() *
+            cost_matrices_.Q_evaluation.at(i) *
+            (state_trajectory_downsampled[i] - x_des);
+    if (i < N_) {
+      cost += input_trajectory_downsampled[i].transpose() *
+              cost_matrices_.R_evaluation.at(i) *
+              input_trajectory_downsampled[i];
+    }
+  }
+
+  std::pair<double, vector<VectorXd>> cost_and_trajectory(
+      cost, state_trajectory_downsampled);
+  return cost_and_trajectory;
+}
+
 void C3::UpdateLCS(const LCS& lcs) {
   DRAKE_DEMAND(lcs_.HasSameDimensionsAs(lcs));
 
@@ -232,12 +356,12 @@ void C3::UpdateLCS(const LCS& lcs) {
   }
 }
 
-const std::vector<drake::solvers::LinearEqualityConstraint*>&
+const vector<drake::solvers::LinearEqualityConstraint*>&
 C3::GetDynamicConstraints() {
   return dynamics_constraints_;
 }
 
-void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
+void C3::UpdateTarget(const vector<VectorXd>& x_des) {
   x_desired_ = x_des;
   for (int i = 0; i < N_ + 1; ++i) {
     target_costs_[i]->UpdateCoefficients(
@@ -261,7 +385,7 @@ void C3::UpdateCostMatrices(const CostMatrices& costs) {
   }
 }
 
-const std::vector<drake::solvers::QuadraticCost*>& C3::GetTargetCost() {
+const vector<drake::solvers::QuadraticCost*>& C3::GetTargetCost() {
   return target_costs_;
 }
 
@@ -285,7 +409,8 @@ void C3::Solve(const VectorXd& x0) {
     VectorXd lambda0;
     LCPSolver.SolveLcpLemke(lcs_.F()[0], lcs_.E()[0] * x0 + lcs_.c()[0],
                             &lambda0);
-    // Force constraints to be updated before every solve if no dependence on u
+    // Force constraints to be updated before every solve if no dependence on
+    // u
     if (initial_force_constraint_) {
       initial_force_constraint_->UpdateCoefficients(
           MatrixXd::Identity(n_lambda_, n_lambda_), lambda0);
@@ -312,8 +437,8 @@ void C3::Solve(const VectorXd& x0) {
   if (options_.delta_option == 1) {
     delta_init.head(n_x_) = x0;
   }
-  std::vector<VectorXd> delta(N_, delta_init);
-  std::vector<VectorXd> w(N_, VectorXd::Zero(n_z_));
+  vector<VectorXd> delta(N_, delta_init);
+  vector<VectorXd> w(N_, VectorXd::Zero(n_z_));
   vector<MatrixXd> G = cost_matrices_.G;
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
@@ -385,7 +510,7 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   }
 }
 
-void C3::SetInitialGuessQP(const Eigen::VectorXd& x0, int admm_iteration) {
+void C3::SetInitialGuessQP(const VectorXd& x0, int admm_iteration) {
   prog_.SetInitialGuess(x_[0], x0);
   if (!warm_start_ || admm_iteration == 0)
     return;  // No warm start for the first iteration
@@ -501,8 +626,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
   return deltaProj;
 }
 
-void C3::AddLinearConstraint(const Eigen::MatrixXd& A,
-                             const VectorXd& lower_bound,
+void C3::AddLinearConstraint(const MatrixXd& A, const VectorXd& lower_bound,
                              const VectorXd& upper_bound,
                              ConstraintVariable constraint) {
   if (constraint == 1) {
@@ -530,9 +654,9 @@ void C3::AddLinearConstraint(const Eigen::MatrixXd& A,
 void C3::AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
                              double upper_bound,
                              ConstraintVariable constraint) {
-  Eigen::VectorXd lb(1);
+  VectorXd lb(1);
   lb << lower_bound;
-  Eigen::VectorXd ub(1);
+  VectorXd ub(1);
   ub << upper_bound;
   AddLinearConstraint(A, lb, ub, constraint);
 }
@@ -544,7 +668,7 @@ void C3::RemoveConstraints() {
   user_constraints_.clear();
 }
 
-const std::vector<LinearConstraintBinding>& C3::GetLinearConstraints() {
+const vector<LinearConstraintBinding>& C3::GetLinearConstraints() {
   return user_constraints_;
 }
 
