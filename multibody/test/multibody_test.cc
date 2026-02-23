@@ -465,7 +465,8 @@ class GetNClosestContactPairsTest
       plant_ptr->SetDefaultFreeBodyPose(cube_body, cube_pose);
 
       // Store height for this object
-      object_heights[cube_name] = height;
+      object_ground_distances[cube_name] =
+          height - 0.05;  // Distance from ground is height minus half cube size
     }
 
     // Add 5 spheres at random heights
@@ -493,7 +494,8 @@ class GetNClosestContactPairsTest
       plant_ptr->SetDefaultFreeBodyPose(sphere_body, sphere_pose);
 
       // Store height for this object
-      object_heights[sphere_name] = height;
+      object_ground_distances[sphere_name] =
+          height - 0.05;  // Distance from ground is height minus radius
     }
 
     // Add ground plane (table)
@@ -536,7 +538,7 @@ class GetNClosestContactPairsTest
         all_pairs.push_back(pair);
 
         // Map contact pair to object height (proxy for distance)
-        pair_to_distance[pair] = object_heights[object_name];
+        pair_to_distance[pair] = object_ground_distances[object_name];
       }
     }
 
@@ -550,7 +552,7 @@ class GetNClosestContactPairsTest
   Context<double>* context;
 
   std::vector<std::string> object_names;
-  std::map<std::string, double> object_heights;
+  std::map<std::string, double> object_ground_distances;
   std::vector<SortedPair<GeometryId>> all_pairs;
   std::map<SortedPair<GeometryId>, double> pair_to_distance;
 };
