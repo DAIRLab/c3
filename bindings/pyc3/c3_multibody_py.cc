@@ -47,6 +47,10 @@ PYBIND11_MODULE(multibody, m) {
                   py::arg("plant"), py::arg("context"), py::arg("plant_ad"),
                   py::arg("context_ad"), py::arg("contact_geoms"),
                   py::arg("options"), py::arg("state"), py::arg("input"))
+      .def_static("GetNClosestContactPairs",
+                  &c3::multibody::LCSFactory::GetNClosestContactPairs,
+                  py::arg("plant"), py::arg("context"),
+                  py::arg("contact_pairs"), py::arg("N"))
       .def_static("FixSomeModes", &c3::multibody::LCSFactory::FixSomeModes,
                   py::arg("other"), py::arg("active_lambda_inds"),
                   py::arg("inactive_lambda_inds"))

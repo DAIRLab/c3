@@ -101,7 +101,6 @@ class GeomGeomCollider {
   std::pair<drake::VectorX<double>, drake::VectorX<double>> CalcWitnessPoints(
       const drake::systems::Context<double>& context);
 
- private:
   /**
    * @brief A struct to hold the results of a geometry query.
    *
@@ -143,6 +142,19 @@ class GeomGeomCollider {
     Eigen::Vector3d p_BCb;
   };
 
+  /**
+   * @brief Gets the geometry query result.
+   *
+   * This function queries the MultibodyPlant for the signed distance and
+   * closest points between the two geometries.
+   *
+   * @param context The context for the MultibodyPlant.
+   * @return A GeometryQueryResult struct containing the results of the query.
+   */
+  GeometryQueryResult GetGeometryQueryResult(
+      const drake::systems::Context<T>& context) const;
+
+ private:
   /**
    * @brief Internal helper function for EvalPolytope and EvalPlanar.
    *
@@ -205,18 +217,6 @@ class GeomGeomCollider {
   Eigen::Matrix3d ComputePlanarForceBasis(
       const Eigen::Vector3d& contact_normal,
       const Eigen::Vector3d& planar_normal) const;
-
-  /**
-   * @brief Gets the geometry query result.
-   *
-   * This function queries the MultibodyPlant for the signed distance and
-   * closest points between the two geometries.
-   *
-   * @param context The context for the MultibodyPlant.
-   * @return A GeometryQueryResult struct containing the results of the query.
-   */
-  GeometryQueryResult GetGeometryQueryResult(
-      const drake::systems::Context<T>& context) const;
 
   /**
    * @brief Determines if the geometry pair consists of a sphere and a mesh.
