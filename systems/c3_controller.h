@@ -113,6 +113,10 @@ class C3Controller : public drake::systems::LeafSystem<double> {
     c3_->AddLinearConstraint(A, lower_bound, upper_bound, constraint);
   }
 
+  void SetSolverOptions(const drake::solvers::SolverOptions& options) {
+    c3_->SetSolverOptions(options);
+  }
+
  private:
   /**
    * @struct JointDescription
