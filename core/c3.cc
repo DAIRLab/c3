@@ -34,23 +34,11 @@ using drake::solvers::Solve;
 C3::CostMatrices::CostMatrices(const vector<MatrixXd>& Q,
                                const vector<MatrixXd>& R,
                                const vector<MatrixXd>& G,
-                               const vector<MatrixXd>& U,
-                               const vector<MatrixXd>& Q_evaluation,
-                               const vector<MatrixXd>& R_evaluation) {
+                               const vector<MatrixXd>& U) {
   this->Q = Q;
   this->R = R;
   this->G = G;
   this->U = U;
-  if (Q_evaluation.empty()) {
-    this->Q_evaluation = Q;
-  } else {
-    this->Q_evaluation = Q_evaluation;
-  }
-  if (R_evaluation.empty()) {
-    this->R_evaluation = R;
-  } else {
-    this->R_evaluation = R_evaluation;
-  }
 }
 
 C3::C3(const LCS& lcs, const CostMatrices& costs,
@@ -63,7 +51,7 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
       n_u_(lcs.num_inputs()),
       n_z_(z_size),
       lcs_(lcs),
-      cost_lcs_(lcs),
+      // cost_lcs_(lcs), // TODO @bibit: remove
       cost_matrices_(costs),
       x_desired_(x_desired),
       options_(options),
@@ -224,118 +212,120 @@ void C3::ScaleLCS() {
   AnDn_ = lcs_.ScaleComplementarityDynamics();
 }
 
+/* TODO @bibit: remove
 void C3::UpdateCostLCS(const LCS& cost_lcs) {
-  DRAKE_DEMAND(lcs_.num_states() == cost_lcs.num_states());
-  DRAKE_DEMAND(lcs_.num_inputs() == cost_lcs.num_inputs());
-  DRAKE_DEMAND(lcs_.N() <= cost_lcs.N());
-  DRAKE_DEMAND(lcs_.dt() >= cost_lcs.dt());
-  DRAKE_DEMAND(lcs_.N() * lcs_.dt() == cost_lcs.N() * cost_lcs.dt());
+ DRAKE_DEMAND(lcs_.num_states() == cost_lcs.num_states());
+ DRAKE_DEMAND(lcs_.num_inputs() == cost_lcs.num_inputs());
+ DRAKE_DEMAND(lcs_.N() <= cost_lcs.N());
+ DRAKE_DEMAND(lcs_.dt() >= cost_lcs.dt());
+ DRAKE_DEMAND(lcs_.N() * lcs_.dt() == cost_lcs.N() * cost_lcs.dt());
 
-  int timestep_split = cost_lcs.N() / lcs_.N();
-  DRAKE_DEMAND(cost_lcs.dt() * timestep_split == lcs_.dt());
-  DRAKE_DEMAND(lcs_.N() * timestep_split == cost_lcs.N());
+ int timestep_split = cost_lcs.N() / lcs_.N();
+ DRAKE_DEMAND(cost_lcs.dt() * timestep_split == lcs_.dt());
+ DRAKE_DEMAND(lcs_.N() * timestep_split == cost_lcs.N());
 
-  // Update the stored LCS object.
-  cost_lcs_ = cost_lcs;
+ // Update the stored LCS object.
+ cost_lcs_ = cost_lcs;
 }
 
 std::pair<double, vector<VectorXd>> C3::CalculateCost(
-    const CostComputationType& cost_type, const VectorXd& Kp,
-    const VectorXd& Kd) {
-  DRAKE_DEMAND(cost_type == CostComputationType::SIM_IMPEDANCE ||
-               cost_type == CostComputationType::SIM_OBJECT_LCS_ROBOT_PLAN);
+   const CostComputationType& cost_type, const VectorXd& Kp,
+   const VectorXd& Kd) {
+ DRAKE_DEMAND(cost_type == CostComputationType::SIM_IMPEDANCE ||
+              cost_type == CostComputationType::SIM_OBJECT_LCS_ROBOT_PLAN);
 
-  int timestep_split = cost_lcs_.N() / lcs_.N();
+ int timestep_split = cost_lcs_.N() / lcs_.N();
 
-  // Get the C3 plan.
-  vector<VectorXd> planned_state_trajectory_coarse = GetStateSolution();
-  vector<VectorXd> planned_input_trajectory_coarse = GetInputSolution();
+ // Get the C3 plan.
+ vector<VectorXd> planned_state_trajectory_coarse = GetStateSolution();
+ vector<VectorXd> planned_input_trajectory_coarse = GetInputSolution();
 
-  // Compute the new trajectory used for cost evaluation.
-  vector<VectorXd> state_trajectory(N_ * timestep_split + 1,
-                                    VectorXd::Zero(n_x_));
-  vector<VectorXd> input_trajectory(N_ * timestep_split, VectorXd::Zero(n_u_));
-  if (cost_type == CostComputationType::SIM_IMPEDANCE) {
-    // Ensure the Kp and Kd vectors encode the actuated position and velocity
-    // indices within the state vector.
-    DRAKE_DEMAND(Kp.rows() == Kd.rows() && Kp.rows() == n_x_);
-    DRAKE_DEMAND((Kp.array() != 0.0).count() == n_u_);
-    DRAKE_DEMAND((Kd.array() != 0.0).count() == n_u_);
-    MatrixXd Kp_mat = MatrixXd::Zero(n_u_, n_x_);
-    MatrixXd Kd_mat = MatrixXd::Zero(n_u_, n_x_);
-    int kp_i = 0;
-    int kd_i = 0;
-    for (int i = 0; i < n_x_; ++i) {
-      if (Kp(i) != 0) {
-        Kp_mat(kp_i, i) = Kp(i);
-        kp_i++;
-      }
-      if (Kd(i) != 0) {
-        Kd_mat(kd_i, i) = Kd(i);
-        kd_i++;
-      }
-    }
+ // Compute the new trajectory used for cost evaluation.
+ vector<VectorXd> state_trajectory(N_ * timestep_split + 1,
+                                   VectorXd::Zero(n_x_));
+ vector<VectorXd> input_trajectory(N_ * timestep_split, VectorXd::Zero(n_u_));
+ if (cost_type == CostComputationType::SIM_IMPEDANCE) {
+   // Ensure the Kp and Kd vectors encode the actuated position and velocity
+   // indices within the state vector.
+   DRAKE_DEMAND(Kp.rows() == Kd.rows() && Kp.rows() == n_x_);
+   DRAKE_DEMAND((Kp.array() != 0.0).count() == n_u_);
+   DRAKE_DEMAND((Kd.array() != 0.0).count() == n_u_);
+   MatrixXd Kp_mat = MatrixXd::Zero(n_u_, n_x_);
+   MatrixXd Kd_mat = MatrixXd::Zero(n_u_, n_x_);
+   int kp_i = 0;
+   int kd_i = 0;
+   for (int i = 0; i < n_x_; ++i) {
+     if (Kp(i) != 0) {
+       Kp_mat(kp_i, i) = Kp(i);
+       kp_i++;
+     }
+     if (Kd(i) != 0) {
+       Kd_mat(kd_i, i) = Kd(i);
+       kd_i++;
+     }
+   }
 
-    state_trajectory[0] = planned_state_trajectory_coarse[0];
-    for (int i = 0; i < N_ * timestep_split; i++) {
-      VectorXd x = planned_state_trajectory_coarse.at(i / timestep_split);
-      VectorXd u = planned_input_trajectory_coarse.at(i / timestep_split);
-      VectorXd x_des = x_desired_.at(i / timestep_split);
-      VectorXd x_curr = state_trajectory.at(i);
-      input_trajectory[i] =
-          planned_input_trajectory_coarse.at(i / timestep_split);
-      input_trajectory[i] += Kp_mat * (x - x_curr) + Kd_mat * (x - x_curr);
-      state_trajectory[i + 1] = cost_lcs_.Simulate(x_curr, input_trajectory[i]);
-    }
-  } else if (cost_type == CostComputationType::SIM_OBJECT_LCS_ROBOT_PLAN) {
-    state_trajectory[0] = planned_state_trajectory_coarse[0];
-    for (int i = 0; i < N_ * timestep_split; i++) {
-      VectorXd x_curr = state_trajectory.at(i);
-      input_trajectory[i] =
-          planned_input_trajectory_coarse.at(i / timestep_split);
-      state_trajectory[i + 1] = cost_lcs_.Simulate(x_curr, input_trajectory[i]);
-    }
-    // Replace the simulated robot states with the planned ones.
-    for (int i = 0; i < N_ * timestep_split; i++) {
-      state_trajectory[i].segment(0, n_u_) =
-          planned_state_trajectory_coarse.at(i / timestep_split)
-              .segment(0, n_u_);
-    }
-    state_trajectory[N_ * timestep_split].segment(0, n_u_) =
-        cost_lcs_
-            .Simulate(state_trajectory[N_ * timestep_split - 1],
-                      input_trajectory[N_ * timestep_split - 1])
-            .segment(0, n_u_);
-  }
+   state_trajectory[0] = planned_state_trajectory_coarse[0];
+   for (int i = 0; i < N_ * timestep_split; i++) {
+     VectorXd x = planned_state_trajectory_coarse.at(i / timestep_split);
+     VectorXd u = planned_input_trajectory_coarse.at(i / timestep_split);
+     VectorXd x_des = x_desired_.at(i / timestep_split);
+     VectorXd x_curr = state_trajectory.at(i);
+     input_trajectory[i] =
+         planned_input_trajectory_coarse.at(i / timestep_split);
+     input_trajectory[i] += Kp_mat * (x - x_curr) + Kd_mat * (x - x_curr);
+     state_trajectory[i + 1] = cost_lcs_.Simulate(x_curr, input_trajectory[i]);
+   }
+ } else if (cost_type == CostComputationType::SIM_OBJECT_LCS_ROBOT_PLAN) {
+   state_trajectory[0] = planned_state_trajectory_coarse[0];
+   for (int i = 0; i < N_ * timestep_split; i++) {
+     VectorXd x_curr = state_trajectory.at(i);
+     input_trajectory[i] =
+         planned_input_trajectory_coarse.at(i / timestep_split);
+     state_trajectory[i + 1] = cost_lcs_.Simulate(x_curr, input_trajectory[i]);
+   }
+   // Replace the simulated robot states with the planned ones.
+   for (int i = 0; i < N_ * timestep_split; i++) {
+     state_trajectory[i].segment(0, n_u_) =
+         planned_state_trajectory_coarse.at(i / timestep_split)
+             .segment(0, n_u_);
+   }
+   state_trajectory[N_ * timestep_split].segment(0, n_u_) =
+       cost_lcs_
+           .Simulate(state_trajectory[N_ * timestep_split - 1],
+                     input_trajectory[N_ * timestep_split - 1])
+           .segment(0, n_u_);
+ }
 
-  // Downsample the state trajectory to match the C3 plan timesteps.
-  vector<VectorXd> state_trajectory_downsampled(N_ + 1, VectorXd::Zero(n_x_));
-  vector<VectorXd> input_trajectory_downsampled(N_, VectorXd::Zero(n_u_));
-  for (int i = 0; i < N_ * timestep_split; i += timestep_split) {
-    state_trajectory_downsampled[i / timestep_split] = state_trajectory[i];
-    input_trajectory_downsampled[i / timestep_split] = input_trajectory[i];
-  }
-  state_trajectory_downsampled[N_] = state_trajectory[N_ * timestep_split];
+ // Downsample the state trajectory to match the C3 plan timesteps.
+ vector<VectorXd> state_trajectory_downsampled(N_ + 1, VectorXd::Zero(n_x_));
+ vector<VectorXd> input_trajectory_downsampled(N_, VectorXd::Zero(n_u_));
+ for (int i = 0; i < N_ * timestep_split; i += timestep_split) {
+   state_trajectory_downsampled[i / timestep_split] = state_trajectory[i];
+   input_trajectory_downsampled[i / timestep_split] = input_trajectory[i];
+ }
+ state_trajectory_downsampled[N_] = state_trajectory[N_ * timestep_split];
 
-  // Compute the cost based on the downsampled trajectory.
-  // NOTE: this doesn't handle (u-u_prev)^T R (u-u_prev)
-  double cost = 0.0;
-  for (int i = 0; i < N_ + 1; i++) {
-    VectorXd x_des = x_desired_.at(i);
-    cost += (state_trajectory_downsampled[i] - x_des).transpose() *
-            cost_matrices_.Q_evaluation.at(i) *
-            (state_trajectory_downsampled[i] - x_des);
-    if (i < N_) {
-      cost += input_trajectory_downsampled[i].transpose() *
-              cost_matrices_.R_evaluation.at(i) *
-              input_trajectory_downsampled[i];
-    }
-  }
+ // Compute the cost based on the downsampled trajectory.
+ // NOTE: this doesn't handle (u-u_prev)^T R (u-u_prev)
+ double cost = 0.0;
+ for (int i = 0; i < N_ + 1; i++) {
+   VectorXd x_des = x_desired_.at(i);
+   cost += (state_trajectory_downsampled[i] - x_des).transpose() *
+           cost_matrices_.Q_evaluation.at(i) *
+           (state_trajectory_downsampled[i] - x_des);
+   if (i < N_) {
+     cost += input_trajectory_downsampled[i].transpose() *
+             cost_matrices_.R_evaluation.at(i) *
+             input_trajectory_downsampled[i];
+   }
+ }
 
-  std::pair<double, vector<VectorXd>> cost_and_trajectory(
-      cost, state_trajectory_downsampled);
-  return cost_and_trajectory;
+ std::pair<double, vector<VectorXd>> cost_and_trajectory(
+     cost, state_trajectory_downsampled);
+ return cost_and_trajectory;
 }
+*/
 
 void C3::UpdateLCS(const LCS& lcs) {
   DRAKE_DEMAND(lcs_.HasSameDimensionsAs(lcs));

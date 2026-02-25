@@ -18,10 +18,11 @@ typedef drake::solvers::Binding<drake::solvers::QuadraticCost>
 
 enum ConstraintVariable : uint8_t { STATE = 1, INPUT = 2, FORCE = 3 };
 
-enum CostComputationType : uint8_t {
-  SIM_IMPEDANCE = 1,
-  SIM_OBJECT_LCS_ROBOT_PLAN = 2
-};
+// TODO @bibit: remove
+// enum CostComputationType : uint8_t {
+//   SIM_IMPEDANCE = 1,
+//   SIM_OBJECT_LCS_ROBOT_PLAN = 2
+// };
 
 class C3 {
  public:
@@ -35,9 +36,7 @@ class C3 {
     CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
                  const std::vector<Eigen::MatrixXd>& R,
                  const std::vector<Eigen::MatrixXd>& G,
-                 const std::vector<Eigen::MatrixXd>& U,
-                 const std::vector<Eigen::MatrixXd>& Q_evaluation = {},
-                 const std::vector<Eigen::MatrixXd>& R_evaluation = {});
+                 const std::vector<Eigen::MatrixXd>& U);
     bool HasSameDimensionsAs(const CostMatrices& other) const {
       // Check vector and matrix dimensions
       return (Q.size() == other.Q.size() &&
@@ -51,13 +50,7 @@ class C3 {
               G.at(0).cols() == other.G.at(0).cols() &&
               U.size() == other.U.size() &&
               U.at(0).rows() == other.U.at(0).rows() &&
-              U.at(0).cols() == other.U.at(0).cols() &&
-              Q_evaluation.size() == other.Q_evaluation.size() &&
-              Q_evaluation.at(0).rows() == other.Q_evaluation.at(0).rows() &&
-              Q_evaluation.at(0).cols() == other.Q_evaluation.at(0).cols() &&
-              R_evaluation.size() == other.R_evaluation.size() &&
-              R_evaluation.at(0).rows() == other.R_evaluation.at(0).rows() &&
-              R_evaluation.at(0).cols() == other.R_evaluation.at(0).cols());
+              U.at(0).cols() == other.U.at(0).cols());
     }
     std::vector<Eigen::MatrixXd> Q;
     std::vector<Eigen::MatrixXd> R;
@@ -205,6 +198,7 @@ class C3 {
   }
 
   /**
+   * TODO @bibit: remove
    * @brief Update the cost LCS used for cost evaluation in CalculateCost.
    *
    * @param cost_lcs the new LCS to be used for cost evaluation. Must have the
@@ -215,9 +209,10 @@ class C3 {
    * planning LCS. Can differ in lambda dimensions, if higher contact resolution
    * is desired for evaluation.
    */
-  void UpdateCostLCS(const LCS& cost_lcs);
+  //   void UpdateCostLCS(const LCS& cost_lcs);
 
   /**
+   * TODO @bibit: remove
    * @brief Calculate the cost of the current solution, using the provided cost
    * type and optionally provided Kp and Kd values for the cost calculation.
    *
@@ -233,9 +228,9 @@ class C3 {
    * @return A pair consisting of the cost (as a double) and a vector of the
    * state trajectory associated with the cost.
    */
-  std::pair<double, std::vector<Eigen::VectorXd>> CalculateCost(
-      const CostComputationType& cost_type, const Eigen::VectorXd& Kp = {},
-      const Eigen::VectorXd& Kd = {});
+  //   std::pair<double, std::vector<Eigen::VectorXd>> CalculateCost(
+  //       const CostComputationType& cost_type, const Eigen::VectorXd& Kp = {},
+  //       const Eigen::VectorXd& Kd = {});
 
   std::vector<Eigen::VectorXd> GetFullSolution() { return *z_sol_; }
   std::vector<Eigen::VectorXd> GetStateSolution() { return *x_sol_; }
@@ -436,7 +431,7 @@ class C3 {
       int admm_iteration, bool is_final_solve);
 
   LCS lcs_;
-  LCS cost_lcs_;
+  // LCS cost_lcs_; // TODO @bibit: remove
   double AnDn_ = 1.0;  // Scaling factor for lambdas
   CostMatrices cost_matrices_;
   std::vector<Eigen::VectorXd> x_desired_;

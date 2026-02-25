@@ -43,6 +43,7 @@ using namespace c3;
  * | CreatePlaceholderLCS   |   DONE  |
  * | WarmStartSmokeTest     |   DONE  |
  * | # of regression tests  |    2    |
+ * | trajectory_evaluation  |  @bibit |
  *
  * It also has an E2E test for ensuring the "Solve()" function and other
  * internal functions are working as expected. However, the E2E takes about 120s
