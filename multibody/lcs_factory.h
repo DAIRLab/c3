@@ -337,6 +337,14 @@ class LCSFactory {
    */
   void ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn, MatrixXd& Jt);
 
+   /**
+   * @brief Finds the witness points for each contact pair.
+   *
+   * @return A pair of vectors containing the witness points on each geometry
+   * for each contact pair.
+   */
+   std::pair<std::vector<VectorXd>, std::vector<VectorXd>> FindWitnessPoints();
+
   // References to the MultibodyPlant and its contexts
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>& context_;

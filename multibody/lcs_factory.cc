@@ -236,6 +236,21 @@ void LCSFactory::ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn,
   }
 }
 
+std::pair<std::vector<VectorXd>, std::vector<VectorXd>>
+LCSFactory::FindWitnessPoints() {
+  std::vector<VectorXd> WCa;
+  std::vector<VectorXd> WCb;
+
+  for (int i = 0; i < n_contacts_; i++) {
+    multibody::GeomGeomCollider collider(plant_, contact_pairs_[i]);
+    auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context_);
+    WCa.push_back(p_WCa);
+    WCb.push_back(p_WCb);
+  }
+
+  return std::make_pair(WCa, WCb);
+}
+
 void LCSFactory::UpdateStateAndInput(
     const Eigen::Ref<const drake::VectorX<double>>& state,
     const Eigen::Ref<const drake::VectorX<double>>& input) {
