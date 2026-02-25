@@ -570,6 +570,55 @@ std::vector<LCSContactDescription> LCSFactory::GetContactDescriptions() {
   return contact_descriptions;
 }
 
+std::pair<MatrixXd, std::vector<VectorXd>>
+LCSFactory::GetContactJacobianAndPoints() {
+  VectorXd phi;  // Signed distance values for contacts
+  MatrixXd Jn;   // Normal contact Jacobian
+  MatrixXd Jt;   // Tangential contact Jacobian
+  ComputeContactJacobian(phi, Jn, Jt);
+  auto [_, contact_points] = FindWitnessPoints();
+
+  if (frictionless_) {
+    // if frictionless_, we only need the normal jacobian
+    return std::make_pair(Jn, contact_points);
+  }
+
+  if (contact_model_ == ContactModel::kStewartAndTrinkle) {
+    // if Stewart and Trinkle model, concatenate the normal and tangential
+    // jacobian
+    MatrixXd J_c = MatrixXd::Zero(n_contacts_ + Jt_row_sizes_.sum(), n_v_);
+    J_c << Jn, Jt;
+    return std::make_pair(J_c, contact_points);
+  }
+
+  // Model is Anitescu
+  int n_lambda_ = Jt_row_sizes_.sum();
+
+  // Eₜ = blkdiag(e,.., e), e ∈ 1ⁿᵉ
+  MatrixXd E_t = MatrixXd::Zero(n_contacts_, n_lambda_);
+  for (int i = 0; i < n_contacts_; i++) {
+    E_t.block(i, Jt_row_sizes_.segment(0, i).sum(), 1, Jt_row_sizes_(i)) =
+        MatrixXd::Ones(1, Jt_row_sizes_(i));
+  }
+
+  // Apply same friction coefficients to each friction direction
+  // of the same contact
+  if (!frictionless_) DRAKE_DEMAND(mu_.size() == (size_t)n_contacts_);
+  VectorXd muXd =
+      Eigen::Map<const VectorXd, Eigen::Unaligned>(mu_.data(), mu_.size());
+
+  VectorXd mu_vector = VectorXd::Zero(n_lambda_);
+  for (int i = 0; i < muXd.rows(); i++) {
+    mu_vector.segment(Jt_row_sizes_.segment(0, i).sum(), Jt_row_sizes_(i)) =
+        muXd(i) * VectorXd::Ones(Jt_row_sizes_(i));
+  }
+  MatrixXd mu_matrix = mu_vector.asDiagonal();
+
+  // Constructing friction bases  Jc = EᵀJₙ + μJₜ
+  MatrixXd J_c = E_t.transpose() * Jn + mu_matrix * Jt;
+  return std::make_pair(J_c, contact_points);
+}
+
 LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
                              set<int> inactive_lambda_inds) {
   std::vector<int> remaining_inds;

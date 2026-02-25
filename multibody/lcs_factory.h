@@ -124,6 +124,18 @@ class LCSFactory {
    */
   LCS GenerateLCS();
 
+   /**
+   * @brief Computes the contact Jacobian for a given multibody plant and
+   * context.
+   *
+   * This method calculates the signed distance values and the contact Jacobians
+   * for normal and tangential forces at the specified contact points.
+   *
+   * @return A pair containing the contact Jacobian matrix and a vector of
+   * contact points.
+   */
+   std::pair<MatrixXd, std::vector<VectorXd>> GetContactJacobianAndPoints();
+
   /**
    * @brief Finds the witness points for each contact pair.
    *
