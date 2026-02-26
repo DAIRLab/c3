@@ -75,9 +75,9 @@ cc_library(
 )
 
 cc_library(
-    name = "trajectory_evaluation",
-    srcs = ["trajectory_evaluation.cc"],
-    hdrs = ["trajectory_evaluation.h"],
+    name = "traj_eval",
+    srcs = ["traj_eval.cc"],
+    hdrs = ["traj_eval.h"],
     deps = [
         ":c3",
         "@drake//:drake_shared_library",

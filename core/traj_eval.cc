@@ -1,4 +1,4 @@
-#include "trajectory_evaluation.h"
+#include "traj_eval.h"
 
 #include <chrono>
 #include <iostream>
@@ -9,12 +9,13 @@
 #include "solver_options_io.h"
 
 namespace c3 {
+namespace traj_eval {
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
 
-double ComputeQuadraticTrajectoryCost(
+double TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
     const vector<VectorXd>& x, const vector<VectorXd>& u,
     const vector<VectorXd>& lambda, const vector<VectorXd>& x_des,
     const vector<VectorXd>& u_des, const vector<VectorXd>& lambda_des,
@@ -53,21 +54,19 @@ double ComputeQuadraticTrajectoryCost(
   return cost;
 }
 
-double ComputeQuadraticTrajectoryCost(const vector<VectorXd>& x,
-                                      const vector<VectorXd>& u,
-                                      const vector<VectorXd>& x_des,
-                                      const vector<VectorXd>& u_des,
-                                      const vector<MatrixXd>& Q,
-                                      const vector<MatrixXd>& R) {
+double TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+    const vector<VectorXd>& x, const vector<VectorXd>& u,
+    const vector<VectorXd>& x_des, const vector<VectorXd>& u_des,
+    const vector<MatrixXd>& Q, const vector<MatrixXd>& R) {
   return ComputeQuadraticTrajectoryCost(
       x, u, vector<VectorXd>(u.size(), VectorXd::Zero(0)), x_des, u_des,
       vector<VectorXd>(u.size(), VectorXd::Zero(0)), Q, R,
       vector<MatrixXd>(u.size(), MatrixXd::Zero(0, 0)));
 }
 
-double ComputeQuadraticTrajectoryCost(const vector<VectorXd>& x,
-                                      const vector<VectorXd>& x_des,
-                                      const vector<MatrixXd>& Q) {
+double TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+    const vector<VectorXd>& x, const vector<VectorXd>& x_des,
+    const vector<MatrixXd>& Q) {
   return ComputeQuadraticTrajectoryCost(
       x, vector<VectorXd>(x.size() - 1, VectorXd::Zero(0)),
       vector<VectorXd>(x.size() - 1, VectorXd::Zero(0)), x_des,
@@ -77,7 +76,7 @@ double ComputeQuadraticTrajectoryCost(const vector<VectorXd>& x,
       vector<MatrixXd>(x.size() - 1, MatrixXd::Zero(0, 0)));
 }
 
-double ComputeQuadraticTrajectoryCost(
+double TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
     const vector<VectorXd>& x, const vector<VectorXd>& u,
     const vector<VectorXd>& lambda, const vector<VectorXd>& x_des,
     const vector<VectorXd>& u_des, const vector<VectorXd>& lambda_des,
@@ -87,26 +86,28 @@ double ComputeQuadraticTrajectoryCost(
       vector<MatrixXd>(u.size(), R), vector<MatrixXd>(lambda.size(), S));
 }
 
-double ComputeQuadraticTrajectoryCost(const vector<VectorXd>& x,
-                                      const vector<VectorXd>& u,
-                                      const vector<VectorXd>& x_des,
-                                      const vector<VectorXd>& u_des,
-                                      const MatrixXd& Q, const MatrixXd& R) {
+double TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+    const vector<VectorXd>& x, const vector<VectorXd>& u,
+    const vector<VectorXd>& x_des, const vector<VectorXd>& u_des,
+    const MatrixXd& Q, const MatrixXd& R) {
   return ComputeQuadraticTrajectoryCost(x, u, x_des, u_des,
                                         vector<MatrixXd>(x.size(), Q),
                                         vector<MatrixXd>(u.size(), R));
 }
 
-double ComputeQuadraticTrajectoryCost(const vector<VectorXd>& x,
-                                      const vector<VectorXd>& x_des,
-                                      const MatrixXd& Q) {
+double TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+    const vector<VectorXd>& x, const vector<VectorXd>& x_des,
+    const MatrixXd& Q) {
   return ComputeQuadraticTrajectoryCost(x, x_des,
                                         vector<MatrixXd>(x.size(), Q));
 }
 
-std::pair<vector<VectorXd>, vector<VectorXd>> SimulatePDControlWithLCS(
-    const vector<VectorXd>& x_plan, const vector<VectorXd>& u_plan,
-    const VectorXd& Kp, const VectorXd& Kd, const LCS& lcs) {
+std::pair<vector<VectorXd>, vector<VectorXd>>
+TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
+                                              const vector<VectorXd>& u_plan,
+                                              const VectorXd& Kp,
+                                              const VectorXd& Kd,
+                                              const LCS& lcs) {
   CheckLCSAndTrajectoryCompatibility(lcs, x_plan, u_plan);
 
   int N = lcs.N();
@@ -147,10 +148,13 @@ std::pair<vector<VectorXd>, vector<VectorXd>> SimulatePDControlWithLCS(
   return std::make_pair(x, u);
 }
 
-std::pair<vector<VectorXd>, vector<VectorXd>> SimulatePDControlWithLCS(
-    const vector<VectorXd>& x_plan, const vector<VectorXd>& u_plan,
-    const VectorXd& Kp, const VectorXd& Kd, const LCS& coarse_lcs,
-    const LCS& fine_lcs) {
+std::pair<vector<VectorXd>, vector<VectorXd>>
+TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
+                                              const vector<VectorXd>& u_plan,
+                                              const VectorXd& Kp,
+                                              const VectorXd& Kd,
+                                              const LCS& coarse_lcs,
+                                              const LCS& fine_lcs) {
   int timestep_split = CheckCoarseAndFineLCSCompatibility(coarse_lcs, fine_lcs);
 
   // Zero-order hold the planned trajectory to match the finer time
@@ -176,9 +180,8 @@ std::pair<vector<VectorXd>, vector<VectorXd>> SimulatePDControlWithLCS(
   return std::make_pair(x_sim, u_sim);
 }
 
-vector<VectorXd> SimulateLCSOverTrajectory(const VectorXd& x_init,
-                                           const vector<VectorXd>& u_plan,
-                                           const LCS& lcs) {
+vector<VectorXd> TrajectoryEvaluator::SimulateLCSOverTrajectory(
+    const VectorXd& x_init, const vector<VectorXd>& u_plan, const LCS& lcs) {
   int N = lcs.N();
   CheckLCSAndTrajectoryCompatibility(lcs, vector<VectorXd>(N + 1, x_init),
                                      u_plan);
@@ -192,16 +195,15 @@ vector<VectorXd> SimulateLCSOverTrajectory(const VectorXd& x_init,
   return x_sim;
 }
 
-vector<VectorXd> SimulateLCSOverTrajectory(const vector<VectorXd>& x_plan,
-                                           const vector<VectorXd>& u_plan,
-                                           const LCS& lcs) {
+vector<VectorXd> TrajectoryEvaluator::SimulateLCSOverTrajectory(
+    const vector<VectorXd>& x_plan, const vector<VectorXd>& u_plan,
+    const LCS& lcs) {
   return SimulateLCSOverTrajectory(x_plan[0], u_plan, lcs);
 }
 
-vector<VectorXd> SimulateLCSOverTrajectory(const VectorXd& x_init,
-                                           const vector<VectorXd>& u_plan,
-                                           const LCS& coarse_lcs,
-                                           const LCS& fine_lcs) {
+vector<VectorXd> TrajectoryEvaluator::SimulateLCSOverTrajectory(
+    const VectorXd& x_init, const vector<VectorXd>& u_plan,
+    const LCS& coarse_lcs, const LCS& fine_lcs) {
   int timestep_split = CheckCoarseAndFineLCSCompatibility(coarse_lcs, fine_lcs);
 
   vector<VectorXd> u_plan_finer =
@@ -211,15 +213,14 @@ vector<VectorXd> SimulateLCSOverTrajectory(const VectorXd& x_init,
   return DownsampleTrajectory(x_sim_fine, timestep_split);
 }
 
-vector<VectorXd> SimulateLCSOverTrajectory(const vector<VectorXd>& x_plan,
-                                           const vector<VectorXd>& u_plan,
-                                           const LCS& coarse_lcs,
-                                           const LCS& fine_lcs) {
+vector<VectorXd> TrajectoryEvaluator::SimulateLCSOverTrajectory(
+    const vector<VectorXd>& x_plan, const vector<VectorXd>& u_plan,
+    const LCS& coarse_lcs, const LCS& fine_lcs) {
   return SimulateLCSOverTrajectory(x_plan[0], u_plan, coarse_lcs, fine_lcs);
 }
 
-vector<VectorXd> ZeroOrderHoldTrajectory(const vector<VectorXd>& coarse_traj,
-                                         const int& timestep_split) {
+vector<VectorXd> TrajectoryEvaluator::ZeroOrderHoldTrajectory(
+    const vector<VectorXd>& coarse_traj, const int& timestep_split) {
   int N = coarse_traj.size();
 
   // Zero-order hold the planned trajectory to match the finer time
@@ -234,17 +235,18 @@ vector<VectorXd> ZeroOrderHoldTrajectory(const vector<VectorXd>& coarse_traj,
   return fine_traj;
 }
 
-std::pair<vector<VectorXd>, vector<VectorXd>> ZeroOrderHoldTrajectories(
-    const vector<VectorXd>& x_coarse, const vector<VectorXd>& u_coarse,
-    const int& timestep_split) {
+std::pair<vector<VectorXd>, vector<VectorXd>>
+TrajectoryEvaluator::ZeroOrderHoldTrajectories(const vector<VectorXd>& x_coarse,
+                                               const vector<VectorXd>& u_coarse,
+                                               const int& timestep_split) {
   DRAKE_DEMAND(x_coarse.size() == u_coarse.size() + 1);
   vector<VectorXd> x_fine = ZeroOrderHoldTrajectory(x_coarse, timestep_split);
   vector<VectorXd> u_fine = ZeroOrderHoldTrajectory(u_coarse, timestep_split);
   return std::make_pair(x_fine, u_fine);
 }
 
-vector<VectorXd> DownsampleTrajectory(const vector<VectorXd>& fine_traj,
-                                      const int& timestep_split) {
+vector<VectorXd> TrajectoryEvaluator::DownsampleTrajectory(
+    const vector<VectorXd>& fine_traj, const int& timestep_split) {
   int N = fine_traj.size() / timestep_split;
 
   // Downsample the fine trajectory.
@@ -255,17 +257,18 @@ vector<VectorXd> DownsampleTrajectory(const vector<VectorXd>& fine_traj,
   return coarse_traj;
 }
 
-std::pair<vector<VectorXd>, vector<VectorXd>> DownsampleTrajectories(
-    const vector<VectorXd>& x_fine, const vector<VectorXd>& u_fine,
-    const int& timestep_split) {
+std::pair<vector<VectorXd>, vector<VectorXd>>
+TrajectoryEvaluator::DownsampleTrajectories(const vector<VectorXd>& x_fine,
+                                            const vector<VectorXd>& u_fine,
+                                            const int& timestep_split) {
   DRAKE_DEMAND(x_fine.size() == u_fine.size() + 1);
   vector<VectorXd> x_coarse = DownsampleTrajectory(x_fine, timestep_split);
   vector<VectorXd> u_coarse = DownsampleTrajectory(u_fine, timestep_split);
   return std::make_pair(x_coarse, u_coarse);
 }
 
-int CheckCoarseAndFineLCSCompatibility(const LCS& coarse_lcs,
-                                       const LCS& fine_lcs) {
+int TrajectoryEvaluator::CheckCoarseAndFineLCSCompatibility(
+    const LCS& coarse_lcs, const LCS& fine_lcs) {
   DRAKE_DEMAND(coarse_lcs.num_states() == fine_lcs.num_states());
   DRAKE_DEMAND(coarse_lcs.num_inputs() == fine_lcs.num_inputs());
   DRAKE_DEMAND(coarse_lcs.N() <= fine_lcs.N());
@@ -278,7 +281,7 @@ int CheckCoarseAndFineLCSCompatibility(const LCS& coarse_lcs,
   return timestep_split;
 }
 
-void CheckLCSAndTrajectoryCompatibility(
+void TrajectoryEvaluator::CheckLCSAndTrajectoryCompatibility(
     const LCS& lcs, const std::vector<Eigen::VectorXd>& x,
     const std::vector<Eigen::VectorXd>& u,
     const std::vector<Eigen::VectorXd>& lambda) {
@@ -293,18 +296,19 @@ void CheckLCSAndTrajectoryCompatibility(
   }
 }
 
-void CheckLCSAndTrajectoryCompatibility(const LCS& lcs,
-                                        const std::vector<Eigen::VectorXd>& x,
-                                        const std::vector<Eigen::VectorXd>& u) {
+void TrajectoryEvaluator::CheckLCSAndTrajectoryCompatibility(
+    const LCS& lcs, const std::vector<Eigen::VectorXd>& x,
+    const std::vector<Eigen::VectorXd>& u) {
   return CheckLCSAndTrajectoryCompatibility(
       lcs, x, u, vector<VectorXd>(lcs.N(), VectorXd::Zero(lcs.num_lambdas())));
 }
 
-void CheckLCSAndTrajectoryCompatibility(const LCS& lcs,
-                                        const std::vector<Eigen::VectorXd>& x) {
+void TrajectoryEvaluator::CheckLCSAndTrajectoryCompatibility(
+    const LCS& lcs, const std::vector<Eigen::VectorXd>& x) {
   return CheckLCSAndTrajectoryCompatibility(
       lcs, x, vector<VectorXd>(lcs.N(), VectorXd::Zero(lcs.num_inputs())),
       vector<VectorXd>(lcs.N(), VectorXd::Zero(lcs.num_lambdas())));
 }
 
+}  // namespace traj_eval
 }  // namespace c3
