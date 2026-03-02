@@ -21,10 +21,11 @@ double TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
     const vector<VectorXd>& u_des, const vector<VectorXd>& lambda_des,
     const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
     const vector<MatrixXd>& S) {
-  DRAKE_DEMAND(x.size() == x_des.size() && x.size() == Q.size());
-  DRAKE_DEMAND(u.size() == u_des.size() && u.size() == R.size());
-  DRAKE_DEMAND(lambda.size() == lambda_des.size() && lambda.size() == S.size());
-  DRAKE_DEMAND(x.size() - 1 == u.size() && u.size() == lambda.size());
+  DRAKE_THROW_UNLESS(x.size() == x_des.size() && x.size() == Q.size());
+  DRAKE_THROW_UNLESS(u.size() == u_des.size() && u.size() == R.size());
+  DRAKE_THROW_UNLESS(lambda.size() == lambda_des.size() &&
+                     lambda.size() == S.size());
+  DRAKE_THROW_UNLESS(x.size() - 1 == u.size() && u.size() == lambda.size());
 
   int N = x.size() - 1;
   int n_x = x[0].size();
@@ -34,18 +35,18 @@ double TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
   double cost = 0.0;
 
   for (int i = 0; i < N + 1; i++) {
-    DRAKE_DEMAND(x[i].size() == n_x && x_des[i].size() == n_x);
-    DRAKE_DEMAND(Q[i].rows() == n_x && Q[i].cols() == n_x);
+    DRAKE_THROW_UNLESS(x[i].size() == n_x && x_des[i].size() == n_x);
+    DRAKE_THROW_UNLESS(Q[i].rows() == n_x && Q[i].cols() == n_x);
     cost += (x[i] - x_des[i]).transpose() * Q[i] * (x[i] - x_des[i]);
 
     if (i < N) {
-      DRAKE_DEMAND(u[i].size() == n_u && u_des[i].size() == n_u);
-      DRAKE_DEMAND(R[i].rows() == n_u && R[i].cols() == n_u);
+      DRAKE_THROW_UNLESS(u[i].size() == n_u && u_des[i].size() == n_u);
+      DRAKE_THROW_UNLESS(R[i].rows() == n_u && R[i].cols() == n_u);
       cost += (u[i] - u_des[i]).transpose() * R[i] * (u[i] - u_des[i]);
 
-      DRAKE_DEMAND(lambda[i].size() == n_lambda &&
-                   lambda_des[i].size() == n_lambda);
-      DRAKE_DEMAND(S[i].rows() == n_lambda && S[i].cols() == n_lambda);
+      DRAKE_THROW_UNLESS(lambda[i].size() == n_lambda &&
+                         lambda_des[i].size() == n_lambda);
+      DRAKE_THROW_UNLESS(S[i].rows() == n_lambda && S[i].cols() == n_lambda);
       cost += (lambda[i] - lambda_des[i]).transpose() * S[i] *
               (lambda[i] - lambda_des[i]);
     }
@@ -121,9 +122,9 @@ TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
 
   // Ensure the Kp and Kd vectors encode the actuated position and velocity
   // indices within the state vector.
-  DRAKE_DEMAND(Kp.rows() == Kd.rows() && Kp.rows() == n_x);
-  DRAKE_DEMAND((Kp.array() != 0.0).count() == n_u);
-  DRAKE_DEMAND((Kd.array() != 0.0).count() == n_u);
+  DRAKE_THROW_UNLESS(Kp.rows() == Kd.rows() && Kp.rows() == n_x);
+  DRAKE_THROW_UNLESS((Kp.array() != 0.0).count() == n_u);
+  DRAKE_THROW_UNLESS((Kd.array() != 0.0).count() == n_u);
   MatrixXd Kp_mat = MatrixXd::Zero(n_u, n_x);
   MatrixXd Kd_mat = MatrixXd::Zero(n_u, n_x);
   int kp_i = 0;
@@ -210,7 +211,7 @@ vector<VectorXd> TrajectoryEvaluator::SimulateLCSOverTrajectory(
       ZeroOrderHoldTrajectory(u_plan, timestep_split);
   vector<VectorXd> x_sim_fine =
       SimulateLCSOverTrajectory(x_init, u_plan_finer, fine_lcs);
-  return DownsampleTrajectory(x_sim_fine, timestep_split);
+  return DownsampleTrajectories(x_sim_fine, u_plan_finer, timestep_split).first;
 }
 
 vector<VectorXd> TrajectoryEvaluator::SimulateLCSOverTrajectory(
@@ -239,18 +240,21 @@ std::pair<vector<VectorXd>, vector<VectorXd>>
 TrajectoryEvaluator::ZeroOrderHoldTrajectories(const vector<VectorXd>& x_coarse,
                                                const vector<VectorXd>& u_coarse,
                                                const int& timestep_split) {
-  DRAKE_DEMAND(x_coarse.size() == u_coarse.size() + 1);
-  vector<VectorXd> x_fine = ZeroOrderHoldTrajectory(x_coarse, timestep_split);
+  DRAKE_THROW_UNLESS(x_coarse.size() == u_coarse.size() + 1);
+  vector<VectorXd> x_fine = ZeroOrderHoldTrajectory(
+      vector<VectorXd>(x_coarse.begin(), x_coarse.end() - 1), timestep_split);
+  x_fine.push_back(x_coarse.back());
   vector<VectorXd> u_fine = ZeroOrderHoldTrajectory(u_coarse, timestep_split);
   return std::make_pair(x_fine, u_fine);
 }
 
 vector<VectorXd> TrajectoryEvaluator::DownsampleTrajectory(
     const vector<VectorXd>& fine_traj, const int& timestep_split) {
+  DRAKE_THROW_UNLESS(fine_traj.size() % timestep_split == 0);
   int N = fine_traj.size() / timestep_split;
 
   // Downsample the fine trajectory.
-  vector<VectorXd> coarse_traj(N + 1, VectorXd::Zero(fine_traj[0].size()));
+  vector<VectorXd> coarse_traj(N, VectorXd::Zero(fine_traj[0].size()));
   for (int i = 0; i < N; i++) {
     coarse_traj[i] = fine_traj[i * timestep_split];
   }
@@ -261,23 +265,25 @@ std::pair<vector<VectorXd>, vector<VectorXd>>
 TrajectoryEvaluator::DownsampleTrajectories(const vector<VectorXd>& x_fine,
                                             const vector<VectorXd>& u_fine,
                                             const int& timestep_split) {
-  DRAKE_DEMAND(x_fine.size() == u_fine.size() + 1);
-  vector<VectorXd> x_coarse = DownsampleTrajectory(x_fine, timestep_split);
+  DRAKE_THROW_UNLESS(x_fine.size() == u_fine.size() + 1);
+  vector<VectorXd> x_coarse = DownsampleTrajectory(
+      vector<VectorXd>(x_fine.begin(), x_fine.end() - 1), timestep_split);
+  x_coarse.push_back(x_fine.back());
   vector<VectorXd> u_coarse = DownsampleTrajectory(u_fine, timestep_split);
   return std::make_pair(x_coarse, u_coarse);
 }
 
 int TrajectoryEvaluator::CheckCoarseAndFineLCSCompatibility(
     const LCS& coarse_lcs, const LCS& fine_lcs) {
-  DRAKE_DEMAND(coarse_lcs.num_states() == fine_lcs.num_states());
-  DRAKE_DEMAND(coarse_lcs.num_inputs() == fine_lcs.num_inputs());
-  DRAKE_DEMAND(coarse_lcs.N() <= fine_lcs.N());
-  DRAKE_DEMAND(coarse_lcs.dt() >= fine_lcs.dt());
-  DRAKE_DEMAND(coarse_lcs.N() * coarse_lcs.dt() ==
-               fine_lcs.N() * fine_lcs.dt());
+  DRAKE_THROW_UNLESS(coarse_lcs.num_states() == fine_lcs.num_states());
+  DRAKE_THROW_UNLESS(coarse_lcs.num_inputs() == fine_lcs.num_inputs());
+  DRAKE_THROW_UNLESS(coarse_lcs.N() <= fine_lcs.N());
+  DRAKE_THROW_UNLESS(coarse_lcs.dt() >= fine_lcs.dt());
+  DRAKE_THROW_UNLESS(coarse_lcs.N() * coarse_lcs.dt() ==
+                     fine_lcs.N() * fine_lcs.dt());
   int timestep_split = fine_lcs.N() / coarse_lcs.N();
-  DRAKE_DEMAND(fine_lcs.dt() * timestep_split == coarse_lcs.dt());
-  DRAKE_DEMAND(coarse_lcs.N() * timestep_split == fine_lcs.N());
+  DRAKE_THROW_UNLESS(fine_lcs.dt() * timestep_split == coarse_lcs.dt());
+  DRAKE_THROW_UNLESS(coarse_lcs.N() * timestep_split == fine_lcs.N());
   return timestep_split;
 }
 
@@ -285,13 +291,13 @@ void TrajectoryEvaluator::CheckLCSAndTrajectoryCompatibility(
     const LCS& lcs, const std::vector<Eigen::VectorXd>& x,
     const std::vector<Eigen::VectorXd>& u,
     const std::vector<Eigen::VectorXd>& lambda) {
-  DRAKE_DEMAND(lcs.N() == x.size() - 1 && lcs.N() == u.size() &&
-               lcs.N() == lambda.size());
+  DRAKE_THROW_UNLESS(lcs.N() == x.size() - 1 && lcs.N() == u.size() &&
+                     lcs.N() == lambda.size());
   for (int i = 0; i < lcs.N() + 1; i++) {
-    DRAKE_DEMAND(x[i].size() == lcs.num_states());
+    DRAKE_THROW_UNLESS(x[i].size() == lcs.num_states());
     if (i < lcs.N()) {
-      DRAKE_DEMAND(u[i].size() == lcs.num_inputs());
-      DRAKE_DEMAND(lambda[i].size() == lcs.num_lambdas());
+      DRAKE_THROW_UNLESS(u[i].size() == lcs.num_inputs());
+      DRAKE_THROW_UNLESS(lambda[i].size() == lcs.num_lambdas());
     }
   }
 }

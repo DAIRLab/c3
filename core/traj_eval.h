@@ -13,13 +13,6 @@ namespace traj_eval {
 /// Utility class for trajectory evaluation computations and simulations.
 class TrajectoryEvaluator {
  public:
-  enum CostComputationType : uint8_t {
-    SIM_IMPEDANCE = 1,
-    SIM_OBJECT_LCS_ROBOT_PLAN = 2
-  };
-
-  static double EvaluateTrajectoryCost();
-
   /// Compute the quadratic cost of a trajectory of states, inputs, and contact
   /// forces, with respect to a desired trajectory and quadratic cost matrices.
   ///   Cost = Sum_{i = 0, ... N-1}
@@ -118,11 +111,15 @@ class TrajectoryEvaluator {
   /// a different LCS with a finer time discretization. The LCSs must be
   /// compatible with each other, i.e. the finer horizon must be an integer
   /// multiple of the coarser horizon, and dt*N must be the same for both LCSs.
+  /// The state trajectory (which was N+1 in length) becomes
+  /// (N*timestep_split)+1 in length, and the input trajectory (which was N in
+  /// length) becomes N*timestep_split in length.
   static std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
   ZeroOrderHoldTrajectories(const std::vector<Eigen::VectorXd>& x_coarse,
                             const std::vector<Eigen::VectorXd>& u_coarse,
                             const int& timestep_split);
   /// Same as above but only one trajectory is provided and processed.
+  /// Trajectories of length N become trajectories of length N*timestep_split.
   static std::vector<Eigen::VectorXd> ZeroOrderHoldTrajectory(
       const std::vector<Eigen::VectorXd>& coarse_traj,
       const int& timestep_split);
