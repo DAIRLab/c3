@@ -18,12 +18,6 @@ typedef drake::solvers::Binding<drake::solvers::QuadraticCost>
 
 enum ConstraintVariable : uint8_t { STATE = 1, INPUT = 2, FORCE = 3 };
 
-// TODO @bibit: remove
-// enum CostComputationType : uint8_t {
-//   SIM_IMPEDANCE = 1,
-//   SIM_OBJECT_LCS_ROBOT_PLAN = 2
-// };
-
 class C3 {
  public:
   /*!
@@ -196,41 +190,6 @@ class C3 {
   void SetSolverOptions(const drake::solvers::SolverOptions& options) {
     prog_.SetSolverOptions(options);
   }
-
-  /**
-   * TODO @bibit: remove
-   * @brief Update the cost LCS used for cost evaluation in CalculateCost.
-   *
-   * @param cost_lcs the new LCS to be used for cost evaluation. Must have the
-   * same state and input dimensions as the LCS used for planning. The horizon
-   * and timestep can differ, but must be compatible in that cost_lcs.N() must
-   * be a multiple of lcs_.N(), and N*dt must be the same for both LCS objects.
-   * This allows for evaluating costs with a higher temporal resolution than the
-   * planning LCS. Can differ in lambda dimensions, if higher contact resolution
-   * is desired for evaluation.
-   */
-  //   void UpdateCostLCS(const LCS& cost_lcs);
-
-  /**
-   * TODO @bibit: remove
-   * @brief Calculate the cost of the current solution, using the provided cost
-   * type and optionally provided Kp and Kd values for the cost calculation.
-   *
-   * @param cost_type
-   * @param Kp Proportional gain values for the cost calculation, used only if
-   * the cost type requires them. If used, the length of Kp should be n_x_ and
-   * the number of non-zero elements should be n_u_. This encodes which state
-   * indices are positions associated with a robot actuator.
-   * @param Kd Derivative gain values for the cost calculation, used only if
-   * the cost type requires them. If used, the length of Kd should be n_x_ and
-   * the number of non-zero elements should be n_u_. This encodes which state
-   * indices are velocities associated with a robot actuator.
-   * @return A pair consisting of the cost (as a double) and a vector of the
-   * state trajectory associated with the cost.
-   */
-  //   std::pair<double, std::vector<Eigen::VectorXd>> CalculateCost(
-  //       const CostComputationType& cost_type, const Eigen::VectorXd& Kp = {},
-  //       const Eigen::VectorXd& Kd = {});
 
   std::vector<Eigen::VectorXd> GetFullSolution() { return *z_sol_; }
   std::vector<Eigen::VectorXd> GetStateSolution() { return *x_sol_; }
@@ -431,7 +390,6 @@ class C3 {
       int admm_iteration, bool is_final_solve);
 
   LCS lcs_;
-  // LCS cost_lcs_; // TODO @bibit: remove
   double AnDn_ = 1.0;  // Scaling factor for lambdas
   CostMatrices cost_matrices_;
   std::vector<Eigen::VectorXd> x_desired_;

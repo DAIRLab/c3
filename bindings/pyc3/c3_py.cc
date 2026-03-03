@@ -73,11 +73,6 @@ PYBIND11_MODULE(c3, m) {
       .value("FORCE", ConstraintVariable::FORCE)
       .export_values();
 
-  //   py::enum_<CostComputationType>(m, "CostComputationType")
-  //       .value("STATE", CostComputationType::SIM_IMPEDANCE)
-  //       .value("INPUT", CostComputationType::SIM_OBJECT_LCS_ROBOT_PLAN)
-  //       .export_values(); // TODO @bibit: remove
-
   py::class_<C3, PyC3>(m, "C3")
       .def(py::init<const LCS&, const C3::CostMatrices&,
                     const std::vector<Eigen::VectorXd>&, const C3Options&>(),
@@ -115,9 +110,6 @@ PYBIND11_MODULE(c3, m) {
       .def("GetLinearConstraints", &C3::GetLinearConstraints,
            py::return_value_policy::copy)
       .def("SetSolverOptions", &C3::SetSolverOptions, py::arg("options"))
-      //   .def("UpdateCostLCS", &C3::UpdateCostLCS, py::arg("cost_lcs"))
-      //   .def("CalculateCost", &C3::CalculateCost, py::arg("cost_type"),
-      //        py::arg("Kp"), py::arg("Kd")) // TODO @bibit: remove
       .def("GetFullSolution", &C3::GetFullSolution)
       .def("GetStateSolution", &C3::GetStateSolution)
       .def("GetForceSolution", &C3::GetForceSolution)
