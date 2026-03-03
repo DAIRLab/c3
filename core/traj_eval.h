@@ -1,11 +1,14 @@
 #pragma once
 
+#include <utility>
 #include <vector>
 
 #include <Eigen/Dense>
 
 #include "c3_options.h"
 #include "lcs.h"
+
+#include "drake/common/drake_throw.h"
 
 namespace c3 {
 namespace traj_eval {
@@ -14,73 +17,61 @@ namespace traj_eval {
 class TrajectoryEvaluator {
  public:
   /**
-   * @brief Computes the quadratic cost of a trajectory of states, inputs, and
-   * contact forces, with respect to a desired trajectory and quadratic cost
-   * matrices.
+   * @brief Computes the quadratic cost of a trajectory of vectors with respect
+   * to a desired trajectory and quadratic cost matrices.  Can sum multiple
+   * costs together by passing in multiple trajectories, desired trajectories,
+   * and cost matrices. The total cost is the sum of the individual costs, where
+   * each individual cost is computed as:
    *
    *    Cost = Sum_{i = 0, ... N-1}
-   *              (x_i-x_des_i)^T Q_i (x_i-x_des_i) +
-   *              (u_i-u_des_i)^T R_i (u_i-u_des_i) +
-   *              (lambda_i-lambda_des_i)^T S_i (lambda_i-lambda_des_i)
-   *          + (x_N-x_des_N)^T Q_N (x_N-x_des_N)
+   *       (data_i-data_des_i)^T CostMatrix_i (data_i-data_des_i)
    *
-   * @param x Trajectory of length N+1 of state vectors
-   * @param u Trajectory of length N of input vectors
-   * @param lambda Trajectory of length N of contact force vectors
-   * @param x_des Trajectory of length N+1 of desired state vectors
-   * @param u_des Trajectory of length N of desired input vectors
-   * @param lambda_des Trajectory of length N of desired contact force vectors
-   * @param Q Trajectory of length N+1 of state cost matrices
-   * @param R Trajectory of length N of input cost matrices
-   * @param S Trajectory of length N of contact force cost matrices
+   * @param data Trajectory of length N of vectors
+   * @param data_des Trajectory of length N of desired vectors
+   * @param cost_matrices Trajectory of length N of cost matrices.  This can be
+   *                      a single cost matrix instead, in which case that cost
+   *                      matrix is used for all time steps.
+   * ... (optional additional trajectories, desired trajectories, and cost
+   *     matrices, whose additional costs are summed together with the first)
    * @return The cost
    */
+  template <typename... Rest>
   static double ComputeQuadraticTrajectoryCost(
-      const std::vector<Eigen::VectorXd>& x,
-      const std::vector<Eigen::VectorXd>& u,
-      const std::vector<Eigen::VectorXd>& lambda,
-      const std::vector<Eigen::VectorXd>& x_des,
-      const std::vector<Eigen::VectorXd>& u_des,
-      const std::vector<Eigen::VectorXd>& lambda_des,
-      const std::vector<Eigen::MatrixXd>& Q,
-      const std::vector<Eigen::MatrixXd>& R,
-      const std::vector<Eigen::MatrixXd>& S);
-  /** @brief Special case: cost does not depend on the contact forces. */
-  static double ComputeQuadraticTrajectoryCost(
-      const std::vector<Eigen::VectorXd>& x,
-      const std::vector<Eigen::VectorXd>& u,
-      const std::vector<Eigen::VectorXd>& x_des,
-      const std::vector<Eigen::VectorXd>& u_des,
-      const std::vector<Eigen::MatrixXd>& Q,
-      const std::vector<Eigen::MatrixXd>& R);
-  /** @brief Special case: cost does not depend on the inputs or contact forces.
+      const std::vector<Eigen::VectorXd>& data,
+      const std::vector<Eigen::VectorXd>& data_des,
+      const std::vector<Eigen::MatrixXd>& cost_matrices, Rest&&... rest) {
+    DRAKE_THROW_UNLESS(data.size() == data_des.size());
+    DRAKE_THROW_UNLESS(data.size() == cost_matrices.size());
+
+    int n_data = data[0].size();
+
+    double cost = 0.0;
+    for (size_t i = 0; i < data.size(); i++) {
+      DRAKE_THROW_UNLESS(data[i].size() == n_data);
+      DRAKE_THROW_UNLESS(data_des[i].size() == n_data);
+      DRAKE_THROW_UNLESS(cost_matrices[i].rows() == n_data);
+      DRAKE_THROW_UNLESS(cost_matrices[i].cols() == n_data);
+
+      cost += (data[i] - data_des[i]).transpose() * cost_matrices[i] *
+              (data[i] - data_des[i]);
+    }
+
+    return cost + ComputeQuadraticTrajectoryCost(std::forward<Rest>(rest)...);
+  }
+  /** Special case: the same cost matrix is to be used throughout the trajectory
+   * so only one is provided.
    */
+  template <typename... Rest>
   static double ComputeQuadraticTrajectoryCost(
-      const std::vector<Eigen::VectorXd>& x,
-      const std::vector<Eigen::VectorXd>& x_des,
-      const std::vector<Eigen::MatrixXd>& Q);
-  /** @brief Special case: cost matrices are the same across all time steps. */
-  static double ComputeQuadraticTrajectoryCost(
-      const std::vector<Eigen::VectorXd>& x,
-      const std::vector<Eigen::VectorXd>& u,
-      const std::vector<Eigen::VectorXd>& lambda,
-      const std::vector<Eigen::VectorXd>& x_des,
-      const std::vector<Eigen::VectorXd>& u_des,
-      const std::vector<Eigen::VectorXd>& lambda_des, const Eigen::MatrixXd& Q,
-      const Eigen::MatrixXd& R, const Eigen::MatrixXd& S);
-  /** @brief Special case: cost does not depend on the contact forces, and cost
-   * matrices are the same across all time steps. */
-  static double ComputeQuadraticTrajectoryCost(
-      const std::vector<Eigen::VectorXd>& x,
-      const std::vector<Eigen::VectorXd>& u,
-      const std::vector<Eigen::VectorXd>& x_des,
-      const std::vector<Eigen::VectorXd>& u_des, const Eigen::MatrixXd& Q,
-      const Eigen::MatrixXd& R);
-  /** @brief Special case: cost does not depend on the inputs or contact forces,
-   * and cost matrices are the same across all time steps. */
-  static double ComputeQuadraticTrajectoryCost(
-      const std::vector<Eigen::VectorXd>& x,
-      const std::vector<Eigen::VectorXd>& x_des, const Eigen::MatrixXd& Q);
+      const std::vector<Eigen::VectorXd>& data,
+      const std::vector<Eigen::VectorXd>& data_des,
+      const Eigen::MatrixXd& cost_matrix, Rest&&... rest) {
+    return ComputeQuadraticTrajectoryCost(
+        data, data_des, std::vector<Eigen::MatrixXd>(data.size(), cost_matrix),
+        std::forward<Rest>(rest)...);
+  }
+  /** Special case: no trajectory to evaluate. */
+  static double ComputeQuadraticTrajectoryCost() { return 0.0; }
 
   /**
    * @brief From a planned trajectory of states and inputs and sets of Kp and Kd

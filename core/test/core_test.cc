@@ -358,13 +358,13 @@ TEST_F(TrajectoryEvaluatorTest, QuadraticCostMatchesManual) {
   EXPECT_NEAR(actual, expected, 1e-12);  // State costs
 
   expected += 3.0 * 1.0 * 1.0;
-  actual = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(x, u, x_des,
-                                                               u_des, Q, R);
+  actual = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(x, x_des, Q, u,
+                                                               u_des, R);
   EXPECT_NEAR(actual, expected, 1e-12);  // State and input costs
 
   expected += 5.0 * 0.25 * 0.25;
   actual = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
-      x, u, lambda, x_des, u_des, lambda_des, Q, R, S);
+      x, x_des, Q, u, u_des, R, lambda, lambda_des, S);
   EXPECT_NEAR(actual, expected, 1e-12);  // State, input, force costs
 
   // Test with repeated cost matrices across time steps
@@ -375,13 +375,13 @@ TEST_F(TrajectoryEvaluatorTest, QuadraticCostMatchesManual) {
   EXPECT_NEAR(actual, expected, 1e-12);  // State costs
 
   expected += 3.0 * 1.0 * 1.0;
-  actual = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
-      x, u, x_des, u_des, Q[0], R[0]);
+  actual = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(x, x_des, Q[0],
+                                                               u, u_des, R[0]);
   EXPECT_NEAR(actual, expected, 1e-12);  // State and input costs
 
   expected += 5.0 * 0.25 * 0.25;
   actual = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
-      x, u, lambda, x_des, u_des, lambda_des, Q[0], R[0], S[0]);
+      x, x_des, Q[0], u, u_des, R[0], lambda, lambda_des, S[0]);
   EXPECT_NEAR(actual, expected, 1e-12);  // State, input, force costs
 
   // Test any mismatched dimensions throw errors.
@@ -391,11 +391,11 @@ TEST_F(TrajectoryEvaluatorTest, QuadraticCostMatchesManual) {
 
   std::vector<VectorXd> u_wrong(2, VectorXd::Zero(1));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
-      x, u_wrong, x_des, u_des, Q, R));
+      x, x_des, Q, u_wrong, u_des, R));
 
   std::vector<VectorXd> lambda_wrong(2, VectorXd::Zero(1));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
-      x, u, lambda_wrong, x_des, u_des, lambda_des, Q, R, S));
+      x, x_des, Q, u, u_des, R, lambda_wrong, lambda_des, S));
 
   std::vector<MatrixXd> Q_wrong_size(2, MatrixXd::Zero(2, 2));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
@@ -403,11 +403,11 @@ TEST_F(TrajectoryEvaluatorTest, QuadraticCostMatchesManual) {
 
   std::vector<MatrixXd> R_wrong_size(1, MatrixXd::Zero(2, 2));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
-      x, u, x_des, u_des, Q, R_wrong_size));
+      x, x_des, Q, u, u_des, R_wrong_size));
 
   std::vector<MatrixXd> S_wrong_size(1, MatrixXd::Zero(2, 2));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
-      x, u, lambda, x_des, u_des, lambda_des, Q, R, S_wrong_size));
+      x, x_des, Q, u, u_des, R, lambda, lambda_des, S_wrong_size));
 }
 
 TEST_F(TrajectoryEvaluatorTest, SimulatePDControlWithLCSTest) {
