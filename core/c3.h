@@ -50,6 +50,8 @@ class C3 {
     std::vector<Eigen::MatrixXd> R;
     std::vector<Eigen::MatrixXd> G;
     std::vector<Eigen::MatrixXd> U;
+    std::vector<Eigen::MatrixXd> Q_evaluation;
+    std::vector<Eigen::MatrixXd> R_evaluation;
   };
 
   /*!

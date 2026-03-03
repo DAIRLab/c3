@@ -74,6 +74,16 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "traj_eval",
+    srcs = ["traj_eval.cc"],
+    hdrs = ["traj_eval.h"],
+    deps = [
+        ":c3",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 filegroup(
     name = 'test_data',
     srcs = glob(['test/resources/**'])
@@ -98,6 +108,7 @@ cc_test(
     deps = [
         ":c3",
         ":c3_cartpole_problem",
+        ":traj_eval",
         "@gtest//:main",
     ],
     env_inherit = [
