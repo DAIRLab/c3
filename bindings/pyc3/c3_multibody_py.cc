@@ -92,7 +92,31 @@ PYBIND11_MODULE(multibody, m) {
       .def(py::init<>())
       .def_readwrite("dt", &LCSFactoryOptions::dt)
       .def_readwrite("N", &LCSFactoryOptions::N)
-      .def_readwrite("contact_model", &LCSFactoryOptions::contact_model)
+      .def_property(
+          "contact_model",
+          [](const LCSFactoryOptions& self) {
+            // Convert string back to enum for Python
+            if (self.contact_model == "stewart_and_trinkle")
+              return c3::multibody::ContactModel::kStewartAndTrinkle;
+            if (self.contact_model == "anitescu")
+              return c3::multibody::ContactModel::kAnitescu;
+            if (self.contact_model == "frictionless_spring")
+              return c3::multibody::ContactModel::kFrictionlessSpring;
+            return c3::multibody::ContactModel::kUnknown;
+          },
+          [](LCSFactoryOptions& self, c3::multibody::ContactModel val) {
+            // Convert enum to the string the C++ struct expects
+            switch (val) {
+              case c3::multibody::ContactModel::kStewartAndTrinkle:
+                self.contact_model = "stewart_and_trinkle"; break;
+              case c3::multibody::ContactModel::kAnitescu:
+                self.contact_model = "anitescu"; break;
+              case c3::multibody::ContactModel::kFrictionlessSpring:
+                self.contact_model = "frictionless_spring"; break;
+              default:
+                self.contact_model = "unknown"; break;
+            }
+          })
       .def_readwrite("num_friction_directions",
                      &LCSFactoryOptions::num_friction_directions)
       .def_readwrite("num_friction_directions_per_contact",
