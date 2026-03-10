@@ -505,12 +505,11 @@ void C3::AddLinearConstraint(const Eigen::MatrixXd& A,
                              const VectorXd& lower_bound,
                              const VectorXd& upper_bound,
                              ConstraintVariable constraint) {
+  DRAKE_DEMAND(lower_bound.size() == A.rows());
+  DRAKE_DEMAND(upper_bound.size() == A.rows());
   switch (constraint) {
     case ConstraintVariable::STATE:
-      std::cout << "Adding state constraints" << std::endl;
       DRAKE_DEMAND(A.cols() == n_x_);
-      DRAKE_DEMAND(lower_bound.size() == n_x_);
-      DRAKE_DEMAND(upper_bound.size() == n_x_);
       for (int i = 1; i < N_; ++i) {
         user_constraints_.push_back(
             prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
@@ -518,8 +517,6 @@ void C3::AddLinearConstraint(const Eigen::MatrixXd& A,
       break;
     case ConstraintVariable::INPUT:
       DRAKE_DEMAND(A.cols() == n_u_);
-      DRAKE_DEMAND(lower_bound.size() == n_u_);
-      DRAKE_DEMAND(upper_bound.size() == n_u_);
       for (int i = 0; i < N_; ++i) {
         user_constraints_.push_back(
             prog_.AddLinearConstraint(A, lower_bound, upper_bound, u_.at(i)));
@@ -527,8 +524,6 @@ void C3::AddLinearConstraint(const Eigen::MatrixXd& A,
       break;
     case ConstraintVariable::FORCE:
       DRAKE_DEMAND(A.cols() == n_lambda_);
-      DRAKE_DEMAND(lower_bound.size() == n_lambda_);
-      DRAKE_DEMAND(upper_bound.size() == n_lambda_);
       for (int i = 0; i < N_; ++i) {
         user_constraints_.push_back(prog_.AddLinearConstraint(
             A, lower_bound, upper_bound, lambda_.at(i)));

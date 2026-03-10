@@ -18,6 +18,7 @@ jammy_task:
       --jobs=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
+    - apt update && apt install -y python3-pip && python3 -m pip install --user numpy scipy drake
     - bazel test
       --local_resources=ram=24000
       --local_resources=cpu=8
@@ -48,6 +49,7 @@ noble_task:
       --jobs=8
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
+    - apt update && apt install -y python3-pip && python3 -m pip install --user numpy scipy drake
     - bazel test
       --local_resources=ram=24000
       --local_resources=cpu=8

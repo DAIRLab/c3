@@ -108,13 +108,17 @@ PYBIND11_MODULE(multibody, m) {
             // Convert enum to the string the C++ struct expects
             switch (val) {
               case c3::multibody::ContactModel::kStewartAndTrinkle:
-                self.contact_model = "stewart_and_trinkle"; break;
+                self.contact_model = "stewart_and_trinkle";
+                break;
               case c3::multibody::ContactModel::kAnitescu:
-                self.contact_model = "anitescu"; break;
+                self.contact_model = "anitescu";
+                break;
               case c3::multibody::ContactModel::kFrictionlessSpring:
-                self.contact_model = "frictionless_spring"; break;
+                self.contact_model = "frictionless_spring";
+                break;
               default:
-                self.contact_model = "unknown"; break;
+                self.contact_model = "unknown";
+                break;
             }
           })
       .def_readwrite("num_friction_directions",
