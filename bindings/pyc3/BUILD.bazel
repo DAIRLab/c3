@@ -15,11 +15,15 @@ load("@rules_python//python:packaging.bzl", "py_wheel")
 
 pybind_py_library(
     name = "c3_py",
-    cc_deps = ["//core:c3"],
+    cc_deps = [
+        "//core:c3",
+        "@drake//:drake_shared_library",
+    ],
     cc_so_name = "c3",
     cc_srcs = ["c3_py.cc"],
     py_deps = [
         ":module_py",
+        "@drake//bindings/pydrake",
     ],
     py_imports = ["."],
 )
