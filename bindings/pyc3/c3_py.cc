@@ -132,6 +132,15 @@ PYBIND11_MODULE(c3, m) {
       py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
       py::arg("options"));
 
+  py::class_<LCSSimulateConfig>(m, "LCSSimulateConfig")
+      .def(py::init<>())
+      .def_readwrite("regularized", &LCSSimulateConfig::regularized)
+      .def_readwrite("piv_tol", &LCSSimulateConfig::piv_tol)
+      .def_readwrite("zero_tol", &LCSSimulateConfig::zero_tol)
+      .def_readwrite("min_exp", &LCSSimulateConfig::min_exp)
+      .def_readwrite("step_exp", &LCSSimulateConfig::step_exp)
+      .def_readwrite("max_exp", &LCSSimulateConfig::max_exp);
+
   py::class_<LCS>(m, "LCS")
       .def(py::init<const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&,
@@ -154,7 +163,8 @@ PYBIND11_MODULE(c3, m) {
            py::arg("dt"))
       .def(py::init<const LCS&>(), py::arg("other"))
       .def("Simulate", &LCS::Simulate, py::arg("x_init"), py::arg("u"),
-           py::arg("regularized") = false, "Simulate the system for one step")
+           py::arg("simulate_config") = LCSSimulateConfig(),
+           "Simulate the system for one step")
       .def("A", &LCS::A, py::return_value_policy::copy)
       .def("B", &LCS::B, py::return_value_policy::copy)
       .def("D", &LCS::D, py::return_value_policy::copy)

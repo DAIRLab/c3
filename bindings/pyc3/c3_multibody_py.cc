@@ -36,6 +36,13 @@ PYBIND11_MODULE(multibody, m) {
                     const c3::LCSFactoryOptions&>(),
            py::arg("plant"), py::arg("context"), py::arg("plant_ad"),
            py::arg("context_ad"), py::arg("contact_geoms"), py::arg("options"))
+      .def(py::init<const drake::multibody::MultibodyPlant<double>&,
+                    drake::systems::Context<double>&,
+                    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>&,
+                    drake::systems::Context<drake::AutoDiffXd>&,
+                    c3::LCSFactoryOptions&>(),
+           py::arg("plant"), py::arg("context"), py::arg("plant_ad"),
+           py::arg("context_ad"), py::arg("options"))
       .def("GenerateLCS", &c3::multibody::LCSFactory::GenerateLCS)
       .def("GetContactJacobianAndPoints",
            &c3::multibody::LCSFactory::GetContactJacobianAndPoints)
@@ -77,7 +84,9 @@ PYBIND11_MODULE(multibody, m) {
       .def_readwrite("num_friction_directions",
                      &ContactPairConfig::num_friction_directions)
       .def_readwrite("planar_normal_direction",
-                     &ContactPairConfig::planar_normal_direction);
+                     &ContactPairConfig::planar_normal_direction)
+      .def_readwrite("num_active_contact_pairs",
+                     &ContactPairConfig::num_active_contact_pairs);
 
   py::class_<LCSFactoryOptions>(m, "LCSFactoryOptions")
       .def(py::init<>())
