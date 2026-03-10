@@ -29,47 +29,16 @@ def make_cube_pivoting_lcs_plant():
     plant_diagram = builder.Build()
     plant_diagram_context = plant_diagram.CreateDefaultContext()
 
-    # Retrieve collision geometries for relevant bodies.
-    platform_collision_geoms = plant.GetCollisionGeometriesForBody(
-        plant.GetBodyByName("platform")
-    )
-    cube_collision_geoms = plant.GetCollisionGeometriesForBody(
-        plant.GetBodyByName("cube")
-    )
-    left_finger_collision_geoms = plant.GetCollisionGeometriesForBody(
-        plant.GetBodyByName("left_finger")
-    )
-    right_finger_collision_geoms = plant.GetCollisionGeometriesForBody(
-        plant.GetBodyByName("right_finger")
-    )
-
-    # Map collision geometries to their respective components.
-    contact_geoms = {}
-    contact_geoms["PLATFORM"] = platform_collision_geoms
-    contact_geoms["CUBE"] = cube_collision_geoms
-    contact_geoms["LEFT_FINGER"] = left_finger_collision_geoms
-    contact_geoms["RIGHT_FINGER"] = right_finger_collision_geoms
-
-    # Define contact pairs for the LCS system.
-    contact_pairs = []
-    contact_pairs.append(
-        tuple([contact_geoms["CUBE"][0], contact_geoms["LEFT_FINGER"][0]])
-    )
-    contact_pairs.append(
-        tuple([contact_geoms["CUBE"][0], contact_geoms["PLATFORM"][0]])
-    )
-    contact_pairs.append(
-        tuple([contact_geoms["CUBE"][0], contact_geoms["RIGHT_FINGER"][0]])
-    )
-
-    return builder, plant_diagram, plant_diagram_context, plant, contact_pairs
+    return builder, plant_diagram, plant_diagram_context, plant
 
 
 def main():
-    c3_controller_options = LoadC3ControllerOptions("examples/resources/cube_pivoting/c3_controller_pivoting_options.yaml")
+    c3_controller_options = LoadC3ControllerOptions(
+        "examples/resources/cube_pivoting/c3_controller_pivoting_options.yaml"
+    )
     c3_options = c3_controller_options.c3_options
     lcs_factory_options = c3_controller_options.lcs_factory_options
-    _, diagram, diagram_context, plant, contact_pairs = make_cube_pivoting_lcs_plant()
+    _, diagram, diagram_context, plant = make_cube_pivoting_lcs_plant()
 
     plant_autodiff = System.ToAutoDiffXd(plant)
     plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
@@ -79,7 +48,6 @@ def main():
         plant_context,
         plant_autodiff,
         plant_autodiff_context,
-        contact_pairs,
         lcs_factory_options,
     )
 
