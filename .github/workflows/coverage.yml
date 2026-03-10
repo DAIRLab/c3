@@ -37,7 +37,8 @@ jobs:
           --local_resources=ram=24000
           --local_resources=cpu=4
           --jobs=4
-          --instrumentation_filter="//core[:/],//systems[:/],//multibody[:/]"
+          --instrument_test_targets=false
+          --instrumentation_filter="^//core,^//systems,^//multibody"
           //core/...
           //systems/...
           //multibody/...

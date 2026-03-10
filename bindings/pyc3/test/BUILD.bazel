@@ -17,6 +17,7 @@ py_test(
     env_inherit = [
         "GUROBI_HOME",
         "GRB_LICENSE_FILE",
+        "PYTHONPATH",
     ],
 )
 
@@ -37,6 +38,7 @@ py_test(
     env_inherit = [
         "GUROBI_HOME",
         "GRB_LICENSE_FILE",
+        "PYTHONPATH",
     ],
 )
 
@@ -57,5 +59,6 @@ py_test(
     env_inherit = [
         "GUROBI_HOME",
         "GRB_LICENSE_FILE",
+        "PYTHONPATH",
     ],
 )
