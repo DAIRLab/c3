@@ -6,6 +6,7 @@
 #include "core/c3.h"
 #include "core/c3_miqp.h"
 #include "core/c3_options.h"
+#include "core/c3_plus.h"
 #include "core/c3_qp.h"
 #include "core/lcs.h"
 
@@ -86,13 +87,24 @@ PYBIND11_MODULE(c3, m) {
              return self.Solve(x0);
            })
       .def("UpdateLCS", &C3::UpdateLCS, py::arg("lcs"))
-      .def("GetDynamicConstraints", &C3::GetDynamicConstraints,
-           py::return_value_policy::copy)
+      .def(
+          "GetDynamicConstraints",
+          [](C3& self) {
+            py::module_::import("pydrake.solvers");
+            return self.GetDynamicConstraints();
+          },
+          py::return_value_policy::reference_internal)
       .def("UpdateTarget", &C3::UpdateTarget, py::arg("x_des"))
       .def("UpdateCostMatrices", &C3::UpdateCostMatrices, py::arg("costs"))
       .def("GetCostMatrices", &C3::GetCostMatrices,
            py::return_value_policy::copy)
-      .def("GetTargetCost", &C3::GetTargetCost, py::return_value_policy::copy)
+      .def(
+          "GetTargetCost",
+          [](C3& self) {
+            py::module_::import("pydrake.solvers");
+            return self.GetTargetCost();
+          },
+          py::return_value_policy::reference_internal)
       .def("AddLinearConstraint",
            static_cast<void (C3::*)(
                const Eigen::MatrixXd&, const Eigen::VectorXd&,
@@ -107,8 +119,13 @@ PYBIND11_MODULE(c3, m) {
            py::arg("A"), py::arg("lower_bound"), py::arg("upper_bound"),
            py::arg("constraint_type"))
       .def("RemoveConstraints", &C3::RemoveConstraints)
-      .def("GetLinearConstraints", &C3::GetLinearConstraints,
-           py::return_value_policy::copy)
+      .def(
+          "GetLinearConstraints",
+          [](C3& self) {
+            py::module_::import("pydrake.solvers");
+            return self.GetLinearConstraints();
+          },
+          py::return_value_policy::reference_internal)
       .def("SetSolverOptions", &C3::SetSolverOptions, py::arg("options"))
       .def("GetFullSolution", &C3::GetFullSolution)
       .def("GetStateSolution", &C3::GetStateSolution)
@@ -132,6 +149,21 @@ PYBIND11_MODULE(c3, m) {
       py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
       py::arg("options"));
 
+  py::class_<C3Plus, C3>(m, "C3Plus")
+      .def(py::init<const LCS&, const C3::CostMatrices&,
+                    const std::vector<Eigen::VectorXd>&, const C3Options&>(),
+           py::arg("LCS"), py::arg("costs"), py::arg("x_desired"),
+           py::arg("options"));
+
+  py::class_<LCSSimulateConfig>(m, "LCSSimulateConfig")
+      .def(py::init<>())
+      .def_readwrite("regularized", &LCSSimulateConfig::regularized)
+      .def_readwrite("piv_tol", &LCSSimulateConfig::piv_tol)
+      .def_readwrite("zero_tol", &LCSSimulateConfig::zero_tol)
+      .def_readwrite("min_exp", &LCSSimulateConfig::min_exp)
+      .def_readwrite("step_exp", &LCSSimulateConfig::step_exp)
+      .def_readwrite("max_exp", &LCSSimulateConfig::max_exp);
+
   py::class_<LCS>(m, "LCS")
       .def(py::init<const std::vector<Eigen::MatrixXd>&,
                     const std::vector<Eigen::MatrixXd>&,
@@ -154,7 +186,8 @@ PYBIND11_MODULE(c3, m) {
            py::arg("dt"))
       .def(py::init<const LCS&>(), py::arg("other"))
       .def("Simulate", &LCS::Simulate, py::arg("x_init"), py::arg("u"),
-           py::arg("regularized") = false, "Simulate the system for one step")
+           py::arg("simulate_config") = LCSSimulateConfig(),
+           "Simulate the system for one step")
       .def("A", &LCS::A, py::return_value_policy::copy)
       .def("B", &LCS::B, py::return_value_policy::copy)
       .def("D", &LCS::D, py::return_value_policy::copy)
