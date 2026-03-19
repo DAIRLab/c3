@@ -68,33 +68,28 @@ TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
                                               const VectorXd& Kd,
                                               const LCS& coarse_lcs,
                                               const LCS& fine_lcs) {
-  int timestep_split = CheckCoarseAndFineLCSCompatibility(coarse_lcs, fine_lcs);
+  int upsample_rate = CheckCoarseAndFineLCSCompatibility(coarse_lcs, fine_lcs);
 
   // Zero-order hold the planned trajectory to match the finer time
   // discretization of the LCS.
-  std::pair<vector<VectorXd>, vector<VectorXd>> fine_plans =
-      ZeroOrderHoldTrajectories(x_plan, u_plan, timestep_split);
-  vector<VectorXd> x_plan_finer = fine_plans.first;
-  vector<VectorXd> u_plan_finer = fine_plans.second;
+  auto [x_plan_finer, u_plan_finer] =
+      ZeroOrderHoldTrajectories(x_plan, u_plan, upsample_rate);
 
   // Do PD control with the finer trajectory and LCS.
-  std::pair<vector<VectorXd>, vector<VectorXd>> fine_sims =
+  auto [x_sim_fine, u_sim_fine] =
       SimulatePDControlWithLCS(x_plan_finer, u_plan_finer, Kp, Kd, fine_lcs);
-  vector<VectorXd> x_sim_fine = fine_sims.first;
-  vector<VectorXd> u_sim_fine = fine_sims.second;
 
   // Downsample the resulting trajectory back to the original time
   // discretization.
-  std::pair<vector<VectorXd>, vector<VectorXd>> downsampled_sims =
-      DownsampleTrajectories(x_sim_fine, u_sim_fine, timestep_split);
-  vector<VectorXd> x_sim = downsampled_sims.first;
-  vector<VectorXd> u_sim = downsampled_sims.second;
+  auto [x_sim, u_sim] =
+      DownsampleTrajectories(x_sim_fine, u_sim_fine, upsample_rate);
 
   return std::make_pair(x_sim, u_sim);
 }
 
 vector<VectorXd> TrajectoryEvaluator::SimulateLCSOverTrajectory(
-    const VectorXd& x_init, const vector<VectorXd>& u_plan, const LCS& lcs) {
+    const VectorXd& x_init, const vector<VectorXd>& u_plan, const LCS& lcs,
+    const LCSSimulateConfig& config) {
   int N = lcs.N();
   CheckLCSAndTrajectoryCompatibility(lcs, vector<VectorXd>(N + 1, x_init),
                                      u_plan);
@@ -103,46 +98,49 @@ vector<VectorXd> TrajectoryEvaluator::SimulateLCSOverTrajectory(
       vector<VectorXd>(N + 1, VectorXd::Zero(x_init.size()));
   x_sim[0] = x_init;
   for (int i = 0; i < N; i++) {
-    x_sim[i + 1] = lcs.Simulate(x_sim[i], u_plan[i]);
+    x_sim[i + 1] = lcs.Simulate(x_sim[i], u_plan[i], config);
   }
   return x_sim;
 }
 
 vector<VectorXd> TrajectoryEvaluator::SimulateLCSOverTrajectory(
     const vector<VectorXd>& x_plan, const vector<VectorXd>& u_plan,
-    const LCS& lcs) {
-  return SimulateLCSOverTrajectory(x_plan[0], u_plan, lcs);
+    const LCS& lcs, const LCSSimulateConfig& config) {
+  return SimulateLCSOverTrajectory(x_plan[0], u_plan, lcs, config);
 }
 
 vector<VectorXd> TrajectoryEvaluator::SimulateLCSOverTrajectory(
     const VectorXd& x_init, const vector<VectorXd>& u_plan,
-    const LCS& coarse_lcs, const LCS& fine_lcs) {
-  int timestep_split = CheckCoarseAndFineLCSCompatibility(coarse_lcs, fine_lcs);
+    const LCS& coarse_lcs, const LCS& fine_lcs,
+    const LCSSimulateConfig& config) {
+  int upsample_rate = CheckCoarseAndFineLCSCompatibility(coarse_lcs, fine_lcs);
 
   vector<VectorXd> u_plan_finer =
-      ZeroOrderHoldTrajectory(u_plan, timestep_split);
+      ZeroOrderHoldTrajectory(u_plan, upsample_rate);
   vector<VectorXd> x_sim_fine =
-      SimulateLCSOverTrajectory(x_init, u_plan_finer, fine_lcs);
-  return DownsampleTrajectories(x_sim_fine, u_plan_finer, timestep_split).first;
+      SimulateLCSOverTrajectory(x_init, u_plan_finer, fine_lcs, config);
+  return DownsampleTrajectories(x_sim_fine, u_plan_finer, upsample_rate).first;
 }
 
 vector<VectorXd> TrajectoryEvaluator::SimulateLCSOverTrajectory(
     const vector<VectorXd>& x_plan, const vector<VectorXd>& u_plan,
-    const LCS& coarse_lcs, const LCS& fine_lcs) {
-  return SimulateLCSOverTrajectory(x_plan[0], u_plan, coarse_lcs, fine_lcs);
+    const LCS& coarse_lcs, const LCS& fine_lcs,
+    const LCSSimulateConfig& config) {
+  return SimulateLCSOverTrajectory(x_plan[0], u_plan, coarse_lcs, fine_lcs,
+                                   config);
 }
 
 vector<VectorXd> TrajectoryEvaluator::ZeroOrderHoldTrajectory(
-    const vector<VectorXd>& coarse_traj, const int& timestep_split) {
+    const vector<VectorXd>& coarse_traj, const int& upsample_rate) {
   int N = coarse_traj.size();
 
   // Zero-order hold the planned trajectory to match the finer time
   // discretization of the LCS.
-  vector<VectorXd> fine_traj(N * timestep_split,
+  vector<VectorXd> fine_traj(N * upsample_rate,
                              VectorXd::Zero(coarse_traj[0].size()));
   for (int i = 0; i < N; i++) {
-    for (int j = 0; j < timestep_split; j++) {
-      fine_traj[i * timestep_split + j] = coarse_traj[i];
+    for (int j = 0; j < upsample_rate; j++) {
+      fine_traj[i * upsample_rate + j] = coarse_traj[i];
     }
   }
   return fine_traj;
@@ -151,24 +149,24 @@ vector<VectorXd> TrajectoryEvaluator::ZeroOrderHoldTrajectory(
 std::pair<vector<VectorXd>, vector<VectorXd>>
 TrajectoryEvaluator::ZeroOrderHoldTrajectories(const vector<VectorXd>& x_coarse,
                                                const vector<VectorXd>& u_coarse,
-                                               const int& timestep_split) {
+                                               const int& upsample_rate) {
   DRAKE_THROW_UNLESS(x_coarse.size() == u_coarse.size() + 1);
   vector<VectorXd> x_fine = ZeroOrderHoldTrajectory(
-      vector<VectorXd>(x_coarse.begin(), x_coarse.end() - 1), timestep_split);
+      vector<VectorXd>(x_coarse.begin(), x_coarse.end() - 1), upsample_rate);
   x_fine.push_back(x_coarse.back());
-  vector<VectorXd> u_fine = ZeroOrderHoldTrajectory(u_coarse, timestep_split);
+  vector<VectorXd> u_fine = ZeroOrderHoldTrajectory(u_coarse, upsample_rate);
   return std::make_pair(x_fine, u_fine);
 }
 
 vector<VectorXd> TrajectoryEvaluator::DownsampleTrajectory(
-    const vector<VectorXd>& fine_traj, const int& timestep_split) {
-  DRAKE_THROW_UNLESS(fine_traj.size() % timestep_split == 0);
-  int N = fine_traj.size() / timestep_split;
+    const vector<VectorXd>& fine_traj, const int& upsample_rate) {
+  DRAKE_THROW_UNLESS(fine_traj.size() % upsample_rate == 0);
+  int N = fine_traj.size() / upsample_rate;
 
   // Downsample the fine trajectory.
   vector<VectorXd> coarse_traj(N, VectorXd::Zero(fine_traj[0].size()));
   for (int i = 0; i < N; i++) {
-    coarse_traj[i] = fine_traj[i * timestep_split];
+    coarse_traj[i] = fine_traj[i * upsample_rate];
   }
   return coarse_traj;
 }
@@ -176,12 +174,12 @@ vector<VectorXd> TrajectoryEvaluator::DownsampleTrajectory(
 std::pair<vector<VectorXd>, vector<VectorXd>>
 TrajectoryEvaluator::DownsampleTrajectories(const vector<VectorXd>& x_fine,
                                             const vector<VectorXd>& u_fine,
-                                            const int& timestep_split) {
+                                            const int& upsample_rate) {
   DRAKE_THROW_UNLESS(x_fine.size() == u_fine.size() + 1);
   vector<VectorXd> x_coarse = DownsampleTrajectory(
-      vector<VectorXd>(x_fine.begin(), x_fine.end() - 1), timestep_split);
+      vector<VectorXd>(x_fine.begin(), x_fine.end() - 1), upsample_rate);
   x_coarse.push_back(x_fine.back());
-  vector<VectorXd> u_coarse = DownsampleTrajectory(u_fine, timestep_split);
+  vector<VectorXd> u_coarse = DownsampleTrajectory(u_fine, upsample_rate);
   return std::make_pair(x_coarse, u_coarse);
 }
 
@@ -193,10 +191,9 @@ int TrajectoryEvaluator::CheckCoarseAndFineLCSCompatibility(
   DRAKE_THROW_UNLESS(coarse_lcs.dt() >= fine_lcs.dt());
   DRAKE_THROW_UNLESS(coarse_lcs.N() * coarse_lcs.dt() ==
                      fine_lcs.N() * fine_lcs.dt());
-  int timestep_split = fine_lcs.N() / coarse_lcs.N();
-  DRAKE_THROW_UNLESS(fine_lcs.dt() * timestep_split == coarse_lcs.dt());
-  DRAKE_THROW_UNLESS(coarse_lcs.N() * timestep_split == fine_lcs.N());
-  return timestep_split;
+  int upsample_rate = fine_lcs.N() / coarse_lcs.N();
+  DRAKE_THROW_UNLESS(fine_lcs.dt() * upsample_rate == coarse_lcs.dt());
+  return upsample_rate;
 }
 
 void TrajectoryEvaluator::CheckLCSAndTrajectoryCompatibility(

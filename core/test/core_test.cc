@@ -361,6 +361,10 @@ TEST_F(TrajectoryEvaluatorTest, QuadraticCostMatchesManual) {
   actual = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(x, x_des, Q, u,
                                                                u_des, R);
   EXPECT_NEAR(actual, expected, 1e-12);  // State and input costs
+  actual = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(x, x_des, Q, u,
+                                                               u_des[0], R);
+  EXPECT_NEAR(actual, expected,
+              1e-12);  // State and input costs with repeated desired input
 
   expected += 5.0 * 0.25 * 0.25;
   actual = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
@@ -378,11 +382,23 @@ TEST_F(TrajectoryEvaluatorTest, QuadraticCostMatchesManual) {
   actual = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(x, x_des, Q[0],
                                                                u, u_des, R[0]);
   EXPECT_NEAR(actual, expected, 1e-12);  // State and input costs
+  actual = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+      x, x_des, Q[0], u, u_des[0], R[0]);
+  EXPECT_NEAR(actual, expected,
+              1e-12);  // State and input costs with repeated desired input
 
   expected += 5.0 * 0.25 * 0.25;
   actual = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
       x, x_des, Q[0], u, u_des, R[0], lambda, lambda_des, S[0]);
   EXPECT_NEAR(actual, expected, 1e-12);  // State, input, force costs
+
+  // Test with no desired trajectory (so target is assumed to be origin)
+  expected = 0.0;
+  expected += 2.0 * 1.0 * 1.0;
+  expected += 2.0 * 2.0 * 2.0;
+  actual = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(x, Q[0]);
+  EXPECT_NEAR(actual, expected,
+              1e-12);  // State costs with no desired trajectory
 
   // Test any mismatched dimensions throw errors.
   std::vector<VectorXd> x_wrong(3, VectorXd::Zero(1));
@@ -498,17 +514,17 @@ TEST_F(TrajectoryEvaluatorTest, ZeroOrderHoldAndDownsampleRoundTrip) {
   coarse[0] << 1.0, 2.0;
   coarse[1] << 3.0, 4.0;
 
-  const int timestep_split = 3;
+  const int upsample_rate = 3;
   std::vector<VectorXd> fine =
-      TrajectoryEvaluator::ZeroOrderHoldTrajectory(coarse, timestep_split);
-  EXPECT_EQ(fine.size(), coarse.size() * timestep_split);
-  for (int i = 0; i < timestep_split; ++i) {
+      TrajectoryEvaluator::ZeroOrderHoldTrajectory(coarse, upsample_rate);
+  EXPECT_EQ(fine.size(), coarse.size() * upsample_rate);
+  for (int i = 0; i < upsample_rate; ++i) {
     EXPECT_TRUE(fine[i].isApprox(coarse[0]));
-    EXPECT_TRUE(fine[i + timestep_split].isApprox(coarse[1]));
+    EXPECT_TRUE(fine[i + upsample_rate].isApprox(coarse[1]));
   }
 
   std::vector<VectorXd> downsampled =
-      TrajectoryEvaluator::DownsampleTrajectory(fine, timestep_split);
+      TrajectoryEvaluator::DownsampleTrajectory(fine, upsample_rate);
   EXPECT_EQ(downsampled.size(), coarse.size());
   EXPECT_TRUE(downsampled[0].isApprox(coarse[0]));
   EXPECT_TRUE(downsampled[1].isApprox(coarse[1]));
@@ -523,25 +539,25 @@ TEST_F(TrajectoryEvaluatorTest, MultiZeroOrderHoldAndDownsampleRoundTrip) {
   u_coarse[0] << 7.0;
   u_coarse[1] << 8.0;
 
-  const int timestep_split = 3;
+  const int upsample_rate = 3;
   std::pair<std::vector<VectorXd>, std::vector<VectorXd>> fine =
       TrajectoryEvaluator::ZeroOrderHoldTrajectories(x_coarse, u_coarse,
-                                                     timestep_split);
+                                                     upsample_rate);
   std::vector<VectorXd> x_fine = fine.first;
   std::vector<VectorXd> u_fine = fine.second;
-  EXPECT_EQ(x_fine.size(), (x_coarse.size() - 1) * timestep_split + 1);
-  EXPECT_EQ(u_fine.size(), u_coarse.size() * timestep_split);
-  for (int i = 0; i < timestep_split; ++i) {
+  EXPECT_EQ(x_fine.size(), (x_coarse.size() - 1) * upsample_rate + 1);
+  EXPECT_EQ(u_fine.size(), u_coarse.size() * upsample_rate);
+  for (int i = 0; i < upsample_rate; ++i) {
     EXPECT_TRUE(x_fine[i].isApprox(x_coarse[0]));
-    EXPECT_TRUE(x_fine[i + timestep_split].isApprox(x_coarse[1]));
+    EXPECT_TRUE(x_fine[i + upsample_rate].isApprox(x_coarse[1]));
     EXPECT_TRUE(u_fine[i].isApprox(u_coarse[0]));
-    EXPECT_TRUE(u_fine[i + timestep_split].isApprox(u_coarse[1]));
+    EXPECT_TRUE(u_fine[i + upsample_rate].isApprox(u_coarse[1]));
   }
   EXPECT_TRUE(x_fine.back().isApprox(x_coarse.back()));
 
   std::pair<std::vector<VectorXd>, std::vector<VectorXd>> downsampled =
       TrajectoryEvaluator::DownsampleTrajectories(x_fine, u_fine,
-                                                  timestep_split);
+                                                  upsample_rate);
   std::vector<VectorXd> x_downsampled = downsampled.first;
   std::vector<VectorXd> u_downsampled = downsampled.second;
   EXPECT_EQ(x_downsampled.size(), 3);
@@ -557,16 +573,16 @@ TEST_F(TrajectoryEvaluatorTest, MultiZeroOrderHoldAndDownsampleRoundTrip) {
   // Test any mismatched dimensions throw errors.
   std::vector<VectorXd> x_coarse_wrong(2, VectorXd::Zero(3));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ZeroOrderHoldTrajectories(
-      x_coarse_wrong, u_coarse, timestep_split));
+      x_coarse_wrong, u_coarse, upsample_rate));
   std::vector<VectorXd> u_coarse_wrong(3, VectorXd::Zero(2));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ZeroOrderHoldTrajectories(
-      x_coarse, u_coarse_wrong, timestep_split));
+      x_coarse, u_coarse_wrong, upsample_rate));
   std::vector<VectorXd> x_fine_wrong(2, VectorXd::Zero(3));
   ASSERT_ANY_THROW(TrajectoryEvaluator::DownsampleTrajectories(
-      x_fine_wrong, u_fine, timestep_split));
+      x_fine_wrong, u_fine, upsample_rate));
   std::vector<VectorXd> u_fine_wrong(3, VectorXd::Zero(2));
   ASSERT_ANY_THROW(TrajectoryEvaluator::DownsampleTrajectories(
-      x_fine, u_fine_wrong, timestep_split));
+      x_fine, u_fine_wrong, upsample_rate));
 }
 
 TEST_F(TrajectoryEvaluatorTest,
@@ -705,6 +721,45 @@ TYPED_TEST(C3CartpoleTypedTest, End2EndCartpoleTest) {
   }
   // Cartpole should be close to center and balancing the pendulum
   ASSERT_EQ(x[timesteps - 1].isZero(0.1), true);
+}
+
+TYPED_TEST(C3CartpoleTypedTest, ComputeCost) {
+  C3Options options_no_input_change = this->options;
+  options_no_input_change.penalize_input_change = false;
+  TypeParam optimizer(*this->pSystem, this->cost, this->xdesired,
+                      options_no_input_change);
+
+  // Solve one iteration of the problem.
+  optimizer.Solve(this->x0);
+  std::vector<VectorXd> x_sol = optimizer.GetStateSolution();
+  std::vector<VectorXd> u_sol = optimizer.GetInputSolution();
+  std::vector<VectorXd> lambda_sol = optimizer.GetForceSolution();
+
+  // The state trajectory excludes the N+1 time step.  Add it to the end via
+  // LCS rollout since it contributes to the C3 internal cost optimization.
+  const LCS& lcs = optimizer.GetLCS();
+  const MatrixXd& A_N = lcs.A().back();
+  const MatrixXd& B_N = lcs.B().back();
+  const MatrixXd& D_N = lcs.D().back();
+  const VectorXd& d_N = lcs.d().back();
+  x_sol.push_back(A_N * x_sol.back() + B_N * u_sol.back() +
+                  D_N * lambda_sol.back() + d_N);
+
+  // Get the cost matrices and desired state.
+  const C3::CostMatrices cost_matrices = optimizer.GetCostMatrices();
+  std::vector<MatrixXd> Q = cost_matrices.Q;
+  std::vector<MatrixXd> R = cost_matrices.R;
+  std::vector<VectorXd> x_des = optimizer.GetDesiredState();
+  ASSERT_EQ(x_sol.size(), x_des.size());
+  ASSERT_EQ(x_sol.size(), Q.size());
+  ASSERT_EQ(u_sol.size(), R.size());
+
+  // Compute the cost using the TrajectoryEvaluator
+  double cost_from_c3_object =
+      TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(&optimizer);
+  double cost_from_traj = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+      x_sol, x_des, Q, u_sol, R);
+  EXPECT_NEAR(cost_from_c3_object, cost_from_traj, 1e-12);
 }
 
 int main(int argc, char** argv) {

@@ -5,6 +5,7 @@
 
 #include <Eigen/Dense>
 
+#include "c3.h"
 #include "c3_options.h"
 #include "lcs.h"
 
@@ -58,8 +59,8 @@ class TrajectoryEvaluator {
 
     return cost + ComputeQuadraticTrajectoryCost(std::forward<Rest>(rest)...);
   }
-  /** Special case: the same cost matrix is to be used throughout the trajectory
-   * so only one is provided.
+  /** @brief Special case: the same cost matrix is to be used throughout the
+   * trajectory so only one is provided.
    */
   template <typename... Rest>
   static double ComputeQuadraticTrajectoryCost(
@@ -70,8 +71,94 @@ class TrajectoryEvaluator {
         data, data_des, std::vector<Eigen::MatrixXd>(data.size(), cost_matrix),
         std::forward<Rest>(rest)...);
   }
-  /** Special case: no trajectory to evaluate. */
-  static double ComputeQuadraticTrajectoryCost() { return 0.0; }
+  /** @brief Special case: the same desired data is to be used throughout the
+   * trajectory so only one is provided.
+   */
+  template <typename... Rest>
+  static double ComputeQuadraticTrajectoryCost(
+      const std::vector<Eigen::VectorXd>& data, const Eigen::VectorXd& data_des,
+      const std::vector<Eigen::MatrixXd>& cost_matrices, Rest&&... rest) {
+    return ComputeQuadraticTrajectoryCost(
+        data, std::vector<Eigen::VectorXd>(data.size(), data_des),
+        cost_matrices, std::forward<Rest>(rest)...);
+  }
+  /** @brief Special case: the same desired data and the same cost matrix is to
+   * be used throughout the trajectory so only one each is provided.
+   */
+  template <typename... Rest>
+  static double ComputeQuadraticTrajectoryCost(
+      const std::vector<Eigen::VectorXd>& data, const Eigen::VectorXd& data_des,
+      const Eigen::MatrixXd& cost_matrix, Rest&&... rest) {
+    return ComputeQuadraticTrajectoryCost(
+        data, std::vector<Eigen::VectorXd>(data.size(), data_des),
+        std::vector<Eigen::MatrixXd>(data.size(), cost_matrix),
+        std::forward<Rest>(rest)...);
+  }
+  /** @brief Special case: no desired data is provided, so it is assumed the
+   * desired data is zero.
+   */
+  template <typename... Rest>
+  static double ComputeQuadraticTrajectoryCost(
+      const std::vector<Eigen::VectorXd>& data,
+      const std::vector<Eigen::MatrixXd>& cost_matrices, Rest&&... rest) {
+    return ComputeQuadraticTrajectoryCost(
+        data,
+        std::vector<Eigen::VectorXd>(data.size(),
+                                     Eigen::VectorXd::Zero(data[0].size())),
+        cost_matrices, std::forward<Rest>(rest)...);
+  }
+  /** @brief Special case: no desired data is provided and the same cost matrix
+   * is to be used throughout the trajectory, so it is assumed the desired data
+   * is zero and only one cost matrix is provided.
+   */
+  template <typename... Rest>
+  static double ComputeQuadraticTrajectoryCost(
+      const std::vector<Eigen::VectorXd>& data,
+      const Eigen::MatrixXd& cost_matrix, Rest&&... rest) {
+    return ComputeQuadraticTrajectoryCost(
+        data,
+        std::vector<Eigen::VectorXd>(data.size(),
+                                     Eigen::VectorXd::Zero(data[0].size())),
+        std::vector<Eigen::MatrixXd>(data.size(), cost_matrix),
+        std::forward<Rest>(rest)...);
+  }
+  /** @brief Special case: a C3 object is the input argument, and the cost is to
+   * be computed based on the trajectories contained in the C3 object and the
+   * cost matrices contained in the C3 object for state and input costs.
+   *
+   * NOTE: This can only handle u^T R u input costs, not (u-u_prev)^T R
+   * (u-u_prev) input costs, since the C3 object does not contain u_prev
+   * trajectories. If the C3 object is configured to compute input costs based
+   * on (u-u_prev), this function throws an error.
+   */
+  static double ComputeQuadraticTrajectoryCost(C3* c3) {
+    DRAKE_THROW_UNLESS(c3->GetPenalizeInputChange() == false);
+
+    // Get the trajectories (solved for state and input, and desired for state).
+    std::vector<Eigen::VectorXd> x = c3->GetStateSolution();
+    std::vector<Eigen::VectorXd> u = c3->GetInputSolution();
+    std::vector<Eigen::VectorXd> lambda = c3->GetForceSolution();
+    std::vector<Eigen::VectorXd> x_des = c3->GetDesiredState();
+
+    // The state trajectory excludes the N+1 time step.  Add it to the end via
+    // LCS rollout since it contributes to the C3 internal cost optimization.
+    const LCS& lcs = c3->GetLCS();
+    Eigen::MatrixXd A_N = lcs.A().back();
+    Eigen::MatrixXd B_N = lcs.B().back();
+    Eigen::MatrixXd D_N = lcs.D().back();
+    Eigen::VectorXd d_N = lcs.d().back();
+    x.push_back(A_N * x.back() + B_N * u.back() + D_N * lambda.back() + d_N);
+
+    // Get the cost matrices.
+    std::vector<Eigen::MatrixXd> Q = c3->GetCostMatrices().Q;
+    std::vector<Eigen::MatrixXd> R = c3->GetCostMatrices().R;
+
+    DRAKE_THROW_UNLESS(x_des.size() == x.size());
+    DRAKE_THROW_UNLESS(Q.size() == x.size());
+    DRAKE_THROW_UNLESS(R.size() == u.size());
+
+    return ComputeQuadraticTrajectoryCost(x, x_des, Q, u, R);
+  }
 
   /**
    * @brief From a planned trajectory of states and inputs and sets of Kp and Kd
@@ -110,16 +197,18 @@ class TrajectoryEvaluator {
    * @param x_init Initial state
    * @param u_plan Trajectory of inputs (length N)
    * @param lcs LCS system to simulate
+   * @param config Configuration for simulating the LCS
    * @return Trajectory of simulated states (length N+1)
    */
   static std::vector<Eigen::VectorXd> SimulateLCSOverTrajectory(
       const Eigen::VectorXd& x_init, const std::vector<Eigen::VectorXd>& u_plan,
-      const LCS& lcs);
+      const LCS& lcs, const LCSSimulateConfig& config = LCSSimulateConfig());
   /** @brief Special case: a full trajectory of states is provided, but only the
    * initial state is used for simulation. */
   static std::vector<Eigen::VectorXd> SimulateLCSOverTrajectory(
       const std::vector<Eigen::VectorXd>& x_plan,
-      const std::vector<Eigen::VectorXd>& u_plan, const LCS& lcs);
+      const std::vector<Eigen::VectorXd>& u_plan, const LCS& lcs,
+      const LCSSimulateConfig& config = LCSSimulateConfig());
   /**
    * @brief Special case: simulate plans from a coarser LCS with a finer LCS.
    * The returned trajectory is downsampled back to be compatible with the
@@ -128,7 +217,8 @@ class TrajectoryEvaluator {
    */
   static std::vector<Eigen::VectorXd> SimulateLCSOverTrajectory(
       const Eigen::VectorXd& x_init, const std::vector<Eigen::VectorXd>& u_plan,
-      const LCS& coarse_lcs, const LCS& fine_lcs);
+      const LCS& coarse_lcs, const LCS& fine_lcs,
+      const LCSSimulateConfig& config = LCSSimulateConfig());
   /**
    * @brief Special case: simulate a trajectory from a coarser LCS with a finer
    * LCS, where a full trajectory of states is provided but only the initial
@@ -137,7 +227,8 @@ class TrajectoryEvaluator {
   static std::vector<Eigen::VectorXd> SimulateLCSOverTrajectory(
       const std::vector<Eigen::VectorXd>& x_plan,
       const std::vector<Eigen::VectorXd>& u_plan, const LCS& coarse_lcs,
-      const LCS& fine_lcs);
+      const LCS& fine_lcs,
+      const LCSSimulateConfig& config = LCSSimulateConfig());
 
   /**
    * @brief Zero order hold a trajectory compatible with one LCS to be
@@ -145,26 +236,26 @@ class TrajectoryEvaluator {
    * must be compatible with each other, i.e. the finer horizon must be an
    * integer multiple of the coarser horizon, and dt*N must be the same for both
    * LCSs. The state trajectory (which was N+1 in length) becomes
-   * (N*timestep_split)+1 in length, and the input trajectory (which was N in
-   * length) becomes N*timestep_split in length.
+   * (N*upsample_rate)+1 in length, and the input trajectory (which was N in
+   * length) becomes N*upsample_rate in length.
    *
    * @param x_coarse Coarse state trajectory (length N+1)
    * @param u_coarse Coarse input trajectory (length N)
-   * @param timestep_split Integer multiple for time discretization
-   * @return Pair of 1) fine state trajectory (length (N*timestep_split)+1) and
-   * 2) fine input trajectory (length N*timestep_split)
+   * @param upsample_rate Integer multiple for time discretization
+   * @return Pair of 1) fine state trajectory (length (N*upsample_rate)+1) and
+   * 2) fine input trajectory (length N*upsample_rate)
    */
   static std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
   ZeroOrderHoldTrajectories(const std::vector<Eigen::VectorXd>& x_coarse,
                             const std::vector<Eigen::VectorXd>& u_coarse,
-                            const int& timestep_split);
+                            const int& upsample_rate);
   /**
    * @brief Same as above but only one trajectory is provided and processed.
-   * Trajectories of length N become trajectories of length N*timestep_split.
+   * Trajectories of length N become trajectories of length N*upsample_rate.
    */
   static std::vector<Eigen::VectorXd> ZeroOrderHoldTrajectory(
       const std::vector<Eigen::VectorXd>& coarse_traj,
-      const int& timestep_split);
+      const int& upsample_rate);
 
   /**
    * @brief The reverse of ZeroOrderHoldTrajectoryToFinerLCS: downsample a
@@ -172,19 +263,19 @@ class TrajectoryEvaluator {
    * The same compatibility requirements apply as for
    * ZeroOrderHoldTrajectoryToFinerLCS.
    *
-   * @param x_fine Fine state trajectory (length (N*timestep_split)+1)
-   * @param u_fine Fine input trajectory (length N*timestep_split)
-   * @param timestep_split Integer multiple for time discretization
+   * @param x_fine Fine state trajectory (length (N*upsample_rate)+1)
+   * @param u_fine Fine input trajectory (length N*upsample_rate)
+   * @param upsample_rate Integer multiple for time discretization
    * @return Pair of 1) coarse state trajectory (length N+1) and 2) coarse input
    * trajectory (length N)
    */
   static std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
   DownsampleTrajectories(const std::vector<Eigen::VectorXd>& x_fine,
                          const std::vector<Eigen::VectorXd>& u_fine,
-                         const int& timestep_split);
+                         const int& upsample_rate);
   /** @brief Same as above but only one trajectory is provided and processed. */
   static std::vector<Eigen::VectorXd> DownsampleTrajectory(
-      const std::vector<Eigen::VectorXd>& fine_traj, const int& timestep_split);
+      const std::vector<Eigen::VectorXd>& fine_traj, const int& upsample_rate);
 
   /**
    * @brief Check that two LCSs are compatible with each other, i.e. that the
@@ -226,6 +317,13 @@ class TrajectoryEvaluator {
   /** @brief Special case: no inputs or lambdas provided. */
   static void CheckLCSAndTrajectoryCompatibility(
       const LCS& lcs, const std::vector<Eigen::VectorXd>& x);
+
+ private:
+  /** @brief Special case of ComputeQuadraticTrajectoryCost: no trajectory to
+   * evaluate. Required for variadic template recursion base case, but should
+   * not be called externally with no input arguments.
+   */
+  static double ComputeQuadraticTrajectoryCost() { return 0.0; }
 };
 
 }  // namespace traj_eval
