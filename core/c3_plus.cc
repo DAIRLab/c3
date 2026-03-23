@@ -19,6 +19,16 @@ C3Plus::C3Plus(const LCS& lcs, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
     : C3(lcs, costs, xdesired, options,
          lcs.num_states() + 2 * lcs.num_lambdas() + lcs.num_inputs()) {
+  if (warm_start_) {
+    warm_start_eta_.resize(options_.admm_iter + 1);
+    for (int iter = 0; iter < options_.admm_iter + 1; ++iter) {
+      warm_start_eta_[iter].resize(N_);
+      for (int i = 0; i < N_; ++i) {
+        warm_start_eta_[iter][i] = VectorXd::Zero(n_lambda_);
+      }
+    }
+  }
+
   // Initialize eta as optimization variables
   eta_ = vector<drake::solvers::VectorXDecisionVariable>();
   eta_sol_ = std::make_unique<std::vector<VectorXd>>();
