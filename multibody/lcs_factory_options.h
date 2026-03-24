@@ -16,6 +16,13 @@ struct ContactPairConfig {
   std::optional<std::array<double, 3>>
       planar_normal_direction;  // optional normal vector for planar contact
   double mu;                    // friction coefficient
+  std::optional<unsigned int>
+      num_active_contact_pairs;  // Number of geometry-geometry contact pairs to
+                                 // consider (e.g., if body_A has 10 geoms and
+                                 // body_B has 5 geoms, there are 50 possible
+                                 // pairs. Set this to limit how many are used
+                                 // in the LCS. If unspecified, all pairs are
+                                 // considered.)
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -26,6 +33,7 @@ struct ContactPairConfig {
     a->Visit(DRAKE_NVP(num_friction_directions));
     a->Visit(DRAKE_NVP(planar_normal_direction));
     a->Visit(DRAKE_NVP(mu));
+    a->Visit(DRAKE_NVP(num_active_contact_pairs));
   }
 };
 

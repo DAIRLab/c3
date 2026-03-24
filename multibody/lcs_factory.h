@@ -84,6 +84,27 @@ class LCSFactory {
       const LCSFactoryOptions& options);
 
   /**
+   * @brief Retrieves the N closest contact pairs from the provided set.
+   *
+   * This method evaluates the signed distance for each contact pair and returns
+   * the N pairs with the smallest (most negative or closest to zero) distances.
+   *
+   * @param plant The MultibodyPlant to query for contact information.
+   * @param context The context containing the current state.
+   * @param contact_pairs Vector of all potential contact geometry pairs.
+   * @param N The number of closest contact pairs to return.
+   * @return std::vector<drake::SortedPair<drake::geometry::GeometryId>> Vector
+   * of the N closest contact geometry pairs.
+   */
+  static std::vector<drake::SortedPair<drake::geometry::GeometryId>>
+  GetNClosestContactPairs(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::systems::Context<double>& context,
+      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+          contact_pairs,
+      unsigned int N);
+
+  /**
    * @brief Generates a Linear Complementarity System (LCS).
    *
    * @return LCS The resulting Linear Complementarity System.
