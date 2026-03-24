@@ -35,6 +35,13 @@ class TrajectoryEvaluator {
    * ... (optional additional trajectories, desired trajectories, and cost
    *     matrices, whose additional costs are summed together with the first)
    * @return The cost
+   *
+   * NOTE: To have this arbitrary number of trajectories (implemented via the
+   * Rest input argument with variadic templates), the function definition needs
+   * to be in the header file, which is why this function is defined here
+   * instead of in the .cc file.  To have source code in the .cc file instead,
+   * explicit instantiations of every argument pattern are needed, which is more
+   * verbose and less flexible than the variadic template approach.
    */
   template <typename... Rest>
   static double ComputeQuadraticTrajectoryCost(
@@ -132,6 +139,23 @@ class TrajectoryEvaluator {
    * on (u-u_prev), this function throws an error.
    */
   static double ComputeQuadraticTrajectoryCost(C3* c3) {
+    // Get the cost matrices.
+    std::vector<Eigen::MatrixXd> Q = c3->GetCostMatrices().Q;
+    std::vector<Eigen::MatrixXd> R = c3->GetCostMatrices().R;
+
+    return ComputeQuadraticTrajectoryCost(c3, Q, R);
+  }
+  /** @brief Special case: a C3 object and different cost matrices are the input
+   * arguments.
+   *
+   * NOTE: This can only handle u^T R u input costs, not (u-u_prev)^T R
+   * (u-u_prev) input costs, since the C3 object does not contain u_prev
+   * trajectories. If the C3 object is configured to compute input costs based
+   * on (u-u_prev), this function throws an error.
+   */
+  static double ComputeQuadraticTrajectoryCost(
+      C3* c3, const std::vector<Eigen::MatrixXd>& Q,
+      const std::vector<Eigen::MatrixXd>& R) {
     DRAKE_THROW_UNLESS(c3->GetPenalizeInputChange() == false);
 
     // Get the trajectories (solved for state and input, and desired for state).
@@ -140,8 +164,9 @@ class TrajectoryEvaluator {
     std::vector<Eigen::VectorXd> lambda = c3->GetForceSolution();
     std::vector<Eigen::VectorXd> x_des = c3->GetDesiredState();
 
-    // The state trajectory excludes the N+1 time step.  Add it to the end via
-    // LCS rollout since it contributes to the C3 internal cost optimization.
+    // The state trajectory from GetStateSolution excludes the N+1 time step.
+    // Add it to the end via LCS rollout since it contributes to the C3 internal
+    // cost optimization.
     const LCS& lcs = c3->GetLCS();
     Eigen::MatrixXd A_N = lcs.A().back();
     Eigen::MatrixXd B_N = lcs.B().back();
@@ -149,27 +174,45 @@ class TrajectoryEvaluator {
     Eigen::VectorXd d_N = lcs.d().back();
     x.push_back(A_N * x.back() + B_N * u.back() + D_N * lambda.back() + d_N);
 
-    // Get the cost matrices.
-    std::vector<Eigen::MatrixXd> Q = c3->GetCostMatrices().Q;
-    std::vector<Eigen::MatrixXd> R = c3->GetCostMatrices().R;
-
     DRAKE_THROW_UNLESS(x_des.size() == x.size());
+    DRAKE_THROW_UNLESS(x.size() == u.size() + 1);
     DRAKE_THROW_UNLESS(Q.size() == x.size());
     DRAKE_THROW_UNLESS(R.size() == u.size());
 
     return ComputeQuadraticTrajectoryCost(x, x_des, Q, u, R);
   }
+  /** @brief Special cases (3x): a C3 object and singular cost matrices (either
+   * Q, or R, or both) are the input arguments. */
+  static double ComputeQuadraticTrajectoryCost(
+      C3* c3, const Eigen::MatrixXd& Q, const std::vector<Eigen::MatrixXd>& R) {
+    return ComputeQuadraticTrajectoryCost(
+        c3, std::vector<Eigen::MatrixXd>(c3->GetStateSolution().size() + 1, Q),
+        R);
+  }
+  static double ComputeQuadraticTrajectoryCost(
+      C3* c3, const std::vector<Eigen::MatrixXd>& Q, const Eigen::MatrixXd& R) {
+    return ComputeQuadraticTrajectoryCost(
+        c3, Q, std::vector<Eigen::MatrixXd>(c3->GetInputSolution().size(), R));
+  }
+  static double ComputeQuadraticTrajectoryCost(C3* c3, const Eigen::MatrixXd& Q,
+                                               const Eigen::MatrixXd& R) {
+    return ComputeQuadraticTrajectoryCost(
+        c3, std::vector<Eigen::MatrixXd>(c3->GetStateSolution().size() + 1, Q),
+        std::vector<Eigen::MatrixXd>(c3->GetInputSolution().size(), R));
+  }
 
   /**
-   * @brief From a planned trajectory of states and inputs and sets of Kp and Kd
-   * gains, use an LCS to simulate tracking the plan with PD control (with
-   * feedforward control), and return the resulting trajectory of actual states
-   * and inputs.
+   * @brief From a planned trajectory of states and inputs and sets of Kp
+   * and Kd gains, use an LCS to simulate tracking the plan with PD control
+   * (with feedforward control), and return the resulting trajectory of
+   * actual states and inputs.
    *
    * @param x_plan Planned trajectory of states (length N+1)
    * @param u_plan Planned trajectory of inputs (length N)
-   * @param Kp Proportional gains (length n_x, with exactly k non-zero entries)
-   * @param Kd Derivative gains (length n_x, with exactly k non-zero entries)
+   * @param Kp Proportional gains (length n_x, with exactly k non-zero
+   * entries)
+   * @param Kd Derivative gains (length n_x, with exactly k non-zero
+   * entries)
    * @param lcs LCS system to simulate
    * @return Pair of (simulated states, simulated inputs)
    */

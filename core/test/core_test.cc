@@ -753,6 +753,7 @@ TYPED_TEST(C3CartpoleTypedTest, ComputeCost) {
   ASSERT_EQ(x_sol.size(), x_des.size());
   ASSERT_EQ(x_sol.size(), Q.size());
   ASSERT_EQ(u_sol.size(), R.size());
+  ASSERT_EQ(x_sol.size(), u_sol.size() + 1);
 
   // Compute the cost using the TrajectoryEvaluator
   double cost_from_c3_object =
@@ -760,6 +761,17 @@ TYPED_TEST(C3CartpoleTypedTest, ComputeCost) {
   double cost_from_traj = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
       x_sol, x_des, Q, u_sol, R);
   EXPECT_NEAR(cost_from_c3_object, cost_from_traj, 1e-12);
+
+  cost_from_c3_object =
+      TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(&optimizer, Q, R);
+  EXPECT_NEAR(cost_from_c3_object, cost_from_traj, 1e-12);
+
+  cost_from_c3_object =
+      TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(&optimizer, Q, R[0]);
+  EXPECT_NEAR(cost_from_c3_object, cost_from_traj, 1e-12);
+
+  // NOTE: Don't test the Q[0] version since this example has a time-varying
+  // cost matrix.
 }
 
 int main(int argc, char** argv) {
