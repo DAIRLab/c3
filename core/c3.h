@@ -98,6 +98,12 @@ class C3 {
    */
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
 
+  /*!
+   * Update input targets
+   * @param u_des the new input targets
+   */
+  void UpdateInputTarget(const std::vector<Eigen::VectorXd>& u_des);
+
   /**
    * @brief Updates the provided cost matrices with new or modified values.
    *
@@ -107,6 +113,15 @@ class C3 {
    * @param costs A reference to the CostMatrices object to be updated.
    */
   void UpdateCostMatrices(const CostMatrices& costs);
+
+   /**
+   * @brief Updates the final cost of C3 to x_T * Q_final * x_T + bias * x_T 
+   *
+   * @param Q_final quadratic cost term on final x
+   * @param bias linear cost term on final x
+   */ 
+  void UpdateFinalCost(const Eigen::MatrixXd Q_final, const Eigen::VectorXd bias);
+
 
   /**
    * @brief Get the current cost matrices used in the system.
@@ -391,6 +406,7 @@ class C3 {
   double AnDn_ = 1.0;  // Scaling factor for lambdas
   CostMatrices cost_matrices_;
   std::vector<Eigen::VectorXd> x_desired_;
+  std::vector<Eigen::VectorXd> u_desired_;
   const C3Options options_;
   double solve_time_ = 0;
   bool h_is_zero_;
