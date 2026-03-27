@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -13,6 +14,18 @@
 
 namespace c3 {
 namespace traj_eval {
+
+// SFINAE helper to constrain T_des and T_cost to valid types
+namespace detail {
+template <typename T>
+struct IsDataType
+    : std::disjunction<std::is_same<T, Eigen::VectorXd>,
+                       std::is_same<T, std::vector<Eigen::VectorXd>>> {};
+template <typename T>
+struct IsCostType
+    : std::disjunction<std::is_same<T, Eigen::MatrixXd>,
+                       std::is_same<T, std::vector<Eigen::MatrixXd>>> {};
+}  // namespace detail
 
 /// Utility class for trajectory evaluation computations and simulations.
 class TrajectoryEvaluator {
@@ -43,91 +56,66 @@ class TrajectoryEvaluator {
    * explicit instantiations of every argument pattern are needed, which is more
    * verbose and less flexible than the variadic template approach.
    */
-  template <typename... Rest>
+  template <typename T_des, typename T_cost, typename... Rest,
+            typename = std::enable_if_t<detail::IsDataType<T_des>::value &&
+                                        detail::IsCostType<T_cost>::value>>
   static double ComputeQuadraticTrajectoryCost(
-      const std::vector<Eigen::VectorXd>& data,
-      const std::vector<Eigen::VectorXd>& data_des,
-      const std::vector<Eigen::MatrixXd>& cost_matrices, Rest&&... rest) {
-    DRAKE_THROW_UNLESS(data.size() == data_des.size());
-    DRAKE_THROW_UNLESS(data.size() == cost_matrices.size());
-
+      const std::vector<Eigen::VectorXd>& data, const T_des& data_des,
+      const T_cost& cost_matrices, Rest&&... rest) {
+    double cost = 0.0;
+    int N = data.size();
     int n_data = data[0].size();
 
-    double cost = 0.0;
-    for (size_t i = 0; i < data.size(); i++) {
-      DRAKE_THROW_UNLESS(data[i].size() == n_data);
-      DRAKE_THROW_UNLESS(data_des[i].size() == n_data);
-      DRAKE_THROW_UNLESS(cost_matrices[i].rows() == n_data);
-      DRAKE_THROW_UNLESS(cost_matrices[i].cols() == n_data);
+    // Handle if data_des is provided as a single vector instead of a trajectory
+    // of vectors.
+    std::vector<Eigen::VectorXd> data_des_vec;
+    if constexpr (std::is_same_v<T_des, std::vector<Eigen::VectorXd>>) {
+      DRAKE_THROW_UNLESS(N == data_des.size());
+      data_des_vec = data_des;
+    } else {
+      bool is_single_vector = std::is_same_v<T_des, Eigen::VectorXd>;
+      DRAKE_THROW_UNLESS(is_single_vector);
+      data_des_vec = std::vector<Eigen::VectorXd>(N, data_des);
+    }
 
-      cost += (data[i] - data_des[i]).transpose() * cost_matrices[i] *
-              (data[i] - data_des[i]);
+    // Handle if cost_matrices is provided as a single matrix instead of a
+    // trajectory of matrices.
+    std::vector<Eigen::MatrixXd> cost_matrices_vec;
+    if constexpr (std::is_same_v<T_cost, std::vector<Eigen::MatrixXd>>) {
+      DRAKE_THROW_UNLESS(N == cost_matrices.size());
+      cost_matrices_vec = cost_matrices;
+    } else {
+      bool is_single_matrix = std::is_same_v<T_cost, Eigen::MatrixXd>;
+      DRAKE_THROW_UNLESS(is_single_matrix);
+      cost_matrices_vec = std::vector<Eigen::MatrixXd>(N, cost_matrices);
+    }
+
+    // Sum the costs and check sizes.
+    for (int i = 0; i < N; i++) {
+      DRAKE_THROW_UNLESS(data[i].size() == n_data);
+      DRAKE_THROW_UNLESS(data_des_vec[i].size() == n_data);
+      DRAKE_THROW_UNLESS(cost_matrices_vec[i].rows() == n_data);
+      DRAKE_THROW_UNLESS(cost_matrices_vec[i].cols() == n_data);
+
+      cost += (data[i] - data_des_vec[i]).transpose() * cost_matrices_vec[i] *
+              (data[i] - data_des_vec[i]);
     }
 
     return cost + ComputeQuadraticTrajectoryCost(std::forward<Rest>(rest)...);
   }
-  /** @brief Special case: the same cost matrix is to be used throughout the
-   * trajectory so only one is provided.
-   */
-  template <typename... Rest>
-  static double ComputeQuadraticTrajectoryCost(
-      const std::vector<Eigen::VectorXd>& data,
-      const std::vector<Eigen::VectorXd>& data_des,
-      const Eigen::MatrixXd& cost_matrix, Rest&&... rest) {
-    return ComputeQuadraticTrajectoryCost(
-        data, data_des, std::vector<Eigen::MatrixXd>(data.size(), cost_matrix),
-        std::forward<Rest>(rest)...);
-  }
-  /** @brief Special case: the same desired data is to be used throughout the
-   * trajectory so only one is provided.
-   */
-  template <typename... Rest>
-  static double ComputeQuadraticTrajectoryCost(
-      const std::vector<Eigen::VectorXd>& data, const Eigen::VectorXd& data_des,
-      const std::vector<Eigen::MatrixXd>& cost_matrices, Rest&&... rest) {
-    return ComputeQuadraticTrajectoryCost(
-        data, std::vector<Eigen::VectorXd>(data.size(), data_des),
-        cost_matrices, std::forward<Rest>(rest)...);
-  }
-  /** @brief Special case: the same desired data and the same cost matrix is to
-   * be used throughout the trajectory so only one each is provided.
-   */
-  template <typename... Rest>
-  static double ComputeQuadraticTrajectoryCost(
-      const std::vector<Eigen::VectorXd>& data, const Eigen::VectorXd& data_des,
-      const Eigen::MatrixXd& cost_matrix, Rest&&... rest) {
-    return ComputeQuadraticTrajectoryCost(
-        data, std::vector<Eigen::VectorXd>(data.size(), data_des),
-        std::vector<Eigen::MatrixXd>(data.size(), cost_matrix),
-        std::forward<Rest>(rest)...);
-  }
   /** @brief Special case: no desired data is provided, so it is assumed the
    * desired data is zero.
    */
-  template <typename... Rest>
+  template <typename T_cost, typename... Rest,
+            typename = std::enable_if_t<detail::IsCostType<T_cost>::value>>
   static double ComputeQuadraticTrajectoryCost(
-      const std::vector<Eigen::VectorXd>& data,
-      const std::vector<Eigen::MatrixXd>& cost_matrices, Rest&&... rest) {
+      const std::vector<Eigen::VectorXd>& data, const T_cost& cost_matrices,
+      Rest&&... rest) {
     return ComputeQuadraticTrajectoryCost(
         data,
         std::vector<Eigen::VectorXd>(data.size(),
                                      Eigen::VectorXd::Zero(data[0].size())),
         cost_matrices, std::forward<Rest>(rest)...);
-  }
-  /** @brief Special case: no desired data is provided and the same cost matrix
-   * is to be used throughout the trajectory, so it is assumed the desired data
-   * is zero and only one cost matrix is provided.
-   */
-  template <typename... Rest>
-  static double ComputeQuadraticTrajectoryCost(
-      const std::vector<Eigen::VectorXd>& data,
-      const Eigen::MatrixXd& cost_matrix, Rest&&... rest) {
-    return ComputeQuadraticTrajectoryCost(
-        data,
-        std::vector<Eigen::VectorXd>(data.size(),
-                                     Eigen::VectorXd::Zero(data[0].size())),
-        std::vector<Eigen::MatrixXd>(data.size(), cost_matrix),
-        std::forward<Rest>(rest)...);
   }
   /** @brief Special case: a C3 object is the input argument, and the cost is to
    * be computed based on the trajectories contained in the C3 object and the
@@ -153,9 +141,11 @@ class TrajectoryEvaluator {
    * trajectories. If the C3 object is configured to compute input costs based
    * on (u-u_prev), this function throws an error.
    */
-  static double ComputeQuadraticTrajectoryCost(
-      C3* c3, const std::vector<Eigen::MatrixXd>& Q,
-      const std::vector<Eigen::MatrixXd>& R) {
+  template <typename T_Q_cost, typename T_R_cost,
+            typename = std::enable_if_t<detail::IsCostType<T_Q_cost>::value &&
+                                        detail::IsCostType<T_R_cost>::value>>
+  static double ComputeQuadraticTrajectoryCost(C3* c3, const T_Q_cost& Q,
+                                               const T_R_cost& R) {
     DRAKE_THROW_UNLESS(c3->GetPenalizeInputChange() == false);
 
     // Get the trajectories (solved for state and input, and desired for state).
@@ -176,29 +166,30 @@ class TrajectoryEvaluator {
 
     DRAKE_THROW_UNLESS(x_des.size() == x.size());
     DRAKE_THROW_UNLESS(x.size() == u.size() + 1);
-    DRAKE_THROW_UNLESS(Q.size() == x.size());
-    DRAKE_THROW_UNLESS(R.size() == u.size());
 
-    return ComputeQuadraticTrajectoryCost(x, x_des, Q, u, R);
-  }
-  /** @brief Special cases (3x): a C3 object and singular cost matrices (either
-   * Q, or R, or both) are the input arguments. */
-  static double ComputeQuadraticTrajectoryCost(
-      C3* c3, const Eigen::MatrixXd& Q, const std::vector<Eigen::MatrixXd>& R) {
-    return ComputeQuadraticTrajectoryCost(
-        c3, std::vector<Eigen::MatrixXd>(c3->GetStateSolution().size() + 1, Q),
-        R);
-  }
-  static double ComputeQuadraticTrajectoryCost(
-      C3* c3, const std::vector<Eigen::MatrixXd>& Q, const Eigen::MatrixXd& R) {
-    return ComputeQuadraticTrajectoryCost(
-        c3, Q, std::vector<Eigen::MatrixXd>(c3->GetInputSolution().size(), R));
-  }
-  static double ComputeQuadraticTrajectoryCost(C3* c3, const Eigen::MatrixXd& Q,
-                                               const Eigen::MatrixXd& R) {
-    return ComputeQuadraticTrajectoryCost(
-        c3, std::vector<Eigen::MatrixXd>(c3->GetStateSolution().size() + 1, Q),
-        std::vector<Eigen::MatrixXd>(c3->GetInputSolution().size(), R));
+    // Handle if Q is provided as a single matrix instead of a trajectory of Qs.
+    std::vector<Eigen::MatrixXd> Q_vec;
+    if constexpr (std::is_same_v<T_Q_cost, std::vector<Eigen::MatrixXd>>) {
+      DRAKE_THROW_UNLESS(x.size() == Q.size());
+      Q_vec = Q;
+    } else {
+      bool is_single_matrix = std::is_same_v<T_Q_cost, Eigen::MatrixXd>;
+      DRAKE_THROW_UNLESS(is_single_matrix);
+      Q_vec = std::vector<Eigen::MatrixXd>(x.size(), Q);
+    }
+
+    // Handle if R is provided as a single matrix instead of a trajectory of Rs.
+    std::vector<Eigen::MatrixXd> R_vec;
+    if constexpr (std::is_same_v<T_R_cost, std::vector<Eigen::MatrixXd>>) {
+      DRAKE_THROW_UNLESS(u.size() == R.size());
+      R_vec = R;
+    } else {
+      bool is_single_matrix = std::is_same_v<T_R_cost, Eigen::MatrixXd>;
+      DRAKE_THROW_UNLESS(is_single_matrix);
+      R_vec = std::vector<Eigen::MatrixXd>(u.size(), R);
+    }
+
+    return ComputeQuadraticTrajectoryCost(x, x_des, Q_vec, u, R_vec);
   }
 
   /**
