@@ -15,12 +15,11 @@ This guide provides step-by-step instructions for integrating the Contact-Implic
 
 ## Dependency Management Setup
 
-### WORKSPACE Approach (Legacy)
+### MODULE.bazel Approach
 
-If your project uses **WORKSPACE**, add C3 as an external repository:
+If your project uses **MODULE.bazel**, add C3 as an external repository:
 
 ```python
-# WORKSPACE
 bazel_dep(name = "c3")
 git_override(
     module_name = "c3",
@@ -28,16 +27,6 @@ git_override(
     commit = "f0e1358bbf0413ef655ffb6bc3be556b07c6bfd5"
 )
 
-```
-
-Or using an archive:
-
-```python
-http_archive(
-    name = "c3",
-    url = "https://github.com/DAIRLab/c3/archive/refs/heads/main.zip",
-    strip_prefix = "c3-main",
-)
 ```
 
 ### Verification
