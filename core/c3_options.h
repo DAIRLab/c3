@@ -69,6 +69,12 @@ struct C3Options {
   std::vector<double> q_vector;
   std::vector<double> r_vector;
 
+  Eigen::MatrixXd Q_extra;
+  Eigen::MatrixXd A_extra;
+  double w_Q_extra;
+  std::vector<std::vector<double>> extra_cost_vec;
+  std::vector<double> extra_cost_qvec;
+  
   std::vector<double> g_vector;
   std::vector<double> g_x;
   std::vector<double> g_gamma;
@@ -114,6 +120,10 @@ struct C3Options {
     a->Visit(DRAKE_NVP(rho_scale));
     a->Visit(DRAKE_NVP(gamma));
 
+    a->Visit(DRAKE_NVP(w_Q_extra));
+    a->Visit(DRAKE_NVP(extra_cost_vec));
+    a->Visit(DRAKE_NVP(extra_cost_qvec));
+    
     a->Visit(DRAKE_NVP(w_Q));
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_G));
@@ -180,6 +190,22 @@ struct C3Options {
         u_vector.insert(u_vector.end(), u_eta->begin(), u_eta->end());
       }
     }
+
+    // building extra terms cost matrix
+    int xtr_N = extra_cost_vec.size();
+    int xtr_N_old = extra_cost_vec.empty() ? 0 : extra_cost_vec[0].size();
+    A_extra.resize(xtr_N, xtr_N_old);
+    Q_extra.resize(xtr_N, xtr_N);
+    for (int i=0; i<xtr_N; ++i){
+      DRAKE_DEMAND(static_cast<int>(extra_cost_vec[i].size())==xtr_N_old);
+      for (int j=0; j<xtr_N_old; ++j){
+        A_extra(i,j) = extra_cost_vec[i][j];
+      }
+    }
+    DRAKE_DEMAND(static_cast<int>(extra_cost_qvec.size())==xtr_N);
+    Eigen::VectorXd q_xtr = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+        this->extra_cost_qvec.data(), this->extra_cost_qvec.size());
+    Q_extra = w_Q_extra * q_xtr.asDiagonal();
 
     Eigen::VectorXd q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->q_vector.data(), this->q_vector.size());
