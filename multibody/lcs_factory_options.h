@@ -77,7 +77,13 @@ struct LCSFactoryOptions {
 
     // Contact Pair Information contained in contact_pair_configs
     if (contact_pair_configs.has_value()) {
-      DRAKE_DEMAND(contact_pair_configs.value().size() == (size_t)num_contacts);
+      int num_config_contacts = 0;
+      for (ContactPairConfig config : contact_pair_configs.value()) {
+        int num_geoms_body_A = config.body_A_collision_geom_indices.size();
+        int num_geoms_body_B = config.body_B_collision_geom_indices.size();
+        num_config_contacts += num_geoms_body_A * num_geoms_body_B;
+      }
+      DRAKE_DEMAND(num_config_contacts == (size_t)num_contacts);
     } else {
       // ensure mu and num_friction_directions are properly specified
       DRAKE_DEMAND(mu.has_value());
