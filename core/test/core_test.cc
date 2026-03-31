@@ -377,7 +377,7 @@ TYPED_TEST(C3CartpoleTypedTest, UpdateLCSTest) {
 // Test the cartpole example
 // This test will take some time to complete ~30s
 TYPED_TEST(C3CartpoleTypedTest, End2EndCartpoleTest) {
-  int timesteps = 1000;  // number of timesteps for the simulation
+  int timesteps = 3000;  // number of timesteps for the simulation
 
   /// create state and input arrays
   std::vector<VectorXd> x(timesteps, VectorXd::Zero(this->n));
