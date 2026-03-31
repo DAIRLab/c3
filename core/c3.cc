@@ -283,9 +283,9 @@ void C3::Solve(const VectorXd& x0) {
 
   // Set the initial force constraint
   if (h_is_zero_ == 1) {  // No dependence on u, so just simulate passive system
-    drake::solvers::MobyLCPSolver<double> LCPSolver;
+    drake::solvers::MobyLcpSolver LcpSolver;
     VectorXd lambda0;
-    LCPSolver.SolveLcpLemke(lcs_.F()[0], lcs_.E()[0] * x0 + lcs_.c()[0],
+    LcpSolver.SolveLcpLemke(lcs_.F()[0], lcs_.E()[0] * x0 + lcs_.c()[0],
                             &lambda0);
     // Force constraints to be updated before every solve if no dependence on u
     if (initial_force_constraint_) {

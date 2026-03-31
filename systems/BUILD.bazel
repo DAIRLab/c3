@@ -146,7 +146,7 @@ cc_test(
     deps = [
         ":systems",
         "//core:c3_cartpole_problem",
-        "@gtest//:main",
+        "@googletest//:gtest_main",
     ],
     env_inherit = [
         "GUROBI_HOME",
@@ -163,7 +163,7 @@ cc_test(
     deps = [
         ":systems",
         ":framework",
-        "@gtest//:main",
+        "@googletest//:gtest_main",
     ],
     size = "small",
 )
@@ -181,7 +181,7 @@ cc_test(
     deps = [
         "//core:c3",
         ":systems",
-        "@gtest//:main",
+        "@googletest//:gtest_main",
     ],
     size = "small",
 )
@@ -194,7 +194,7 @@ cc_test(
     deps = [
         ":lcmt_generators",
         "//core:c3_cartpole_problem",
-        "@gtest//:main",
+        "@googletest//:gtest_main",
     ],
 )
 
