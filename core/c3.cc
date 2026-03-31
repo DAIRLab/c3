@@ -488,7 +488,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
   if (options_.num_threads > 0) {
     omp_set_dynamic(0);  // Explicitly disable dynamic teams
     omp_set_num_threads(options_.num_threads);  // Set number of threads
-    omp_set_nested(0);
+    omp_set_max_active_levels(1);  // Disable nested parallel regions
     omp_set_schedule(omp_sched_static, 0);
   }
 

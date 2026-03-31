@@ -78,6 +78,7 @@ use_repo(libomp_extension, "libomp")
 
 python_repository(
     name = "python",
+    macos_interpreter_path = "/opt/homebrew/bin/python3.13",
     linux_interpreter_path = "/usr/bin/python3",
     requirements_flavor = "build",
 )
