@@ -98,7 +98,7 @@ cc_test(
     deps = [
         ":c3",
         ":c3_cartpole_problem",
-        "@gtest//:main",
+        "@googletest//:gtest",
     ],
     env_inherit = [
         "GUROBI_HOME",

@@ -54,7 +54,7 @@ cc_test(
     ],
     deps = [
         ":lcs_factory",
-        "@gtest//:main",
+        "@googletest//:gtest_main",
     ],
     size = "small",
 )
