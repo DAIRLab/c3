@@ -109,7 +109,7 @@ cc_test(
         ":c3",
         ":c3_cartpole_problem",
         ":traj_eval",
-        "@gtest//:main",
+        "@googletest//:gtest_main",
     ],
     env_inherit = [
         "GUROBI_HOME",
