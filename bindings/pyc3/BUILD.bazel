@@ -25,6 +25,19 @@ pybind_py_library(
 )
 
 pybind_py_library(
+    name = "traj_eval_py",
+    cc_deps = ["//core:lcs",
+               "//core:traj_eval",
+               "//core:c3"],
+    cc_so_name = "traj_eval",
+    cc_srcs = ["traj_eval_py.cc"],
+    py_deps = [
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
     name = "c3_multibody_py",
     cc_deps = ["//multibody:lcs_factory",
                 "@drake//:drake_shared_library",
@@ -75,6 +88,7 @@ py_library(
 PY_LIBRARIES = [
     ":module_py",
     ":c3_py",
+    ":traj_eval_py",
     ":c3_systems_py",
     ":c3_multibody_py",
 ]

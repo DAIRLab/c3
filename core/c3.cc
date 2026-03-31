@@ -31,10 +31,10 @@ using drake::solvers::OsqpSolver;
 using drake::solvers::OsqpSolverDetails;
 using drake::solvers::Solve;
 
-C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
-                               const std::vector<Eigen::MatrixXd>& R,
-                               const std::vector<Eigen::MatrixXd>& G,
-                               const std::vector<Eigen::MatrixXd>& U) {
+C3::CostMatrices::CostMatrices(const vector<MatrixXd>& Q,
+                               const vector<MatrixXd>& R,
+                               const vector<MatrixXd>& G,
+                               const vector<MatrixXd>& U) {
   this->Q = Q;
   this->R = R;
   this->G = G;
@@ -82,19 +82,19 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
 
-  z_sol_ = std::make_unique<std::vector<VectorXd>>();
-  x_sol_ = std::make_unique<std::vector<VectorXd>>();
-  lambda_sol_ = std::make_unique<std::vector<VectorXd>>();
-  u_sol_ = std::make_unique<std::vector<VectorXd>>();
-  w_sol_ = std::make_unique<std::vector<VectorXd>>();
-  delta_sol_ = std::make_unique<std::vector<VectorXd>>();
+  z_sol_ = std::make_unique<vector<VectorXd>>();
+  x_sol_ = std::make_unique<vector<VectorXd>>();
+  lambda_sol_ = std::make_unique<vector<VectorXd>>();
+  u_sol_ = std::make_unique<vector<VectorXd>>();
+  w_sol_ = std::make_unique<vector<VectorXd>>();
+  delta_sol_ = std::make_unique<vector<VectorXd>>();
   for (int i = 0; i < N_; ++i) {
-    x_sol_->push_back(Eigen::VectorXd::Zero(n_x_));
-    lambda_sol_->push_back(Eigen::VectorXd::Zero(n_lambda_));
-    u_sol_->push_back(Eigen::VectorXd::Zero(n_u_));
-    z_sol_->push_back(Eigen::VectorXd::Zero(n_z_));
-    w_sol_->push_back(Eigen::VectorXd::Zero(n_z_));
-    delta_sol_->push_back(Eigen::VectorXd::Zero(n_z_));
+    x_sol_->push_back(VectorXd::Zero(n_x_));
+    lambda_sol_->push_back(VectorXd::Zero(n_lambda_));
+    u_sol_->push_back(VectorXd::Zero(n_u_));
+    z_sol_->push_back(VectorXd::Zero(n_z_));
+    w_sol_->push_back(VectorXd::Zero(n_z_));
+    delta_sol_->push_back(VectorXd::Zero(n_z_));
   }
 
   z_.resize(N_);
@@ -183,13 +183,11 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
 
 C3::CostMatrices C3::CreateCostMatricesFromC3Options(const C3Options& options,
                                                      int N) {
-  std::vector<Eigen::MatrixXd> Q;  // State cost matrices.
-  std::vector<Eigen::MatrixXd> R;  // Input cost matrices.
+  vector<MatrixXd> Q;  // State cost matrices.
+  vector<MatrixXd> R;  // Input cost matrices.
 
-  std::vector<MatrixXd> G(N,
-                          options.G);  // State-input cross-term matrices.
-  std::vector<MatrixXd> U(N,
-                          options.U);  // Constraint matrices.
+  vector<MatrixXd> G(N, options.G);  // State-input cross-term matrices.
+  vector<MatrixXd> U(N, options.U);  // Constraint matrices.
 
   double discount_factor = 1.0;
   for (int i = 0; i < N; ++i) {
@@ -232,12 +230,12 @@ void C3::UpdateLCS(const LCS& lcs) {
   }
 }
 
-const std::vector<drake::solvers::LinearEqualityConstraint*>&
+const vector<drake::solvers::LinearEqualityConstraint*>&
 C3::GetDynamicConstraints() {
   return dynamics_constraints_;
 }
 
-void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
+void C3::UpdateTarget(const vector<VectorXd>& x_des) {
   x_desired_ = x_des;
   for (int i = 0; i < N_ + 1; ++i) {
     target_costs_[i]->UpdateCoefficients(
@@ -261,7 +259,7 @@ void C3::UpdateCostMatrices(const CostMatrices& costs) {
   }
 }
 
-const std::vector<drake::solvers::QuadraticCost*>& C3::GetTargetCost() {
+const vector<drake::solvers::QuadraticCost*>& C3::GetTargetCost() {
   return target_costs_;
 }
 
@@ -285,7 +283,8 @@ void C3::Solve(const VectorXd& x0) {
     VectorXd lambda0;
     LCPSolver.SolveLcpLemke(lcs_.F()[0], lcs_.E()[0] * x0 + lcs_.c()[0],
                             &lambda0);
-    // Force constraints to be updated before every solve if no dependence on u
+    // Force constraints to be updated before every solve if no dependence on
+    // u
     if (initial_force_constraint_) {
       initial_force_constraint_->UpdateCoefficients(
           MatrixXd::Identity(n_lambda_, n_lambda_), lambda0);
@@ -312,8 +311,8 @@ void C3::Solve(const VectorXd& x0) {
   if (options_.delta_option == 1) {
     delta_init.head(n_x_) = x0;
   }
-  std::vector<VectorXd> delta(N_, delta_init);
-  std::vector<VectorXd> w(N_, VectorXd::Zero(n_z_));
+  vector<VectorXd> delta(N_, delta_init);
+  vector<VectorXd> w(N_, VectorXd::Zero(n_z_));
   vector<MatrixXd> G = cost_matrices_.G;
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
@@ -385,7 +384,7 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   }
 }
 
-void C3::SetInitialGuessQP(const Eigen::VectorXd& x0, int admm_iteration) {
+void C3::SetInitialGuessQP(const VectorXd& x0, int admm_iteration) {
   prog_.SetInitialGuess(x_[0], x0);
   if (!warm_start_ || admm_iteration == 0)
     return;  // No warm start for the first iteration
@@ -501,8 +500,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
   return deltaProj;
 }
 
-void C3::AddLinearConstraint(const Eigen::MatrixXd& A,
-                             const VectorXd& lower_bound,
+void C3::AddLinearConstraint(const MatrixXd& A, const VectorXd& lower_bound,
                              const VectorXd& upper_bound,
                              ConstraintVariable constraint) {
   if (constraint == 1) {
@@ -530,9 +528,9 @@ void C3::AddLinearConstraint(const Eigen::MatrixXd& A,
 void C3::AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
                              double upper_bound,
                              ConstraintVariable constraint) {
-  Eigen::VectorXd lb(1);
+  VectorXd lb(1);
   lb << lower_bound;
-  Eigen::VectorXd ub(1);
+  VectorXd ub(1);
   ub << upper_bound;
   AddLinearConstraint(A, lb, ub, constraint);
 }
@@ -544,7 +542,7 @@ void C3::RemoveConstraints() {
   user_constraints_.clear();
 }
 
-const std::vector<LinearConstraintBinding>& C3::GetLinearConstraints() {
+const vector<LinearConstraintBinding>& C3::GetLinearConstraints() {
   return user_constraints_;
 }
 

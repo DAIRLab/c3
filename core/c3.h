@@ -195,6 +195,12 @@ class C3 {
   std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
+  std::vector<Eigen::VectorXd> GetDesiredState() { return x_desired_; }
+  const LCS& GetLCS() const { return lcs_; }
+
+  bool GetPenalizeInputChange() const {
+    return options_.penalize_input_change.value_or(true);
+  }
 
   int GetZSize() const { return n_z_; }
 
