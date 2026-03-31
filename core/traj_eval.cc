@@ -159,14 +159,14 @@ TrajectoryEvaluator::ZeroOrderHoldTrajectories(const vector<VectorXd>& x_coarse,
 }
 
 vector<VectorXd> TrajectoryEvaluator::DownsampleTrajectory(
-    const vector<VectorXd>& fine_traj, const int& upsample_rate) {
-  DRAKE_THROW_UNLESS(fine_traj.size() % upsample_rate == 0);
-  int N = fine_traj.size() / upsample_rate;
+    const vector<VectorXd>& fine_traj, const int& downsample_rate) {
+  DRAKE_THROW_UNLESS(fine_traj.size() % downsample_rate == 0);
+  int N = fine_traj.size() / downsample_rate;
 
   // Downsample the fine trajectory.
   vector<VectorXd> coarse_traj(N, VectorXd::Zero(fine_traj[0].size()));
   for (int i = 0; i < N; i++) {
-    coarse_traj[i] = fine_traj[i * upsample_rate];
+    coarse_traj[i] = fine_traj[i * downsample_rate];
   }
   return coarse_traj;
 }
@@ -174,12 +174,12 @@ vector<VectorXd> TrajectoryEvaluator::DownsampleTrajectory(
 std::pair<vector<VectorXd>, vector<VectorXd>>
 TrajectoryEvaluator::DownsampleTrajectories(const vector<VectorXd>& x_fine,
                                             const vector<VectorXd>& u_fine,
-                                            const int& upsample_rate) {
+                                            const int& downsample_rate) {
   DRAKE_THROW_UNLESS(x_fine.size() == u_fine.size() + 1);
   vector<VectorXd> x_coarse = DownsampleTrajectory(
-      vector<VectorXd>(x_fine.begin(), x_fine.end() - 1), upsample_rate);
+      vector<VectorXd>(x_fine.begin(), x_fine.end() - 1), downsample_rate);
   x_coarse.push_back(x_fine.back());
-  vector<VectorXd> u_coarse = DownsampleTrajectory(u_fine, upsample_rate);
+  vector<VectorXd> u_coarse = DownsampleTrajectory(u_fine, downsample_rate);
   return std::make_pair(x_coarse, u_coarse);
 }
 
@@ -198,31 +198,26 @@ int TrajectoryEvaluator::CheckCoarseAndFineLCSCompatibility(
 
 void TrajectoryEvaluator::CheckLCSAndTrajectoryCompatibility(
     const LCS& lcs, const std::vector<Eigen::VectorXd>& x,
-    const std::vector<Eigen::VectorXd>& u,
-    const std::vector<Eigen::VectorXd>& lambda) {
-  DRAKE_THROW_UNLESS(lcs.N() == x.size() - 1 && lcs.N() == u.size() &&
-                     lcs.N() == lambda.size());
+    const std::optional<std::vector<Eigen::VectorXd>>& u,
+    const std::optional<std::vector<Eigen::VectorXd>>& lambda) {
+  DRAKE_THROW_UNLESS(lcs.N() == x.size() - 1);
+  if (u.has_value()) {
+    DRAKE_THROW_UNLESS(lcs.N() == u->size());
+  }
+  if (lambda.has_value()) {
+    DRAKE_THROW_UNLESS(lcs.N() == lambda->size());
+  }
   for (int i = 0; i < lcs.N() + 1; i++) {
     DRAKE_THROW_UNLESS(x[i].size() == lcs.num_states());
     if (i < lcs.N()) {
-      DRAKE_THROW_UNLESS(u[i].size() == lcs.num_inputs());
-      DRAKE_THROW_UNLESS(lambda[i].size() == lcs.num_lambdas());
+      if (u.has_value()) {
+        DRAKE_THROW_UNLESS(u->at(i).size() == lcs.num_inputs());
+      }
+      if (lambda.has_value()) {
+        DRAKE_THROW_UNLESS(lambda->at(i).size() == lcs.num_lambdas());
+      }
     }
   }
-}
-
-void TrajectoryEvaluator::CheckLCSAndTrajectoryCompatibility(
-    const LCS& lcs, const std::vector<Eigen::VectorXd>& x,
-    const std::vector<Eigen::VectorXd>& u) {
-  return CheckLCSAndTrajectoryCompatibility(
-      lcs, x, u, vector<VectorXd>(lcs.N(), VectorXd::Zero(lcs.num_lambdas())));
-}
-
-void TrajectoryEvaluator::CheckLCSAndTrajectoryCompatibility(
-    const LCS& lcs, const std::vector<Eigen::VectorXd>& x) {
-  return CheckLCSAndTrajectoryCompatibility(
-      lcs, x, vector<VectorXd>(lcs.N(), VectorXd::Zero(lcs.num_inputs())),
-      vector<VectorXd>(lcs.N(), VectorXd::Zero(lcs.num_lambdas())));
 }
 
 }  // namespace traj_eval

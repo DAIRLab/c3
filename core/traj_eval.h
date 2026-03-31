@@ -297,19 +297,20 @@ class TrajectoryEvaluator {
    * The same compatibility requirements apply as for
    * ZeroOrderHoldTrajectoryToFinerLCS.
    *
-   * @param x_fine Fine state trajectory (length (N*upsample_rate)+1)
-   * @param u_fine Fine input trajectory (length N*upsample_rate)
-   * @param upsample_rate Integer multiple for time discretization
+   * @param x_fine Fine state trajectory (length (N*downsample_rate)+1)
+   * @param u_fine Fine input trajectory (length N*downsample_rate)
+   * @param downsample_rate Integer multiple for time discretization
    * @return Pair of 1) coarse state trajectory (length N+1) and 2) coarse input
    * trajectory (length N)
    */
   static std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
   DownsampleTrajectories(const std::vector<Eigen::VectorXd>& x_fine,
                          const std::vector<Eigen::VectorXd>& u_fine,
-                         const int& upsample_rate);
+                         const int& downsample_rate);
   /** @brief Same as above but only one trajectory is provided and processed. */
   static std::vector<Eigen::VectorXd> DownsampleTrajectory(
-      const std::vector<Eigen::VectorXd>& fine_traj, const int& upsample_rate);
+      const std::vector<Eigen::VectorXd>& fine_traj,
+      const int& downsample_rate);
 
   /**
    * @brief Check that two LCSs are compatible with each other, i.e. that the
@@ -330,27 +331,20 @@ class TrajectoryEvaluator {
                                                 const LCS& fine_lcs);
 
   /**
-   * @brief Check that a trajectory of states, inputs, and contact forces is
-   * compatible with an LCS, i.e. that the trajectory has the correct number of
-   * time steps and that the dimensions of the states, inputs, and contact
-   * forces match the dimensions of the LCS.
+   * @brief Check that a trajectory of states (and optionally inputs and contact
+   * forces) is compatible with an LCS, i.e. that the trajectory has the correct
+   * number of time steps and that the dimensions of the states, inputs, and
+   * contact forces match the dimensions of the LCS.
    *
    * @param lcs LCS system
    * @param x State trajectory (length N+1)
-   * @param u Input trajectory (length N)
-   * @param lambda Contact force trajectory (length N)
+   * @param u (Optional) Input trajectory (length N)
+   * @param lambda (Optional) Contact force trajectory (length N)
    */
   static void CheckLCSAndTrajectoryCompatibility(
       const LCS& lcs, const std::vector<Eigen::VectorXd>& x,
-      const std::vector<Eigen::VectorXd>& u,
-      const std::vector<Eigen::VectorXd>& lambda);
-  /** @brief Special case: no lambdas provided. */
-  static void CheckLCSAndTrajectoryCompatibility(
-      const LCS& lcs, const std::vector<Eigen::VectorXd>& x,
-      const std::vector<Eigen::VectorXd>& u);
-  /** @brief Special case: no inputs or lambdas provided. */
-  static void CheckLCSAndTrajectoryCompatibility(
-      const LCS& lcs, const std::vector<Eigen::VectorXd>& x);
+      const std::optional<std::vector<Eigen::VectorXd>>& u = std::nullopt,
+      const std::optional<std::vector<Eigen::VectorXd>>& lambda = std::nullopt);
 
  private:
   /** @brief Special case of ComputeQuadraticTrajectoryCost: no trajectory to

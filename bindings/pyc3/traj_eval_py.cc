@@ -54,6 +54,23 @@ PYBIND11_MODULE(traj_eval, m) {
       .def_static(
           "ComputeQuadraticTrajectoryCost",
           static_cast<double (*)(const std::vector<Eigen::VectorXd>&,
+                                 const Eigen::VectorXd&,
+                                 const std::vector<Eigen::MatrixXd>&)>(
+              &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
+          py::arg("data"), py::arg("data_des"), py::arg("cost_matrices"),
+          "Compute quadratic cost with single desired vector")
+      .def_static(
+          "ComputeQuadraticTrajectoryCost",
+          static_cast<double (*)(const std::vector<Eigen::VectorXd>&,
+                                 const Eigen::VectorXd&,
+                                 const Eigen::MatrixXd&)>(
+              &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
+          py::arg("data"), py::arg("data_des"), py::arg("cost_matrix"),
+          "Compute quadratic cost with single desired vector and single cost "
+          "matrix")
+      .def_static(
+          "ComputeQuadraticTrajectoryCost",
+          static_cast<double (*)(const std::vector<Eigen::VectorXd>&,
                                  const std::vector<Eigen::MatrixXd>&)>(
               &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
           py::arg("data"), py::arg("cost_matrices"),
@@ -177,11 +194,11 @@ PYBIND11_MODULE(traj_eval, m) {
       .def_static("DownsampleTrajectories",
                   &traj_eval::TrajectoryEvaluator::DownsampleTrajectories,
                   py::arg("x_fine"), py::arg("u_fine"),
-                  py::arg("upsample_rate"),
+                  py::arg("downsample_rate"),
                   "Downsample state and input trajectories")
       .def_static("DownsampleTrajectory",
                   &traj_eval::TrajectoryEvaluator::DownsampleTrajectory,
-                  py::arg("fine_traj"), py::arg("upsample_rate"),
+                  py::arg("fine_traj"), py::arg("downsample_rate"),
                   "Downsample a single trajectory")
 
       // LCS compatibility checking methods
@@ -190,30 +207,17 @@ PYBIND11_MODULE(traj_eval, m) {
           &traj_eval::TrajectoryEvaluator::CheckCoarseAndFineLCSCompatibility,
           py::arg("coarse_lcs"), py::arg("fine_lcs"),
           "Check LCS time discretization compatibility")
-      .def_static(
-          "CheckLCSAndTrajectoryCompatibility",
-          static_cast<void (*)(const LCS&, const std::vector<Eigen::VectorXd>&,
-                               const std::vector<Eigen::VectorXd>&,
-                               const std::vector<Eigen::VectorXd>&)>(
-              &traj_eval::TrajectoryEvaluator::
-                  CheckLCSAndTrajectoryCompatibility),
-          py::arg("lcs"), py::arg("x"), py::arg("u"), py::arg("lambda"),
-          "Check trajectory compatibility with LCS (with lambdas)")
-      .def_static(
-          "CheckLCSAndTrajectoryCompatibility",
-          static_cast<void (*)(const LCS&, const std::vector<Eigen::VectorXd>&,
-                               const std::vector<Eigen::VectorXd>&)>(
-              &traj_eval::TrajectoryEvaluator::
-                  CheckLCSAndTrajectoryCompatibility),
-          py::arg("lcs"), py::arg("x"), py::arg("u"),
-          "Check trajectory compatibility with LCS (without lambdas)")
       .def_static("CheckLCSAndTrajectoryCompatibility",
-                  static_cast<void (*)(const LCS&,
-                                       const std::vector<Eigen::VectorXd>&)>(
+                  static_cast<void (*)(
+                      const LCS&, const std::vector<Eigen::VectorXd>&,
+                      const std::optional<std::vector<Eigen::VectorXd>>&,
+                      const std::optional<std::vector<Eigen::VectorXd>>&)>(
                       &traj_eval::TrajectoryEvaluator::
                           CheckLCSAndTrajectoryCompatibility),
-                  py::arg("lcs"), py::arg("x"),
-                  "Check state trajectory compatibility with LCS");
+                  py::arg("lcs"), py::arg("x"), py::arg("u") = py::none(),
+                  py::arg("lambda") = py::none(),
+                  "Check trajectory compatibility with LCS; inputs and lambdas "
+                  "are optional");
 }
 }  // namespace pyc3
 }  // namespace c3
