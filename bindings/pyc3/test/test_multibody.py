@@ -5,10 +5,6 @@ import multibody
 import os
 
 
-def _data_path(relative):
-    return os.path.join(os.environ.get("RUNFILES_DIR", "."), "_main", relative)
-
-
 class TestContactModel(unittest.TestCase):
     def test_values(self):
         self.assertIsNotNone(multibody.ContactModel.Unknown)
