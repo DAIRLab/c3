@@ -1,4 +1,12 @@
-"""Smoke tests for c3 systems bindings."""
+"""Smoke tests for c3 systems bindings.
+
+These tests are primarily smoke tests designed to verify that the Python
+bindings are working correctly and can be called without errors. They are
+not comprehensive functional tests of the underlying C++ systems functionality.
+The tests focus on ensuring that classes can be instantiated, methods can be
+called, and basic data can be accessed through the Python interface rather
+than validating complex system behavior or mathematical correctness.
+"""
 
 import copy
 import os
@@ -16,6 +24,29 @@ try:
     HAS_MULTIBODY = True
 except ImportError:
     HAS_MULTIBODY = False
+
+
+class TestLCSSimulateConfig(unittest.TestCase):
+    def test_construction(self):
+        config = c3.LCSSimulateConfig()
+        self.assertIsNotNone(config)
+
+    def test_fields(self):
+        config = c3.LCSSimulateConfig()
+        config.regularized = True
+        config.piv_tol = 1e-10
+        config.zero_tol = 1e-12
+        config.min_exp = -5
+        config.step_exp = 2
+        config.max_exp = 5
+
+        self.assertTrue(config.regularized)
+        self.assertAlmostEqual(config.piv_tol, 1e-10)
+        self.assertAlmostEqual(config.zero_tol, 1e-12)
+        self.assertEqual(config.min_exp, -5)
+        self.assertEqual(config.step_exp, 2)
+        self.assertEqual(config.max_exp, 5)
+
 
 class TestC3Solution(unittest.TestCase):
     def test_default_construction(self):
@@ -216,6 +247,7 @@ class TestValueInstantiations(unittest.TestCase):
 
     def test_lcs_value(self):
         from pydrake.common.value import Value
+
         n_x, n_u, n_lambda, N, dt = 4, 2, 2, 3, 0.01
         lcs = c3.LCS(
             np.eye(n_x), np.zeros((n_x, n_u)), np.zeros((n_x, n_lambda)),
@@ -227,12 +259,14 @@ class TestValueInstantiations(unittest.TestCase):
 
     def test_c3solution_value(self):
         from pydrake.common.value import Value
+
         sol = systems.C3Solution(4, 2, 2, 3)
         val = Value[systems.C3Solution](sol)
         self.assertIsNotNone(val)
 
     def test_c3intermediates_value(self):
         from pydrake.common.value import Value
+
         inter = systems.C3Intermediates(4, 2, 2, 3)
         val = Value[systems.C3Intermediates](inter)
         self.assertIsNotNone(val)

@@ -241,6 +241,12 @@ PYBIND11_MODULE(c3, m) {
             self.u_vector = val;
           })
       .def_readwrite("warm_start", &C3Options::warm_start)
+      .def_property(
+          "penalize_input_change",
+          [](C3Options const& self) { return self.penalize_input_change; },
+          [](C3Options& self, const std::optional<bool>& val) {
+            self.penalize_input_change = val;
+          })
       .def_readwrite("scale_lcs", &C3Options::scale_lcs)
       .def_readwrite("end_on_qp_step", &C3Options::end_on_qp_step)
       .def_readwrite("num_threads", &C3Options::num_threads)

@@ -1,4 +1,12 @@
-"""Smoke tests for c3 core bindings."""
+"""Smoke tests for c3 core bindings.
+
+These tests are primarily smoke tests designed to verify that the Python
+bindings are working correctly and can be called without errors. They are
+not comprehensive functional tests of the underlying C++ optimization algorithms.
+The tests use simple synthetic problems and a realistic cartpole example to
+ensure basic binding functionality rather than extensively validating solver
+performance, mathematical correctness, or advanced optimization features.
+"""
 
 import copy
 import os

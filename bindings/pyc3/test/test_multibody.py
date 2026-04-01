@@ -1,4 +1,13 @@
-"""Smoke tests for c3 multibody bindings."""
+"""Smoke tests for c3 multibody bindings.
+
+These tests are primarily smoke tests designed to verify that the Python
+bindings are working correctly and can be called without errors. They are
+not comprehensive functional tests of the underlying C++ multibody mechanics
+or contact modeling algorithms. The tests focus on ensuring that configuration
+classes can be loaded, options can be set, and basic utility functions can
+be called through the Python interface rather than validating complex
+multibody dynamics or contact physics.
+"""
 
 import unittest
 import multibody
