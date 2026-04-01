@@ -141,12 +141,6 @@ def make_options(n_x=4, n_u=2, n_lambda=2, is_c3plus=False):
     opts.rho_scale = 1.0
     return opts
 
-
-def _data_path(relative):
-    """Resolve a runfiles data path relative to the workspace root."""
-    return os.path.join(os.environ.get("RUNFILES_DIR", "."), "_main", relative)
-
-
 class TestLCSSimulateConfig(unittest.TestCase):
     def test_fields(self):
         cfg = c3.LCSSimulateConfig()

@@ -17,11 +17,6 @@ try:
 except ImportError:
     HAS_MULTIBODY = False
 
-
-def _data_path(relative):
-    return os.path.join(os.environ.get("RUNFILES_DIR", "."), "_main", relative)
-
-
 class TestC3Solution(unittest.TestCase):
     def test_default_construction(self):
         sol = systems.C3Solution()
