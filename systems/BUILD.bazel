@@ -194,7 +194,7 @@ cc_test(
     deps = [
         ":lcmt_generators",
         "//core:c3_cartpole_problem",
-        "@gtest//:main",
+        "@googletest//:gtest_main",
     ],
 )
 
