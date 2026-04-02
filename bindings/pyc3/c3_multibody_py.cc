@@ -36,6 +36,13 @@ PYBIND11_MODULE(multibody, m) {
                     const c3::LCSFactoryOptions&>(),
            py::arg("plant"), py::arg("context"), py::arg("plant_ad"),
            py::arg("context_ad"), py::arg("contact_geoms"), py::arg("options"))
+      .def(py::init<const drake::multibody::MultibodyPlant<double>&,
+                    drake::systems::Context<double>&,
+                    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>&,
+                    drake::systems::Context<drake::AutoDiffXd>&,
+                    c3::LCSFactoryOptions&>(),
+           py::arg("plant"), py::arg("context"), py::arg("plant_ad"),
+           py::arg("context_ad"), py::arg("options"))
       .def("GenerateLCS", &c3::multibody::LCSFactory::GenerateLCS)
       .def("GetContactJacobianAndPoints",
            &c3::multibody::LCSFactory::GetContactJacobianAndPoints)
@@ -77,13 +84,43 @@ PYBIND11_MODULE(multibody, m) {
       .def_readwrite("num_friction_directions",
                      &ContactPairConfig::num_friction_directions)
       .def_readwrite("planar_normal_direction",
-                     &ContactPairConfig::planar_normal_direction);
+                     &ContactPairConfig::planar_normal_direction)
+      .def_readwrite("num_active_contact_pairs",
+                     &ContactPairConfig::num_active_contact_pairs);
 
   py::class_<LCSFactoryOptions>(m, "LCSFactoryOptions")
       .def(py::init<>())
       .def_readwrite("dt", &LCSFactoryOptions::dt)
       .def_readwrite("N", &LCSFactoryOptions::N)
-      .def_readwrite("contact_model", &LCSFactoryOptions::contact_model)
+      .def_property(
+          "contact_model",
+          [](const LCSFactoryOptions& self) {
+            // Convert string back to enum for Python
+            if (self.contact_model == "stewart_and_trinkle")
+              return c3::multibody::ContactModel::kStewartAndTrinkle;
+            if (self.contact_model == "anitescu")
+              return c3::multibody::ContactModel::kAnitescu;
+            if (self.contact_model == "frictionless_spring")
+              return c3::multibody::ContactModel::kFrictionlessSpring;
+            return c3::multibody::ContactModel::kUnknown;
+          },
+          [](LCSFactoryOptions& self, c3::multibody::ContactModel val) {
+            // Convert enum to the string the C++ struct expects
+            switch (val) {
+              case c3::multibody::ContactModel::kStewartAndTrinkle:
+                self.contact_model = "stewart_and_trinkle";
+                break;
+              case c3::multibody::ContactModel::kAnitescu:
+                self.contact_model = "anitescu";
+                break;
+              case c3::multibody::ContactModel::kFrictionlessSpring:
+                self.contact_model = "frictionless_spring";
+                break;
+              default:
+                self.contact_model = "unknown";
+                break;
+            }
+          })
       .def_readwrite("num_friction_directions",
                      &LCSFactoryOptions::num_friction_directions)
       .def_readwrite("num_friction_directions_per_contact",
