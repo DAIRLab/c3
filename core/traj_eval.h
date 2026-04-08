@@ -205,13 +205,15 @@ class TrajectoryEvaluator {
    * @param Kd Derivative gains (length n_x, with exactly k non-zero
    * entries)
    * @param lcs LCS system to simulate
+   * @param config Configuration for simulating the LCS
    * @return Pair of (simulated states, simulated inputs)
    */
   static std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
-  SimulatePDControlWithLCS(const std::vector<Eigen::VectorXd>& x_plan,
-                           const std::vector<Eigen::VectorXd>& u_plan,
-                           const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd,
-                           const LCS& lcs);
+  SimulatePDControlWithLCS(
+      const std::vector<Eigen::VectorXd>& x_plan,
+      const std::vector<Eigen::VectorXd>& u_plan, const Eigen::VectorXd& Kp,
+      const Eigen::VectorXd& Kd, const LCS& lcs,
+      const LCSSimulateConfig& config = LCSSimulateConfig());
   /**
    * @brief Special case: simulate plans from a coarser LCS with a finer LCS.
    * The returned trajectory is downsampled back to be compatible with the
@@ -219,10 +221,11 @@ class TrajectoryEvaluator {
    * and input plans must be compatible with the coarser LCS.
    */
   static std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
-  SimulatePDControlWithLCS(const std::vector<Eigen::VectorXd>& x_plan,
-                           const std::vector<Eigen::VectorXd>& u_plan,
-                           const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd,
-                           const LCS& coarse_lcs, const LCS& fine_lcs);
+  SimulatePDControlWithLCS(
+      const std::vector<Eigen::VectorXd>& x_plan,
+      const std::vector<Eigen::VectorXd>& u_plan, const Eigen::VectorXd& Kp,
+      const Eigen::VectorXd& Kd, const LCS& coarse_lcs, const LCS& fine_lcs,
+      const LCSSimulateConfig& config = LCSSimulateConfig());
 
   /**
    * @brief Simulate an LCS forward from an initial condition over a trajectory

@@ -20,7 +20,8 @@ TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
                                               const vector<VectorXd>& u_plan,
                                               const VectorXd& Kp,
                                               const VectorXd& Kd,
-                                              const LCS& lcs) {
+                                              const LCS& lcs,
+                                              const LCSSimulateConfig& config) {
   CheckLCSAndTrajectoryCompatibility(lcs, x_plan, u_plan);
 
   int N = lcs.N();
@@ -56,18 +57,16 @@ TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
   for (int i = 0; i < N; i++) {
     u[i] =
         u_plan[i] + Kp_mat * (x_plan[i] - x[i]) + Kd_mat * (x_plan[i] - x[i]);
-    x[i + 1] = lcs.Simulate(x[i], u[i]);
+    x[i + 1] = lcs.Simulate(x[i], u[i], config);
   }
   return std::make_pair(x, u);
 }
 
 std::pair<vector<VectorXd>, vector<VectorXd>>
-TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
-                                              const vector<VectorXd>& u_plan,
-                                              const VectorXd& Kp,
-                                              const VectorXd& Kd,
-                                              const LCS& coarse_lcs,
-                                              const LCS& fine_lcs) {
+TrajectoryEvaluator::SimulatePDControlWithLCS(
+    const vector<VectorXd>& x_plan, const vector<VectorXd>& u_plan,
+    const VectorXd& Kp, const VectorXd& Kd, const LCS& coarse_lcs,
+    const LCS& fine_lcs, const LCSSimulateConfig& config) {
   int upsample_rate = CheckCoarseAndFineLCSCompatibility(coarse_lcs, fine_lcs);
 
   // Zero-order hold the planned trajectory to match the finer time
@@ -76,8 +75,8 @@ TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
       ZeroOrderHoldTrajectories(x_plan, u_plan, upsample_rate);
 
   // Do PD control with the finer trajectory and LCS.
-  auto [x_sim_fine, u_sim_fine] =
-      SimulatePDControlWithLCS(x_plan_finer, u_plan_finer, Kp, Kd, fine_lcs);
+  auto [x_sim_fine, u_sim_fine] = SimulatePDControlWithLCS(
+      x_plan_finer, u_plan_finer, Kp, Kd, fine_lcs, config);
 
   // Downsample the resulting trajectory back to the original time
   // discretization.
