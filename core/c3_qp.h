@@ -36,7 +36,9 @@ class C3QP final : public C3 {
     solver_options->SetOption(drake::solvers::OsqpSolver::id(), "max_iter",
                               500);
     solver_options->SetOption(drake::solvers::OsqpSolver::id(), "verbose", 0);
-    solver_options->SetOption(drake::solvers::OsqpSolver::id(), "polish", 1);
+    solver_options->SetOption(drake::solvers::OsqpSolver::id(), "warm_starting",
+                              1);
+    solver_options->SetOption(drake::solvers::OsqpSolver::id(), "polishing", 1);
     solver_options->SetOption(drake::solvers::OsqpSolver::id(),
                               "polish_refine_iter", 1);
     solver_options->SetOption(drake::solvers::OsqpSolver::id(), "rho", 1e-4);

@@ -12,16 +12,23 @@ jammy_task:
   test_script:
     - export CC=clang-15
     - export CXX=clang++-15
-    - bazel build
+    - apt update && apt install -y python3-venv
+    - python3 -m venv .venv --system-site-packages
+    - . .venv/bin/activate && python3 -m pip install -r bindings/pyc3/requirements.txt && echo "🍏 Installed Python dependencies in Jammy CI environment $(which python3)"
+    - . .venv/bin/activate && export PYTHONPATH=$(python3 -c "import site; print(':'.join(site.getsitepackages()))") && bazel build
       --local_resources=ram=24000
       --local_resources=cpu=8
       --jobs=8
+      --noallow_analysis_cache_discard
+      --python_path=$(which python3)
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
-    - bazel test
+    - . .venv/bin/activate && export PYTHONPATH=$(python3 -c "import site; print(':'.join(site.getsitepackages()))") && bazel test
       --local_resources=ram=24000
       --local_resources=cpu=8
       --jobs=8
+      --noallow_analysis_cache_discard
+      --python_path=$(which python3)
       --test_output=all
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
@@ -30,7 +37,7 @@ jammy_task:
     format: junit
 
 noble_task:
-  only_if: "$CIRRUS_PR != ''  || $CIRRUS_BRANCH == 'main'" # This condition ensures the task runs only for PRs or on the main branch.
+  only_if: "$CIRRUS_PR != ''  || $CIRRUS_BRANCH == 'main'"
   timeout_in: 120m
   container:
     image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
@@ -42,17 +49,24 @@ noble_task:
   test_script:
     - export CC=clang-15
     - export CXX=clang++-15
-    - bazel build
+    - apt update && apt install -y python3-venv
+    - python3 -m venv .venv --system-site-packages
+    - . .venv/bin/activate && python3 -m pip install -r bindings/pyc3/requirements.txt && echo "🍏 Installed Python dependencies in Noble CI environment $(which python3)"
+    - . .venv/bin/activate && export PYTHONPATH=$(python3 -c "import site; print(':'.join(site.getsitepackages()))") && bazel build
       --local_resources=ram=24000
       --local_resources=cpu=8
       --jobs=8
+      --noallow_analysis_cache_discard
+      --python_path=$(which python3)
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
-    - bazel test
+    - . .venv/bin/activate && export PYTHONPATH=$(python3 -c "import site; print(':'.join(site.getsitepackages()))") && bazel test
       --local_resources=ram=24000
       --local_resources=cpu=8
       --jobs=8
       --test_output=all
+      --noallow_analysis_cache_discard
+      --python_path=$(which python3)
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
   noble_test_artifacts:

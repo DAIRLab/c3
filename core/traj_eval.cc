@@ -197,9 +197,9 @@ int TrajectoryEvaluator::CheckCoarseAndFineLCSCompatibility(
 }
 
 void TrajectoryEvaluator::CheckLCSAndTrajectoryCompatibility(
-    const LCS& lcs, const std::vector<Eigen::VectorXd>& x,
-    const std::optional<std::vector<Eigen::VectorXd>>& u,
-    const std::optional<std::vector<Eigen::VectorXd>>& lambda) {
+    const LCS& lcs, const vector<VectorXd>& x,
+    const std::optional<vector<VectorXd>>& u,
+    const std::optional<vector<VectorXd>>& lambda) {
   DRAKE_THROW_UNLESS(lcs.N() == x.size() - 1);
   if (u.has_value()) {
     DRAKE_THROW_UNLESS(lcs.N() == u->size());

@@ -205,6 +205,7 @@ class TrajectoryEvaluator {
    * @param Kd Derivative gains (length n_x, with exactly k non-zero
    * entries)
    * @param lcs LCS system to simulate
+   * @param use_feedforward Whether to include feedforward control from the plan
    * @param config Configuration for simulating the LCS
    * @return Pair of (simulated states, simulated inputs)
    */

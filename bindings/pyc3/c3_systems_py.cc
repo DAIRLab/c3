@@ -35,6 +35,7 @@ namespace systems {
 namespace pyc3 {
 PYBIND11_MODULE(systems, m) {
   py::module::import("pydrake.systems.framework");
+  py::module::import("multibody");  // ensure LCSFactoryOptions is registered
   py::class_<C3Controller, LeafSystem<double>>(m, "C3Controller")
       .def(py::init<const MultibodyPlant<double>&, const C3::CostMatrices,
                     C3ControllerOptions>(),
@@ -92,6 +93,13 @@ PYBIND11_MODULE(systems, m) {
               LCSFactoryOptions>(),
           py::arg("plant"), py::arg("context"), py::arg("plant_ad"),
           py::arg("context_ad"), py::arg("contact_geoms"), py::arg("options"))
+      .def(py::init<const MultibodyPlant<double>&,
+                    drake::systems::Context<double>&,
+                    const MultibodyPlant<drake::AutoDiffXd>&,
+                    drake::systems::Context<drake::AutoDiffXd>&,
+                    LCSFactoryOptions&>(),
+           py::arg("plant"), py::arg("context"), py::arg("plant_ad"),
+           py::arg("context_ad"), py::arg("options"))
       .def("get_input_port_lcs_state",
            &LCSFactorySystem::get_input_port_lcs_state,
            py::return_value_policy::reference)

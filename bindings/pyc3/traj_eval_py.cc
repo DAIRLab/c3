@@ -20,101 +20,139 @@ PYBIND11_MODULE(traj_eval, m) {
   // the Python bindings only expose a finite set of predefined overloads. If
   // additional input combinations are needed for Python use cases, they must be
   // explicitly added to this file with corresponding static_cast declarations.
-
-  // LCSSimulateConfig struct bindings
-  py::class_<LCSSimulateConfig>(m, "LCSSimulateConfig")
-      .def(py::init<>())
-      .def_readwrite("regularized", &LCSSimulateConfig::regularized)
-      .def_readwrite("piv_tol", &LCSSimulateConfig::piv_tol)
-      .def_readwrite("zero_tol", &LCSSimulateConfig::zero_tol)
-      .def_readwrite("min_exp", &LCSSimulateConfig::min_exp)
-      .def_readwrite("step_exp", &LCSSimulateConfig::step_exp)
-      .def_readwrite("max_exp", &LCSSimulateConfig::max_exp);
+  //
+  // IMPORTANT: Binding registration order matters for overload resolution.
+  // pybind11 will try to convert a numpy 2D array to std::vector<MatrixXd>
+  // (a vector of row vectors) before trying Eigen::MatrixXd. Therefore,
+  // single-matrix (Eigen::MatrixXd) overloads MUST be registered before
+  // vector-of-matrices (std::vector<Eigen::MatrixXd>) overloads.
 
   // TrajectoryEvaluator class bindings
   py::class_<traj_eval::TrajectoryEvaluator>(m, "TrajectoryEvaluator")
 
-      // ComputeQuadraticTrajectoryCost overloads
+      // --- ComputeQuadraticTrajectoryCost overloads ---
+      // Single-matrix overloads registered FIRST to prevent pybind11 from
+      // incorrectly converting a single numpy matrix to vector<MatrixXd>.
+
+      // Binding: (vector<VectorXd>, VectorXd, MatrixXd)
       .def_static(
           "ComputeQuadraticTrajectoryCost",
-          static_cast<double (*)(const std::vector<Eigen::VectorXd>&,
-                                 const std::vector<Eigen::VectorXd>&,
-                                 const std::vector<Eigen::MatrixXd>&)>(
-              &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
-          py::arg("data"), py::arg("data_des"), py::arg("cost_matrices"),
-          "Compute quadratic cost for full trajectory cost computation")
-      .def_static(
-          "ComputeQuadraticTrajectoryCost",
-          static_cast<double (*)(const std::vector<Eigen::VectorXd>&,
-                                 const std::vector<Eigen::VectorXd>&,
-                                 const Eigen::MatrixXd&)>(
-              &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
-          py::arg("data"), py::arg("data_des"), py::arg("cost_matrix"),
-          "Compute quadratic cost with single cost matrix")
-      .def_static(
-          "ComputeQuadraticTrajectoryCost",
-          static_cast<double (*)(const std::vector<Eigen::VectorXd>&,
-                                 const Eigen::VectorXd&,
-                                 const std::vector<Eigen::MatrixXd>&)>(
-              &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
-          py::arg("data"), py::arg("data_des"), py::arg("cost_matrices"),
-          "Compute quadratic cost with single desired vector")
-      .def_static(
-          "ComputeQuadraticTrajectoryCost",
-          static_cast<double (*)(const std::vector<Eigen::VectorXd>&,
-                                 const Eigen::VectorXd&,
-                                 const Eigen::MatrixXd&)>(
-              &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
+          [](const std::vector<Eigen::VectorXd>& data,
+             const Eigen::VectorXd& data_des,
+             const Eigen::MatrixXd& cost_matrix) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(data, data_des, cost_matrix);
+          },
           py::arg("data"), py::arg("data_des"), py::arg("cost_matrix"),
           "Compute quadratic cost with single desired vector and single cost "
-          "matrix")
+          "matrix.")
+      // Binding: (vector<VectorXd>, vector<VectorXd>, MatrixXd)
       .def_static(
           "ComputeQuadraticTrajectoryCost",
-          static_cast<double (*)(const std::vector<Eigen::VectorXd>&,
-                                 const std::vector<Eigen::MatrixXd>&)>(
-              &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
-          py::arg("data"), py::arg("cost_matrices"),
-          "Compute quadratic cost assuming zero desired data")
+          [](const std::vector<Eigen::VectorXd>& data,
+             const std::vector<Eigen::VectorXd>& data_des,
+             const Eigen::MatrixXd& cost_matrix) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(data, data_des, cost_matrix);
+          },
+          py::arg("data"), py::arg("data_des"), py::arg("cost_matrix"),
+          "Compute quadratic cost with single cost matrix.")
+      // Binding: (vector<VectorXd>, MatrixXd)
       .def_static(
           "ComputeQuadraticTrajectoryCost",
-          static_cast<double (*)(const std::vector<Eigen::VectorXd>&,
-                                 const Eigen::MatrixXd&)>(
-              &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
+          [](const std::vector<Eigen::VectorXd>& data,
+             const Eigen::MatrixXd& cost_matrix) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(data, cost_matrix);
+          },
           py::arg("data"), py::arg("cost_matrix"),
-          "Compute quadratic cost with single matrix and zero desired")
+          "Compute quadratic cost with single matrix and zero desired.")
+
+      // Vector-of-matrices overloads registered AFTER single-matrix overloads.
+
+      // Binding: (vector<VectorXd>, VectorXd, vector<MatrixXd>)
       .def_static(
           "ComputeQuadraticTrajectoryCost",
-          static_cast<double (*)(C3*)>(
-              &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
-          py::arg("c3"), "Compute cost from C3 optimizer solution")
+          [](const std::vector<Eigen::VectorXd>& data,
+             const Eigen::VectorXd& data_des,
+             const std::vector<Eigen::MatrixXd>& cost_matrices) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(data, data_des, cost_matrices);
+          },
+          py::arg("data"), py::arg("data_des"), py::arg("cost_matrices"),
+          "Compute quadratic cost with single desired vector.")
+      // Binding: (vector<VectorXd>, vector<VectorXd>, vector<MatrixXd>)
       .def_static(
           "ComputeQuadraticTrajectoryCost",
-          static_cast<double (*)(C3*, const std::vector<Eigen::MatrixXd>&,
-                                 const std::vector<Eigen::MatrixXd>&)>(
-              &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
+          [](const std::vector<Eigen::VectorXd>& data,
+             const std::vector<Eigen::VectorXd>& data_des,
+             const std::vector<Eigen::MatrixXd>& cost_matrices) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(data, data_des, cost_matrices);
+          },
+          py::arg("data"), py::arg("data_des"), py::arg("cost_matrices"),
+          "Compute quadratic cost for full trajectory cost computation.")
+      // Binding: (vector<VectorXd>, vector<MatrixXd>)
+      .def_static(
+          "ComputeQuadraticTrajectoryCost",
+          [](const std::vector<Eigen::VectorXd>& data,
+             const std::vector<Eigen::MatrixXd>& cost_matrices) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(data, cost_matrices);
+          },
+          py::arg("data"), py::arg("cost_matrices"),
+          "Compute quadratic cost assuming zero desired data.")
+
+      // C3-based overloads: single-matrix overloads first.
+
+      // Binding: (C3*)
+      .def_static(
+          "ComputeQuadraticTrajectoryCost",
+          [](C3* c3) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(c3);
+          },
+          py::arg("c3"), "Compute cost from C3 optimizer solution.")
+      // Binding: (C3*, MatrixXd, MatrixXd)
+      .def_static(
+          "ComputeQuadraticTrajectoryCost",
+          [](C3* c3, const Eigen::MatrixXd& Q,
+             const Eigen::MatrixXd& R) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(c3, Q, R);
+          },
           py::arg("c3"), py::arg("Q"), py::arg("R"),
-          "Compute cost from C3 with custom cost matrices")
+          "Compute cost from C3 with single Q and R matrices.")
+      // Binding: (C3*, MatrixXd, vector<MatrixXd>)
       .def_static(
           "ComputeQuadraticTrajectoryCost",
-          static_cast<double (*)(C3*, const Eigen::MatrixXd&,
-                                 const std::vector<Eigen::MatrixXd>&)>(
-              &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
+          [](C3* c3, const Eigen::MatrixXd& Q,
+             const std::vector<Eigen::MatrixXd>& R) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(c3, Q, R);
+          },
           py::arg("c3"), py::arg("Q"), py::arg("R"),
-          "Compute cost from C3 with single Q matrix")
+          "Compute cost from C3 with single Q matrix.")
+      // Binding: (C3*, vector<MatrixXd>, MatrixXd)
       .def_static(
           "ComputeQuadraticTrajectoryCost",
-          static_cast<double (*)(C3*, const std::vector<Eigen::MatrixXd>&,
-                                 const Eigen::MatrixXd&)>(
-              &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
+          [](C3* c3, const std::vector<Eigen::MatrixXd>& Q,
+             const Eigen::MatrixXd& R) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(c3, Q, R);
+          },
           py::arg("c3"), py::arg("Q"), py::arg("R"),
-          "Compute cost from C3 with single R matrix")
+          "Compute cost from C3 with single R matrix.")
+      // Binding: (C3*, vector<MatrixXd>, vector<MatrixXd>)
       .def_static(
           "ComputeQuadraticTrajectoryCost",
-          static_cast<double (*)(C3*, const Eigen::MatrixXd&,
-                                 const Eigen::MatrixXd&)>(
-              &traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost),
+          [](C3* c3, const std::vector<Eigen::MatrixXd>& Q,
+             const std::vector<Eigen::MatrixXd>& R) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(c3, Q, R);
+          },
           py::arg("c3"), py::arg("Q"), py::arg("R"),
-          "Compute cost from C3 with single Q and R matrices")
+          "Compute cost from C3 with custom cost matrices.")
 
       // SimulatePDControlWithLCS overloads
       .def_static(

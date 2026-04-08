@@ -279,9 +279,9 @@ void C3::Solve(const VectorXd& x0) {
 
   // Set the initial force constraint
   if (h_is_zero_ == 1) {  // No dependence on u, so just simulate passive system
-    drake::solvers::MobyLCPSolver<double> LCPSolver;
+    drake::solvers::MobyLcpSolver LcpSolver;
     VectorXd lambda0;
-    LCPSolver.SolveLcpLemke(lcs_.F()[0], lcs_.E()[0] * x0 + lcs_.c()[0],
+    LcpSolver.SolveLcpLemke(lcs_.F()[0], lcs_.E()[0] * x0 + lcs_.c()[0],
                             &lambda0);
     // Force constraints to be updated before every solve if no dependence on
     // u
@@ -470,7 +470,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
   if (options_.num_threads > 0) {
     omp_set_dynamic(0);  // Explicitly disable dynamic teams
     omp_set_num_threads(options_.num_threads);  // Set number of threads
-    omp_set_nested(0);
+    omp_set_max_active_levels(1);  // Limit to one level of parallelism
     omp_set_schedule(omp_sched_static, 0);
   }
 
@@ -503,25 +503,32 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& U,
 void C3::AddLinearConstraint(const MatrixXd& A, const VectorXd& lower_bound,
                              const VectorXd& upper_bound,
                              ConstraintVariable constraint) {
-  if (constraint == 1) {
-    for (int i = 1; i < N_; ++i) {
-      user_constraints_.push_back(
-          prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
-    }
-  }
-
-  if (constraint == 2) {
-    for (int i = 0; i < N_; ++i) {
-      user_constraints_.push_back(
-          prog_.AddLinearConstraint(A, lower_bound, upper_bound, u_.at(i)));
-    }
-  }
-
-  if (constraint == 3) {
-    for (int i = 0; i < N_; ++i) {
-      user_constraints_.push_back(prog_.AddLinearConstraint(
-          A, lower_bound, upper_bound, lambda_.at(i)));
-    }
+  DRAKE_DEMAND(lower_bound.size() == A.rows());
+  DRAKE_DEMAND(upper_bound.size() == A.rows());
+  switch (constraint) {
+    case ConstraintVariable::STATE:
+      DRAKE_DEMAND(A.cols() == n_x_);
+      for (int i = 1; i < N_; ++i) {
+        user_constraints_.push_back(
+            prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
+      }
+      break;
+    case ConstraintVariable::INPUT:
+      DRAKE_DEMAND(A.cols() == n_u_);
+      for (int i = 0; i < N_; ++i) {
+        user_constraints_.push_back(
+            prog_.AddLinearConstraint(A, lower_bound, upper_bound, u_.at(i)));
+      }
+      break;
+    case ConstraintVariable::FORCE:
+      DRAKE_DEMAND(A.cols() == n_lambda_);
+      for (int i = 0; i < N_; ++i) {
+        user_constraints_.push_back(prog_.AddLinearConstraint(
+            A, lower_bound, upper_bound, lambda_.at(i)));
+      }
+      break;
+    default:
+      throw std::invalid_argument("Invalid constraint variable type.");
   }
 }
 
