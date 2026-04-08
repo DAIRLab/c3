@@ -422,11 +422,6 @@ void C3::StoreQPResults(const MathematicalProgramResult& result,
     z_sol_->at(i).segment(0, n_x_) = result.GetSolution(x_[i]);
     z_sol_->at(i).segment(n_x_, n_lambda_) = result.GetSolution(lambda_[i]);
     z_sol_->at(i).segment(n_x_ + n_lambda_, n_u_) = result.GetSolution(u_[i]);
-
-    drake::log()->trace(
-        "C3::StoreQPResults storing solution for time step {}:  "
-        "lambda = {}",
-        i, EigenToString(lambda_sol_->at(i).transpose()));
   }
 
   if (!warm_start_)
@@ -456,13 +451,41 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
     if (!result.is_success()) {
       drake::log()->warn("C3::SolveQP failed to solve the QP with status: {}",
                          result.get_solution_result());
+      SetFallbackSolution(x0, is_final_solve);
+    } else {
+      StoreQPResults(result, admm_iteration, is_final_solve);
     }
-    StoreQPResults(result, admm_iteration, is_final_solve);
   } catch (const std::exception& e) {
     drake::log()->error("C3::SolveQP failed with exception: {}", e.what());
+    SetFallbackSolution(x0, is_final_solve);
   }
 
   return *z_sol_;
+}
+
+/// When the QP solver fails to find a solution (either returns an
+/// unsuccessful status or throws an exception), we fall back to a safe
+/// default: hold the current state and apply zero inputs. This ensures
+/// that downstream consumers always receive a valid solution vector,
+/// and the robot will not execute arbitrary or stale commands.
+/// Specifically:
+///   - x is set to x0 (current robot state) for all time steps
+///   - u is set to zero for all time steps
+///   - lambda is set to zero for all time steps
+void C3::SetFallbackSolution(const VectorXd& x0, bool is_final_solve) {
+  drake::log()->warn(
+      "C3::SetFallbackSolution: Using current state with zero inputs "
+      "as fallback.");
+  for (int i = 0; i < N_; ++i) {
+    if (is_final_solve) {
+      x_sol_->at(i) = x0;
+      lambda_sol_->at(i) = VectorXd::Zero(n_lambda_);
+      u_sol_->at(i) = VectorXd::Zero(n_u_);
+    }
+    z_sol_->at(i).segment(0, n_x_) = x0;
+    z_sol_->at(i).segment(n_x_, n_lambda_) = VectorXd::Zero(n_lambda_);
+    z_sol_->at(i).segment(n_x_ + n_lambda_, n_u_) = VectorXd::Zero(n_u_);
+  }
 }
 
 void C3::AddAugmentedCost(const vector<MatrixXd>& G, const vector<VectorXd>& WD,
