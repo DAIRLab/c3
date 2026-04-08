@@ -123,11 +123,12 @@ PYBIND11_MODULE(traj_eval, m) {
                                 std::vector<Eigen::VectorXd>> (*)(
               const std::vector<Eigen::VectorXd>&,
               const std::vector<Eigen::VectorXd>&, const Eigen::VectorXd&,
-              const Eigen::VectorXd&, const LCS&,
+              const Eigen::VectorXd&, const LCS&, const bool&,
               const c3::LCSSimulateConfig&)>(
               &traj_eval::TrajectoryEvaluator::SimulatePDControlWithLCS),
           py::arg("x_plan"), py::arg("u_plan"), py::arg("Kp"), py::arg("Kd"),
-          py::arg("lcs"), py::arg("config") = c3::LCSSimulateConfig(),
+          py::arg("lcs"), py::arg("use_feedforward") = true,
+          py::arg("config") = c3::LCSSimulateConfig(),
           "Simulate PD control with an LCS")
       .def_static(
           "SimulatePDControlWithLCS",
@@ -135,11 +136,12 @@ PYBIND11_MODULE(traj_eval, m) {
                                 std::vector<Eigen::VectorXd>> (*)(
               const std::vector<Eigen::VectorXd>&,
               const std::vector<Eigen::VectorXd>&, const Eigen::VectorXd&,
-              const Eigen::VectorXd&, const LCS&, const LCS&,
+              const Eigen::VectorXd&, const LCS&, const LCS&, const bool&,
               const c3::LCSSimulateConfig&)>(
               &traj_eval::TrajectoryEvaluator::SimulatePDControlWithLCS),
           py::arg("x_plan"), py::arg("u_plan"), py::arg("Kp"), py::arg("Kd"),
           py::arg("coarse_lcs"), py::arg("fine_lcs"),
+          py::arg("use_feedforward") = true,
           py::arg("config") = c3::LCSSimulateConfig(),
           "Simulate PD control with coarse and fine LCSs")
 

@@ -213,6 +213,7 @@ class TrajectoryEvaluator {
       const std::vector<Eigen::VectorXd>& x_plan,
       const std::vector<Eigen::VectorXd>& u_plan, const Eigen::VectorXd& Kp,
       const Eigen::VectorXd& Kd, const LCS& lcs,
+      const bool& use_feedforward = true,
       const LCSSimulateConfig& config = LCSSimulateConfig());
   /**
    * @brief Special case: simulate plans from a coarser LCS with a finer LCS.
@@ -225,6 +226,7 @@ class TrajectoryEvaluator {
       const std::vector<Eigen::VectorXd>& x_plan,
       const std::vector<Eigen::VectorXd>& u_plan, const Eigen::VectorXd& Kp,
       const Eigen::VectorXd& Kd, const LCS& coarse_lcs, const LCS& fine_lcs,
+      const bool& use_feedforward = true,
       const LCSSimulateConfig& config = LCSSimulateConfig());
 
   /**
