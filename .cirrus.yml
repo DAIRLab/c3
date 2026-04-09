@@ -3,7 +3,7 @@ jammy_task:
   only_if: "$CIRRUS_PR != ''  || $CIRRUS_BRANCH == 'main'" # This condition ensures the task runs only for PRs or on the main branch.
   timeout_in: 120m
   container:
-    image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42
+    image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42.0-2
     cpu: 8
     memory: 24
   format_script:
@@ -47,7 +47,7 @@ noble_task:
   only_if: "$CIRRUS_PR != ''  || $CIRRUS_BRANCH == 'main'"
   timeout_in: 120m
   container:
-    image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
+    image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42.0-2
     cpu: 8
     memory: 24
   format_script:
