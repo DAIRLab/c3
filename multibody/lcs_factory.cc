@@ -816,8 +816,8 @@ int LCSFactory::GetNumContactVariables(ContactModel contact_model,
 }
 
 int LCSFactory::GetNumContactVariables(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const LCSFactoryOptions& options) {
+    const LCSFactoryOptions& options,
+    const drake::multibody::MultibodyPlant<double>* plant) {
   multibody::ContactModel contact_model =
       GetContactModelMap().at(options.contact_model);
 
@@ -830,12 +830,17 @@ int LCSFactory::GetNumContactVariables(
     // contact pair configs to get the actual number of contacts and friction
     // directions per contact.
 
+    if (plant == nullptr) {
+      throw std::invalid_argument(
+          "plant must be provided when contact_pair_configs is set.");
+    }
+
     // Use default context since we only need the geometry query results to
     // expand the contact pair configs, and the geometry query results do not
     // depend on the state of the plant.
-    auto context = plant.CreateDefaultContext();
+    auto context = plant->CreateDefaultContext();
     auto expanded = ExpandContactPairConfigs(
-        plant, *context, options.contact_pair_configs.value());
+        *plant, *context, options.contact_pair_configs.value());
     n_contacts = expanded.num_contacts();
     n_friction_directions_per_contact =
         expanded.num_friction_directions_per_contact;

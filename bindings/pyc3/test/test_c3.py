@@ -99,8 +99,6 @@ def make_cartpole_options_and_costs(lcs, N=5, c3plus=False):
     opts.R = R_mat
     opts.G = G_mat
     opts.U = U_mat
-    opts.g_vector = [0.1] * n_lambda + [0.0] * n_u
-    opts.u_vector = [1.0] * n_lambda + [0.0] * n_u
     opts.warm_start = False
     opts.scale_lcs = False
     opts.end_on_qp_step = True
@@ -137,8 +135,6 @@ def make_options(n_x=4, n_u=2, n_lambda=2, is_c3plus=False):
     n_z = n_x + n_u + n_lambda + (n_lambda if is_c3plus else 0)
     opts.G = np.ones((n_z, n_z))
     opts.U = np.ones((n_z, n_z))
-    opts.g_vector = [1.0] * n_lambda
-    opts.u_vector = [1.0] * n_u
     opts.warm_start = False
     opts.scale_lcs = False
     opts.end_on_qp_step = False

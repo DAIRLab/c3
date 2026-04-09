@@ -67,7 +67,7 @@ def main():
     pivoting = LCS.CreatePlaceholderLCS(
         plant.num_positions() + plant.num_velocities(),
         plant.num_actuators(),
-        LCSFactory.GetNumContactVariables(lcs_factory_options),
+        LCSFactory.GetNumContactVariables(lcs_factory_options, plant),
         lcs_factory_options.N,
         lcs_factory_options.dt,
     )

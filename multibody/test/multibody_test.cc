@@ -145,22 +145,21 @@ TEST_F(LCSFactoryPivotingTest, GetNumContactVariables) {
   options.contact_model = "stewart_and_trinkle";
   options.num_friction_directions = 4;
   options.num_contacts = 2;
-  EXPECT_EQ(LCSFactory::GetNumContactVariables(*fixture.plant, options), 20);
+  EXPECT_EQ(LCSFactory::GetNumContactVariables(options), 20);
 
   options.contact_model = "anitescu";
   options.num_friction_directions = 2;
   options.num_contacts = 3;
-  EXPECT_EQ(LCSFactory::GetNumContactVariables(*fixture.plant, options), 12);
+  EXPECT_EQ(LCSFactory::GetNumContactVariables(options), 12);
 
   options.contact_model = "frictionless_spring";
   options.num_friction_directions = 0;
   options.num_contacts = 3;
-  EXPECT_EQ(LCSFactory::GetNumContactVariables(*fixture.plant, options), 3);
+  EXPECT_EQ(LCSFactory::GetNumContactVariables(options), 3);
 
   // Test error handling for invalid contact model
   options.contact_model = "some_random_contact_model";
-  EXPECT_THROW(LCSFactory::GetNumContactVariables(*fixture.plant, options),
-               std::out_of_range);
+  EXPECT_THROW(LCSFactory::GetNumContactVariables(options), std::out_of_range);
 }
 
 // Test that contact pairs can be parsed from options instead of explicit list
@@ -190,8 +189,8 @@ TEST_F(LCSFactoryPivotingTest, ContactPairParsing) {
   EXPECT_EQ(lcs.num_states(),
             fixture.plant->num_positions() + fixture.plant->num_velocities());
   EXPECT_EQ(lcs.num_inputs(), fixture.plant->num_actuators());
-  EXPECT_EQ(lcs.num_lambdas(), LCSFactory::GetNumContactVariables(
-                                   *fixture.plant, fixture.options));
+  EXPECT_EQ(lcs.num_lambdas(),
+            LCSFactory::GetNumContactVariables(fixture.options, fixture.plant));
 }
 
 // Parameterized test fixture for testing different contact models and friction
@@ -238,8 +237,8 @@ TEST_P(LCSFactoryParameterizedPivotingTest, GenerateLCS) {
   EXPECT_EQ(lcs.num_states(),
             fixture.plant->num_positions() + fixture.plant->num_velocities());
   EXPECT_EQ(lcs.num_inputs(), fixture.plant->num_actuators());
-  EXPECT_EQ(lcs.num_lambdas(), LCSFactory::GetNumContactVariables(
-                                   *fixture.plant, fixture.options));
+  EXPECT_EQ(lcs.num_lambdas(),
+            LCSFactory::GetNumContactVariables(fixture.options, fixture.plant));
 }
 
 // Test static linearization method for different contact models
@@ -261,8 +260,8 @@ TEST_P(LCSFactoryParameterizedPivotingTest, LinearizePlantToLCS) {
   EXPECT_EQ(lcs.num_states(),
             fixture.plant->num_positions() + fixture.plant->num_velocities());
   EXPECT_EQ(lcs.num_inputs(), fixture.plant->num_actuators());
-  EXPECT_EQ(lcs.num_lambdas(), LCSFactory::GetNumContactVariables(
-                                   *fixture.plant, fixture.options));
+  EXPECT_EQ(lcs.num_lambdas(),
+            LCSFactory::GetNumContactVariables(fixture.options));
 }
 
 // Test that updating state and input changes contact-dependent LCS matrices

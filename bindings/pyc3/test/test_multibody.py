@@ -29,13 +29,13 @@ class TestLCSFactoryOptions(unittest.TestCase):
         opts.N = 3
         opts.num_contacts = 2
         # mu is list[float] per binding
-        opts.mu = [0.5]
+        opts.mu = 0.5
         opts.spring_stiffness = 100.0
         opts.num_friction_directions = 4
         self.assertAlmostEqual(opts.dt, 0.01)
         self.assertEqual(opts.N, 3)
         self.assertEqual(opts.num_contacts, 2)
-        self.assertAlmostEqual(opts.mu[0], 0.5)
+        self.assertAlmostEqual(opts.mu, 0.5)
 
     def test_contact_model(self):
         opts = multibody.LCSFactoryOptions()
@@ -98,7 +98,7 @@ class TestLoadLCSFactoryOptions(unittest.TestCase):
         self.assertEqual(opts.num_contacts, 3)
         self.assertEqual(opts.contact_model, multibody.ContactModel.StewartAndTrinkle)
         self.assertEqual(opts.num_friction_directions, 1)
-        self.assertAlmostEqual(opts.mu[0], 0.1)
+        self.assertAlmostEqual(opts.mu, 0.1)
         self.assertEqual(len(opts.contact_pair_configs), 3)
         self.assertEqual(opts.contact_pair_configs[0].body_A, "cube")
         self.assertEqual(opts.contact_pair_configs[0].body_B, "left_finger")
@@ -107,6 +107,7 @@ class TestLoadLCSFactoryOptions(unittest.TestCase):
         opts = multibody.LoadLCSFactoryOptions(
             "multibody/test/resources/lcs_factory_pivoting_options.yaml"
         )
+        opts.contact_pair_configs = None  # test that GetNumContactVariables doesn't require this field
         n = multibody.LCSFactory.GetNumContactVariables(opts)
         self.assertGreater(n, 0)
 
