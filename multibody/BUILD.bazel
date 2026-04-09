@@ -13,21 +13,44 @@ cc_library(
 )
 
 cc_library(
+    name = "geom_geom_collider",
+    srcs = ["geom_geom_collider.cc"],
+    hdrs = ["geom_geom_collider.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "multibody_utils",
+    srcs = ["multibody_utils.cc"],
+    hdrs = ["multibody_utils.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "lcs_factory",
-    srcs = ["lcs_factory.cc",
-            "geom_geom_collider.cc",
-            "multibody_utils.cc"],
+    srcs = [
+        "lcs_factory.cc", 
+        "contact_evaluator.cc"
+    ],
     hdrs = [
-        "lcs_factory.h",
-        "geom_geom_collider.h",
-        "multibody_utils.h",
+        "lcs_factory.h", 
+        "contact_evaluator.h"
     ],
     deps = [
+        ":geom_geom_collider",
+        ":multibody_utils",
         ":options",
         '//core:lcs',
         '//core:options',
         "@drake//:drake_shared_library",
     ],
+    visibility = ["//visibility:public"],
 )
 
 cc_library(

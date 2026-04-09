@@ -26,6 +26,20 @@ PYBIND11_MODULE(multibody, m) {
              c3::multibody::ContactModel::kFrictionlessSpring)
       .export_values();
 
+  py::class_<c3::multibody::LCSContactDescription>(m, "LCSContactDescription")
+      .def(py::init<>())
+      .def_readwrite("witness_point_A",
+                     &c3::multibody::LCSContactDescription::witness_point_A)
+      .def_readwrite("witness_point_B",
+                     &c3::multibody::LCSContactDescription::witness_point_B)
+      .def_readwrite("force_basis",
+                     &c3::multibody::LCSContactDescription::force_basis)
+      .def_readwrite("is_slack",
+                     &c3::multibody::LCSContactDescription::is_slack)
+      .def_static("CreateSlackVariableDescription",
+                  &c3::multibody::LCSContactDescription::
+                      CreateSlackVariableDescription);
+
   py::class_<c3::multibody::LCSFactory>(m, "LCSFactory")
       .def(py::init<const drake::multibody::MultibodyPlant<double>&,
                     drake::systems::Context<double>&,
@@ -44,8 +58,8 @@ PYBIND11_MODULE(multibody, m) {
            py::arg("plant"), py::arg("context"), py::arg("plant_ad"),
            py::arg("context_ad"), py::arg("options"))
       .def("GenerateLCS", &c3::multibody::LCSFactory::GenerateLCS)
-      .def("GetContactJacobianAndPoints",
-           &c3::multibody::LCSFactory::GetContactJacobianAndPoints)
+      .def("GetContactDescriptions",
+           &c3::multibody::LCSFactory::GetContactDescriptions)
       .def("UpdateStateAndInput",
            &c3::multibody::LCSFactory::UpdateStateAndInput, py::arg("state"),
            py::arg("input"))
@@ -67,10 +81,12 @@ PYBIND11_MODULE(multibody, m) {
                       &c3::multibody::LCSFactory::GetNumContactVariables),
                   py::arg("contact_model"), py::arg("num_contacts"),
                   py::arg("num_friction_directions"))
-      .def_static("GetNumContactVariables",
-                  py::overload_cast<const c3::LCSFactoryOptions>(
-                      &c3::multibody::LCSFactory::GetNumContactVariables),
-                  py::arg("options"));
+      .def_static(
+          "GetNumContactVariables",
+          py::overload_cast<const drake::multibody::MultibodyPlant<double>&,
+                            const c3::LCSFactoryOptions&>(
+              &c3::multibody::LCSFactory::GetNumContactVariables),
+          py::arg("plant"), py::arg("options"));
 
   py::class_<ContactPairConfig>(m, "ContactPairConfig")
       .def(py::init<>())

@@ -71,7 +71,7 @@ C3Controller::C3Controller(
 
   // Determine the size of lambda based on the contact model
   n_lambda_ = multibody::LCSFactory::GetNumContactVariables(
-      controller_options_.lcs_factory_options);
+      plant_, controller_options_.lcs_factory_options);
 
   // Placeholder vector for initialization
   VectorXd zeros = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
@@ -119,8 +119,7 @@ C3Controller::C3Controller(
           .get_index();
   c3_intermediates_port_ =
       this->DeclareAbstractOutputPort(
-              "intermediates",
-              C3Output::C3Intermediates(n_x_, n_lambda_, n_u_, N_),
+              "intermediates", C3Output::C3Intermediates(c3_->GetZSize(), N_),
               &C3Controller::OutputC3Intermediates)
           .get_index();
 

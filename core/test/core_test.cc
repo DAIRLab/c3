@@ -46,6 +46,7 @@ using namespace c3;
  * | WarmStartSmokeTest     |   DONE  |
  * | # of regression tests  |    2    |
  * | traj_eval              |   DONE  |
+ * | SetFallbackSolution    |   DONE  |
  *
  * It also has an E2E test for ensuring the "Solve()" function and other
  * internal functions are working as expected. However, the E2E takes about 120s
@@ -772,6 +773,110 @@ TYPED_TEST(C3CartpoleTypedTest, ComputeCost) {
 
   // NOTE: Don't test the Q[0] version since this example has a time-varying
   // cost matrix.
+}
+
+// Test that SetFallbackSolution correctly sets state to x0 and zeros inputs
+TEST_F(C3CartpoleTest, FallbackSolutionSetsStateAndZerosInputs) {
+  // Solve once normally to populate internal solution vectors
+  pOpt->Solve(x0);
+
+  // Verify normal solve produces non-zero inputs (sanity check)
+  std::vector<VectorXd> u_before = pOpt->GetInputSolution();
+  bool has_nonzero_input = false;
+  for (const auto& u : u_before) {
+    if (!u.isZero(1e-12)) {
+      has_nonzero_input = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(has_nonzero_input)
+      << "Normal solve should produce non-zero inputs for this problem.";
+
+  // Now make the QP infeasible by adding contradictory constraints:
+  // x >= 100 and x <= -100 simultaneously
+  MatrixXd A_constraint = MatrixXd::Identity(n, n);
+  VectorXd lb_high = VectorXd::Constant(n, 100.0);
+  VectorXd ub_high = VectorXd::Constant(n, 200.0);
+  pOpt->AddLinearConstraint(A_constraint, lb_high, ub_high,
+                            c3::ConstraintVariable::STATE);
+
+  VectorXd lb_low = VectorXd::Constant(n, -200.0);
+  VectorXd ub_low = VectorXd::Constant(n, -100.0);
+  pOpt->AddLinearConstraint(A_constraint, lb_low, ub_low,
+                            c3::ConstraintVariable::STATE);
+
+  // Solve with infeasible constraints — should trigger fallback
+  VectorXd x_test = Eigen::Vector4d(0.1, -0.5, 0.5, -0.4);
+  pOpt->Solve(x_test);
+
+  // Verify fallback: state should be x_test, inputs and forces should be zero
+  std::vector<VectorXd> x_sol = pOpt->GetStateSolution();
+  std::vector<VectorXd> u_sol = pOpt->GetInputSolution();
+  std::vector<VectorXd> lambda_sol = pOpt->GetForceSolution();
+
+  for (int i = 0; i < N; ++i) {
+    EXPECT_TRUE(x_sol[i].isApprox(x_test))
+        << "Fallback state at step " << i << " should equal x0.";
+    EXPECT_TRUE(u_sol[i].isZero(1e-12))
+        << "Fallback input at step " << i << " should be zero.";
+    EXPECT_TRUE(lambda_sol[i].isZero(1e-12))
+        << "Fallback force at step " << i << " should be zero.";
+  }
+
+  // Verify z_sol is also consistent with fallback
+  std::vector<VectorXd> z_sol = pOpt->GetFullSolution();
+  for (int i = 0; i < N; ++i) {
+    EXPECT_TRUE(z_sol[i].segment(0, n).isApprox(x_test))
+        << "Fallback z_sol state at step " << i << " should equal x0.";
+    EXPECT_TRUE(z_sol[i].segment(n, m).isZero(1e-12))
+        << "Fallback z_sol lambda at step " << i << " should be zero.";
+    EXPECT_TRUE(z_sol[i].segment(n + m, k).isZero(1e-12))
+        << "Fallback z_sol input at step " << i << " should be zero.";
+  }
+}
+
+// Test that the solver recovers after a fallback by removing the infeasible
+// constraints and solving again.
+TEST_F(C3CartpoleTest, FallbackSolutionRecoveryAfterConstraintRemoval) {
+  // First, solve normally
+  pOpt->Solve(x0);
+  std::vector<VectorXd> u_normal = pOpt->GetInputSolution();
+
+  // Add infeasible constraints to trigger fallback
+  MatrixXd A_constraint = MatrixXd::Identity(n, n);
+  VectorXd lb_high = VectorXd::Constant(n, 100.0);
+  VectorXd ub_high = VectorXd::Constant(n, 200.0);
+  pOpt->AddLinearConstraint(A_constraint, lb_high, ub_high,
+                            c3::ConstraintVariable::STATE);
+  VectorXd lb_low = VectorXd::Constant(n, -200.0);
+  VectorXd ub_low = VectorXd::Constant(n, -100.0);
+  pOpt->AddLinearConstraint(A_constraint, lb_low, ub_low,
+                            c3::ConstraintVariable::STATE);
+
+  // Solve — should trigger fallback
+  pOpt->Solve(x0);
+  std::vector<VectorXd> u_fallback = pOpt->GetInputSolution();
+  for (const auto& u : u_fallback) {
+    EXPECT_TRUE(u.isZero(1e-12)) << "Fallback inputs should be zero.";
+  }
+
+  // Remove infeasible constraints and solve again
+  pOpt->RemoveConstraints();
+  pOpt->Solve(x0);
+
+  // After removing constraints, the solver should produce a valid
+  // (non-fallback) solution again
+  std::vector<VectorXd> u_recovered = pOpt->GetInputSolution();
+  bool has_nonzero_input = false;
+  for (const auto& u : u_recovered) {
+    if (!u.isZero(1e-12)) {
+      has_nonzero_input = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(has_nonzero_input)
+      << "After removing infeasible constraints, solver should recover and "
+         "produce non-zero inputs.";
 }
 
 int main(int argc, char** argv) {
