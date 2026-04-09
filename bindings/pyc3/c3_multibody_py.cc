@@ -17,14 +17,32 @@ PYBIND11_MODULE(multibody, m) {
   m.doc() = "C3 Multibody Utilities";
 
   // LCSFactory Class and ContactModel enum
-  py::enum_<c3::multibody::ContactModel>(m, "ContactModel")
-      .value("Unknown", c3::multibody::ContactModel::kUnknown)
-      .value("StewartAndTrinkle",
-             c3::multibody::ContactModel::kStewartAndTrinkle)
-      .value("Anitescu", c3::multibody::ContactModel::kAnitescu)
-      .value("FrictionlessSpring",
-             c3::multibody::ContactModel::kFrictionlessSpring)
-      .export_values();
+  auto contact_model_enum =
+      py::enum_<c3::multibody::ContactModel>(m, "ContactModel")
+          .value("Unknown", c3::multibody::ContactModel::kUnknown)
+          .value("StewartAndTrinkle",
+                 c3::multibody::ContactModel::kStewartAndTrinkle)
+          .value("Anitescu", c3::multibody::ContactModel::kAnitescu)
+          .value("FrictionlessSpring",
+                 c3::multibody::ContactModel::kFrictionlessSpring)
+          .export_values();
+
+  contact_model_enum.attr("__str__") = py::cpp_function(
+      [](c3::multibody::ContactModel
+             model) {  // Iterate through the map to find the string for the
+                       // given enum value
+        for (const auto& pair : GetContactModelMap()) {
+          if (pair.second == model) {
+            return pair.first;
+          }
+        }
+        return std::string("unknown");
+      },
+      py::name("__str__"), py::is_method(contact_model_enum));
+
+  // Add a binding for the map itself
+  m.def("GetContactModelMap", &GetContactModelMap,
+        "Returns a map from contact model names to enum values.");
 
   py::class_<c3::multibody::LCSContactDescription>(m, "LCSContactDescription")
       .def(py::init<>())
@@ -60,35 +78,7 @@ PYBIND11_MODULE(multibody, m) {
       .def(py::init<>())
       .def_readwrite("dt", &LCSFactoryOptions::dt)
       .def_readwrite("N", &LCSFactoryOptions::N)
-      .def_property(
-          "contact_model",
-          [](const LCSFactoryOptions& self) {
-            // Convert string back to enum for Python
-            if (self.contact_model == "stewart_and_trinkle")
-              return c3::multibody::ContactModel::kStewartAndTrinkle;
-            if (self.contact_model == "anitescu")
-              return c3::multibody::ContactModel::kAnitescu;
-            if (self.contact_model == "frictionless_spring")
-              return c3::multibody::ContactModel::kFrictionlessSpring;
-            return c3::multibody::ContactModel::kUnknown;
-          },
-          [](LCSFactoryOptions& self, c3::multibody::ContactModel val) {
-            // Convert enum to the string the C++ struct expects
-            switch (val) {
-              case c3::multibody::ContactModel::kStewartAndTrinkle:
-                self.contact_model = "stewart_and_trinkle";
-                break;
-              case c3::multibody::ContactModel::kAnitescu:
-                self.contact_model = "anitescu";
-                break;
-              case c3::multibody::ContactModel::kFrictionlessSpring:
-                self.contact_model = "frictionless_spring";
-                break;
-              default:
-                self.contact_model = "unknown";
-                break;
-            }
-          })
+      .def_readwrite("contact_model", &LCSFactoryOptions::contact_model)
       .def_property(
           "num_contacts",
           [](const LCSFactoryOptions& self) {
