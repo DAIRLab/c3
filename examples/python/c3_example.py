@@ -3,7 +3,7 @@ from scipy import linalg
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from pyc3 import LCS, C3MIQP, C3ControllerOptions, CostMatrices, LoadC3Options
+from pyc3 import LCS, C3MIQP, C3Options, CostMatrices, LoadC3Options
 
 
 def make_cartpole_with_soft_walls_dynamics(N: int) -> LCS:
@@ -61,7 +61,7 @@ def make_cartpole_with_soft_walls_dynamics(N: int) -> LCS:
     )
 
 
-def make_cartpole_costs(lcs: LCS, options: C3ControllerOptions, N: int) -> CostMatrices:
+def make_cartpole_costs(lcs: LCS, options: C3Options, N: int) -> CostMatrices:
 
     R = [options.R for _ in range(N)]
     Q = [options.Q for _ in range(N)]

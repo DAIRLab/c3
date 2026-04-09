@@ -38,7 +38,6 @@ namespace systems {
 namespace pyc3 {
 PYBIND11_MODULE(systems, m) {
   py::module::import("pydrake.systems.framework");
-  py::module::import("multibody");  // ensure LCSFactoryOptions is registered
   py::class_<C3Controller, LeafSystem<double>>(m, "C3Controller")
       .def(py::init<const MultibodyPlant<double>&, const C3::CostMatrices,
                     C3ControllerOptions>(),

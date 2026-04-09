@@ -821,9 +821,9 @@ int LCSFactory::GetNumContactVariables(
   multibody::ContactModel contact_model =
       GetContactModelMap().at(options.contact_model);
 
-  int n_contacts = options.ResolveNumContacts();
-  std::vector<int> n_friction_directions_per_contact =
-      options.ResolveNumFrictionDirections();
+  int n_contacts;
+  std::vector<int> n_friction_directions_per_contact;
+
   if (options.contact_pair_configs.has_value()) {
     // If contact pair configs are provided, they take precedence over the
     // options for number of contacts and friction directions. We can expand the
@@ -844,6 +844,9 @@ int LCSFactory::GetNumContactVariables(
     n_contacts = expanded.num_contacts();
     n_friction_directions_per_contact =
         expanded.num_friction_directions_per_contact;
+  } else {
+    n_contacts = options.ResolveNumContacts();
+    n_friction_directions_per_contact = options.ResolveNumFrictionDirections();
   }
 
   return GetNumContactVariables(contact_model, n_contacts,
