@@ -10,6 +10,13 @@ jammy_task:
     - apt update && apt install -y clang-format
     - ./tools/scripts/check_format.sh
   test_script:
+    - | # For PRs, merge the base branch to ensure the latest changes are included in the CI environment. This helps catch merge conflicts early and ensures tests run against the most up-to-date code.
+      if [ -n "$CIRRUS_PR" ]; then
+        git config user.email "ci@ci.com"
+        git config user.name "CI"
+        git fetch origin $CIRRUS_BASE_BRANCH
+        git merge origin/$CIRRUS_BASE_BRANCH --no-edit || (echo "Merge conflict with $CIRRUS_BASE_BRANCH" && exit 1)
+      fi
     - export CC=clang-15
     - export CXX=clang++-15
     - apt update && apt install -y python3-venv
@@ -47,6 +54,13 @@ noble_task:
     - apt update && apt install -y clang-format
     - ./tools/scripts/check_format.sh
   test_script:
+    - | # For PRs, merge the base branch to ensure the latest changes are included in the CI environment. This helps catch merge conflicts early and ensures tests run against the most up-to-date code.
+      if [ -n "$CIRRUS_PR" ]; then
+        git config user.email "ci@ci.com"
+        git config user.name "CI"
+        git fetch origin $CIRRUS_BASE_BRANCH
+        git merge origin/$CIRRUS_BASE_BRANCH --no-edit || (echo "Merge conflict with $CIRRUS_BASE_BRANCH" && exit 1)
+      fi
     - export CC=clang-15
     - export CXX=clang++-15
     - apt update && apt install -y python3-venv
