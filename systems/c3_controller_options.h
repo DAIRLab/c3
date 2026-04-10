@@ -81,19 +81,6 @@ struct C3ControllerOptions {
     if (projection_type == "QP") {
       DRAKE_DEMAND(lcs_factory_options.contact_model == "anitescu");
     }
-
-    int expected_lambda_size =
-        LCSFactory::GetNumContactVariables(lcs_factory_options);
-    DRAKE_DEMAND(static_cast<int>(c3_options.g_lambda.size()) ==
-                 expected_lambda_size);
-    DRAKE_DEMAND(static_cast<int>(c3_options.u_lambda.size()) ==
-                 expected_lambda_size);
-    if (projection_type == "C3+") {
-      DRAKE_DEMAND(static_cast<int>(c3_options.g_eta->size()) ==
-                   expected_lambda_size);
-      DRAKE_DEMAND(static_cast<int>(c3_options.u_eta->size()) ==
-                   expected_lambda_size);
-    }
   }
 };
 

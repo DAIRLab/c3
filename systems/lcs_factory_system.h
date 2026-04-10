@@ -94,8 +94,8 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
    * @return A reference to the output port for the LCS contact Jacobian.
    */
   const drake::systems::OutputPort<double>&
-  get_output_port_lcs_contact_jacobian() const {
-    return this->get_output_port(lcs_contact_jacobian_port_);
+  get_output_port_lcs_contact_descriptions() const {
+    return this->get_output_port(lcs_contact_descriptions_output_port_);
   }
 
  private:
@@ -117,15 +117,15 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
    * @param output Pointer to the output pair containing the contact Jacobian
    *               and contact points.
    */
-  void OutputLCSContactJacobian(
+  void OutputLCSContactDescriptions(
       const drake::systems::Context<double>& context,
-      std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>* output) const;
+      std::vector<multibody::LCSContactDescription>* output) const;
 
   // Member variables for input and output port indices
   drake::systems::InputPortIndex lcs_state_input_port_;
   drake::systems::InputPortIndex lcs_inputs_input_port_;
   drake::systems::OutputPortIndex lcs_port_;
-  drake::systems::OutputPortIndex lcs_contact_jacobian_port_;
+  drake::systems::OutputPortIndex lcs_contact_descriptions_output_port_;
 
   // Convenience variables for system dimensions
   int n_q_;       ///< Number of positions in the plant.

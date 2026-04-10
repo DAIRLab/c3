@@ -73,14 +73,27 @@ void GeomGeomCollider<T>::ComputeSphereMeshDistance(const Context<T>& context,
   auto X_WS_sphere = X_WS * X_FS;
   Vector3d sphere_center = X_WS_sphere.translation();
 
+  // DRAKE VERSION 1.35.0
   // Compute signed distance from sphere center to mesh.
-  GeometrySet mesh_set;
-  mesh_set.Add(mesh_id);
-  const auto sd_set = query_object.ComputeSignedDistanceGeometryToPoint(
-      sphere_center, mesh_set);
-  DRAKE_DEMAND(sd_set.size() == 1);
-  SignedDistanceToPoint<T> sd_to_point = sd_set[0];
+  // GeometrySet mesh_set;
+  // mesh_set.Add(mesh_id);
+  // const auto sd_set = query_object.ComputeSignedDistanceGeometryToPoint(
+  //     sphere_center, mesh_set);
+  // DRAKE_DEMAND(sd_set.size() == 1);
+  // SignedDistanceToPoint<T> sd_to_point = sd_set[0];
 
+  // DRAKE VERSION 1.28.0
+  // Compute signed distance from sphere center to all geometries.
+  const auto& sd_all =
+    query_object.ComputeSignedDistanceToPoint(sphere_center);
+  // Find the entry corresponding to mesh_id.
+  auto it = std::find_if(sd_all.begin(), sd_all.end(),
+			 [&](const SignedDistanceToPoint<T>& sd) {
+			   return sd.id_G == mesh_id;
+			 });
+  DRAKE_DEMAND(it != sd_all.end());
+  SignedDistanceToPoint<T> sd_to_point = *it;
+  
   // Compute contact distance and normal.
   distance = sd_to_point.distance - sphere_radius;
   nhat_BA_W = sd_to_point.grad_W.normalized();
@@ -258,7 +271,7 @@ Eigen::Matrix3d GeomGeomCollider<T>::ComputePlanarForceBasis(
 
 template <typename T>
 std::pair<VectorX<double>, VectorX<double>>
-GeomGeomCollider<T>::CalcWitnessPoints(const Context<double>& context) {
+GeomGeomCollider<T>::CalcWitnessPoints(const Context<T>& context) {
   // Get common geometry query results
   const auto query_result = GetGeometryQueryResult(context);
 
@@ -270,6 +283,47 @@ GeomGeomCollider<T>::CalcWitnessPoints(const Context<double>& context) {
   plant_.CalcPointsPositions(context, query_result.frameB, query_result.p_BCb,
                              plant_.world_frame(), &p_WCb);
   return std::pair<VectorX<double>, VectorX<double>>(p_WCa, p_WCb);
+}
+
+template <typename T>
+Matrix<double, Eigen::Dynamic, 3>
+GeomGeomCollider<T>::CalcForceBasisInWorldFrame(
+    const Context<T>& context, int num_friction_directions,
+    const Vector3d& planar_normal) const {
+  const auto query_result = GetGeometryQueryResult(context);
+
+  // Compute the force basis in the world frame for contact forces.
+  //
+  // IMPORTANT: Force Direction Convention
+  // ======================================
+  // The forces computed here represent forces that object A exerts on object B.
+  // This is why we use -nhat_BA_W (negative of the normal from B to A).
+  //
+  // Recall that nhat_BA_W points from body B towards body A in the world frame.
+  // For contact forces, we want the force that A applies to B, which acts in
+  // the direction opposite to nhat_BA_W (i.e., from A towards B).
+  //
+  // For friction cone discretization:
+  // - The first basis vector is the normal force direction: -nhat_BA_W
+  // - The remaining basis vectors span the tangent plane (friction directions)
+
+  if (num_friction_directions < 1) {
+    // Planar contact: basis is constructed from the contact and planar normals.
+    // The planar_normal defines the plane of admissible motion.
+    // This is typically used for 2D contact scenarios or constrained motion.
+    return ComputePlanarForceBasis(-query_result.nhat_BA_W, planar_normal);
+  } else {
+    // 3D contact: build polytope basis and rotate using contact normal.
+    // The polytope basis consists of 2*num_friction_directions + 1 vectors:
+    // - 1 normal force vector
+    // - 2*num_friction_directions tangential vectors (forming a friction cone)
+    // We rotate this basis from the contact frame to the world frame using
+    // R_WC.
+    auto R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(
+        -query_result.nhat_BA_W, 0);
+    return ComputePolytopeForceBasis(num_friction_directions) *
+           R_WC.matrix().transpose();
+  }
 }
 
 }  // namespace multibody

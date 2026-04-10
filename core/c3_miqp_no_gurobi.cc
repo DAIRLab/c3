@@ -8,7 +8,7 @@ using std::vector;
 
 C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
                const vector<VectorXd>& xdesired, const C3Options& options)
-    : C3(LCS, costs, xdesired, options), M_(options.M) {
+    : C3(LCS, costs, xdesired, options), M_(static_cast<int>(options.M.value_or(1e4))) {
   throw std::runtime_error(
       "The Gurobi bindings were not compiled. You'll need to use a different "
       "projection method. To compile with Gurobi, follow the instruction "

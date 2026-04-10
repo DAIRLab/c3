@@ -16,6 +16,7 @@
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
+#include "c3/lcmt_contact_forces.hpp"
 
 namespace c3 {
 namespace systems {
@@ -61,6 +62,10 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_output_port_c3_intermediates()
       const {
     return this->get_output_port(c3_intermediates_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_c3_forces()
+      const {
+    return this->get_output_port(c3_forces_port_);
   }
 
   /**
@@ -111,6 +116,10 @@ class C3Controller : public drake::systems::LeafSystem<double> {
                            double upper_bound,
                            enum ConstraintVariable constraint) {
     c3_->AddLinearConstraint(A, lower_bound, upper_bound, constraint);
+  }
+
+  void SetSolverOptions(const drake::solvers::SolverOptions& options) {
+    c3_->SetSolverOptions(options);
   }
 
  private:
@@ -193,6 +202,8 @@ class C3Controller : public drake::systems::LeafSystem<double> {
    */
   void OutputC3Intermediates(const drake::systems::Context<double>& context,
                              C3Output::C3Intermediates* c3_intermediates) const;
+  void OutputC3Forces(const drake::systems::Context<double>& context,
+                      c3::lcmt_contact_forces* output) const;
 
   // Input and output port indices.
   drake::systems::InputPortIndex lcs_desired_state_input_port_;
@@ -200,6 +211,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex lcs_input_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex c3_intermediates_port_;
+  drake::systems::OutputPortIndex c3_forces_port_;
 
   // Reference to the multibody plant.
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -218,6 +230,8 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 
   // C3 solver instance.
   mutable std::unique_ptr<C3> c3_;
+
+  mutable c3::lcmt_contact_forces c3_forces_output_;
 
   // Solve time filter constant.
   double solve_time_filter_constant_;

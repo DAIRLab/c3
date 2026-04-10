@@ -1,4 +1,4 @@
-#pragma once
+ #pragma once
 
 #include <iostream>
 
@@ -25,7 +25,15 @@ struct C3Options {
       1;  // 1 initializes the state value of the delta value with x0
 
   std::optional<double> M = 1000;  // big M value for MIQP
-
+  std::optional<int> N = 5;  // EDIT:greysar
+  std::optional<int> num_contacts = 5;  // EDIT:greysar
+  std::optional<std::string> contact_model = "anitescu";  // EDIT:greysar
+  std::optional<int> num_friction_directions = 2;  // EDIT:greysar
+  // int N = 5;  // EDIT:greysar
+  // int num_contacts = 5;  // EDIT:greysar
+  // std::string contact_model = "anitescu";  // EDIT:greysar
+  // int num_friction_directions = 2;  // EDIT:greysar
+  
   std::optional<double>
       qp_projection_alpha;  // alpha value for the QP projection
   std::optional<double>
@@ -68,7 +76,7 @@ struct C3Options {
   // *_gamma, *_lambda_n, *_lambda_t will be used.
   std::vector<double> q_vector;
   std::vector<double> r_vector;
-
+  
   Eigen::MatrixXd Q_extra;
   Eigen::MatrixXd A_extra;
   double w_Q_extra;
@@ -110,6 +118,10 @@ struct C3Options {
     a->Visit(DRAKE_NVP(delta_option));
 
     a->Visit(DRAKE_NVP(M));
+    a->Visit(DRAKE_NVP(N));
+    a->Visit(DRAKE_NVP(num_contacts));
+    a->Visit(DRAKE_NVP(contact_model));
+    a->Visit(DRAKE_NVP(num_friction_directions));
     a->Visit(DRAKE_NVP(qp_projection_alpha));
     a->Visit(DRAKE_NVP(qp_projection_scaling));
     a->Visit(DRAKE_NVP(final_augmented_cost_contact_scaling));

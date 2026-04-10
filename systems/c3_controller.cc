@@ -71,7 +71,7 @@ C3Controller::C3Controller(
 
   // Determine the size of lambda based on the contact model
   n_lambda_ = multibody::LCSFactory::GetNumContactVariables(
-      controller_options_.lcs_factory_options);
+      plant_, controller_options_.lcs_factory_options);
 
   // Placeholder vector for initialization
   VectorXd zeros = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
@@ -119,9 +119,12 @@ C3Controller::C3Controller(
           .get_index();
   c3_intermediates_port_ =
       this->DeclareAbstractOutputPort(
-              "intermediates",
-              C3Output::C3Intermediates(n_x_, n_lambda_, n_u_, N_),
+              "intermediates", C3Output::C3Intermediates(c3_->GetZSize(), N_),
               &C3Controller::OutputC3Intermediates)
+          .get_index();
+  c3_forces_port_ =
+      this-> DeclareAbstractOutputPort("c3_forces", c3::lcmt_contact_forces(),
+                                       &C3Controller::OutputC3Forces)
           .get_index();
 
   // Declare discrete states
@@ -187,6 +190,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
       1e6;
 
   // Update solve time in the discrete state
+  std::cout << "updating filtered solve time" << std::endl;
   if (publish_frequency_ > 0) {
     // Override solve time if a publish frequency is specified
     filtered_solve_time = 1.0 / publish_frequency_;
@@ -195,6 +199,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     filtered_solve_time = (1 - solve_time_filter_constant_) * time_ellapsed +
                           solve_time_filter_constant_ * filtered_solve_time;
   }
+  std::cout << "time: " << filtered_solve_time << std::endl;
 
   return drake::systems::EventStatus::Succeeded();
 }
@@ -286,6 +291,13 @@ void C3Controller::OutputC3Intermediates(
     c3_intermediates->delta_.col(i) = delta[i].cast<float>();
     c3_intermediates->w_.col(i) = w[i].cast<float>();
   }
+}
+
+void C3Controller::OutputC3Forces(
+    const drake::systems::Context<double>& context,
+    c3::lcmt_contact_forces* output) const {
+  *output = c3_forces_output_;
+  output->utime = context.get_time() * 1e6;
 }
 
 void C3Controller::UpdateQuaternionCosts(const Eigen::VectorXd& x_curr,

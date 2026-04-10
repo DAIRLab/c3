@@ -1,0 +1,9 @@
+package c3;
+
+struct lcmt_output
+{
+  int64_t utime;
+
+  lcmt_solution solution;
+  lcmt_intermediates intermediates;
+}

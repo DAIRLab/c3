@@ -91,6 +91,8 @@ void C3Plus::StoreQPResults(const MathematicalProgramResult& result,
 
   if (!warm_start_)
     return;  // No warm start, so no need to update warm start parameters
+  std::cout << "eta: " << eta_.size() << std::endl;
+  std::cout << "warm start eta: " << warm_start_eta_.size() << std::endl;
   for (int i = 0; i < N_; ++i) {
     warm_start_eta_[admm_iteration][i] = result.GetSolution(eta_[i]);
   }
