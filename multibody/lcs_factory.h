@@ -224,14 +224,30 @@ class LCSFactory {
    * This is the preferred overload as it encapsulates all contact model and
    * friction configuration in a single options object.
    *
-   * @param plant The MultibodyPlant to analyze for contact information.
    * @param options The LCS options specifying contact model and friction
    * properties.
+   * @param plant Optional pointer to the MultibodyPlant, required if contact
+   * pair configurations are specified in the options. Used to expand contact
+   * pair configurations to determine the actual number of contacts and friction
+   * directions.
    * @return int The number of contact variables.
    */
   static int GetNumContactVariables(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      const LCSFactoryOptions& options);
+      const LCSFactoryOptions& options,
+      const drake::multibody::MultibodyPlant<double>* plant = nullptr);
+
+  /**
+   * @brief Get the Num Contact Variables object based on the internal state of
+   * the factory.
+   *
+   * This method returns the number of contact variables (n_lambda_) that was
+   * computed during the construction of the LCSFactory. This value is
+   * determined by the contact model and the number of contacts, and is used to
+   * define the size of the contact force variable in the generated LCS.
+   *
+   * @return int
+   */
+  [[nodiscard]] int GetNumContactVariables() const { return n_lambda_; }
 
  private:
   /**

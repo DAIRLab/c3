@@ -71,7 +71,7 @@ C3Controller::C3Controller(
 
   // Determine the size of lambda based on the contact model
   n_lambda_ = multibody::LCSFactory::GetNumContactVariables(
-      plant_, controller_options_.lcs_factory_options);
+      controller_options_.lcs_factory_options, &plant_);
 
   // Placeholder vector for initialization
   VectorXd zeros = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);

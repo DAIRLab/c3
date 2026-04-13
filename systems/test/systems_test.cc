@@ -358,7 +358,7 @@ TEST_F(LCSFactorySystemTest, OutputLCSIsValid) {
   EXPECT_EQ(lcs.num_inputs(), plant->num_actuators());
   EXPECT_EQ(lcs.num_lambdas(),
             LCSFactory::GetNumContactVariables(
-                *plant, controller_options.lcs_factory_options));
+                controller_options.lcs_factory_options, plant));
   EXPECT_EQ(lcs.dt(), controller_options.lcs_factory_options.dt);
   EXPECT_EQ(lcs.N(), controller_options.lcs_factory_options.N);
 }

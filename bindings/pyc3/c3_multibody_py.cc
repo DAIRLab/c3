@@ -17,14 +17,32 @@ PYBIND11_MODULE(multibody, m) {
   m.doc() = "C3 Multibody Utilities";
 
   // LCSFactory Class and ContactModel enum
-  py::enum_<c3::multibody::ContactModel>(m, "ContactModel")
-      .value("Unknown", c3::multibody::ContactModel::kUnknown)
-      .value("StewartAndTrinkle",
-             c3::multibody::ContactModel::kStewartAndTrinkle)
-      .value("Anitescu", c3::multibody::ContactModel::kAnitescu)
-      .value("FrictionlessSpring",
-             c3::multibody::ContactModel::kFrictionlessSpring)
-      .export_values();
+  auto contact_model_enum =
+      py::enum_<c3::multibody::ContactModel>(m, "ContactModel")
+          .value("Unknown", c3::multibody::ContactModel::kUnknown)
+          .value("StewartAndTrinkle",
+                 c3::multibody::ContactModel::kStewartAndTrinkle)
+          .value("Anitescu", c3::multibody::ContactModel::kAnitescu)
+          .value("FrictionlessSpring",
+                 c3::multibody::ContactModel::kFrictionlessSpring)
+          .export_values();
+
+  contact_model_enum.attr("__str__") = py::cpp_function(
+      [](c3::multibody::ContactModel
+             model) {  // Iterate through the map to find the string for the
+                       // given enum value
+        for (const auto& pair : GetContactModelMap()) {
+          if (pair.second == model) {
+            return pair.first;
+          }
+        }
+        return std::string("unknown");
+      },
+      py::name("__str__"), py::is_method(contact_model_enum));
+
+  // Add a binding for the map itself
+  m.def("GetContactModelMap", &GetContactModelMap,
+        "Returns a map from contact model names to enum values.");
 
   py::class_<c3::multibody::LCSContactDescription>(m, "LCSContactDescription")
       .def(py::init<>())
@@ -39,6 +57,91 @@ PYBIND11_MODULE(multibody, m) {
       .def_static("CreateSlackVariableDescription",
                   &c3::multibody::LCSContactDescription::
                       CreateSlackVariableDescription);
+
+  py::class_<ContactPairConfig>(m, "ContactPairConfig")
+      .def(py::init<>())
+      .def_readwrite("body_A", &ContactPairConfig::body_A)
+      .def_readwrite("body_B", &ContactPairConfig::body_B)
+      .def_readwrite("body_A_collision_geom_indices",
+                     &ContactPairConfig::body_A_collision_geom_indices)
+      .def_readwrite("body_B_collision_geom_indices",
+                     &ContactPairConfig::body_B_collision_geom_indices)
+      .def_readwrite("mu", &ContactPairConfig::mu)
+      .def_readwrite("num_friction_directions",
+                     &ContactPairConfig::num_friction_directions)
+      .def_readwrite("planar_normal_direction",
+                     &ContactPairConfig::planar_normal_direction)
+      .def_readwrite("num_active_contact_pairs",
+                     &ContactPairConfig::num_active_contact_pairs);
+
+  py::class_<LCSFactoryOptions>(m, "LCSFactoryOptions")
+      .def(py::init<>())
+      .def_readwrite("dt", &LCSFactoryOptions::dt)
+      .def_readwrite("N", &LCSFactoryOptions::N)
+      .def_readwrite("contact_model", &LCSFactoryOptions::contact_model)
+      .def_property(
+          "num_contacts",
+          [](const LCSFactoryOptions& self) {
+            return self.num_contacts.has_value()
+                       ? py::cast(self.num_contacts.value())
+                       : py::none();
+          },
+          [](LCSFactoryOptions& self, py::object val) {
+            if (val.is_none()) {
+              self.num_contacts.reset();
+            } else {
+              self.num_contacts = py::cast<int>(val);
+            }
+          })
+      .def_property(
+          "spring_stiffness",
+          [](const LCSFactoryOptions& self) {
+            return self.spring_stiffness.has_value()
+                       ? py::cast(self.spring_stiffness.value())
+                       : py::none();
+          },
+          [](LCSFactoryOptions& self, py::object val) {
+            if (val.is_none()) {
+              self.spring_stiffness.reset();
+            } else {
+              self.spring_stiffness = py::cast<double>(val);
+            }
+          })
+      .def_property(
+          "num_friction_directions",
+          [](const LCSFactoryOptions& self) {
+            return self.num_friction_directions.has_value()
+                       ? py::cast(self.num_friction_directions.value())
+                       : py::none();
+          },
+          [](LCSFactoryOptions& self, py::object val) {
+            if (val.is_none()) {
+              self.num_friction_directions.reset();
+            } else {
+              self.num_friction_directions = py::cast<int>(val);
+            }
+          })
+      .def_property(
+          "mu",
+          [](const LCSFactoryOptions& self) {
+            return self.mu.has_value() ? py::cast(self.mu.value()) : py::none();
+          },
+          [](LCSFactoryOptions& self, py::object val) {
+            if (val.is_none()) {
+              self.mu.reset();
+            } else {
+              self.mu = py::cast<double>(val);
+            }
+          })
+      .def_readwrite("num_friction_directions_per_contact",
+                     &LCSFactoryOptions::num_friction_directions_per_contact)
+      .def_readwrite("mu_per_contact", &LCSFactoryOptions::mu_per_contact)
+      .def_readwrite("planar_normal_direction_per_contact",
+                     &LCSFactoryOptions::planar_normal_direction_per_contact)
+      .def_readwrite("planar_normal_direction",
+                     &LCSFactoryOptions::planar_normal_direction)
+      .def_readwrite("contact_pair_configs",
+                     &LCSFactoryOptions::contact_pair_configs);
 
   py::class_<c3::multibody::LCSFactory>(m, "LCSFactory")
       .def(py::init<const drake::multibody::MultibodyPlant<double>&,
@@ -76,6 +179,24 @@ PYBIND11_MODULE(multibody, m) {
                   py::arg("other"), py::arg("active_lambda_inds"),
                   py::arg("inactive_lambda_inds"))
       // Overload the function GetNumContactVariables
+      .def("GetNumContactVariablesInstance",
+           py::overload_cast<>(
+               &c3::multibody::LCSFactory::GetNumContactVariables, py::const_))
+      .def_static(
+          "GetNumContactVariables",
+          [](const c3::LCSFactoryOptions& options) {
+            return c3::multibody::LCSFactory::GetNumContactVariables(options,
+                                                                     nullptr);
+          },
+          py::arg("options"))
+      .def_static(
+          "GetNumContactVariables",
+          [](const c3::LCSFactoryOptions& options,
+             const drake::multibody::MultibodyPlant<double>* plant) {
+            return c3::multibody::LCSFactory::GetNumContactVariables(options,
+                                                                     plant);
+          },
+          py::arg("options"), py::arg("plant"))
       .def_static("GetNumContactVariables",
                   py::overload_cast<c3::multibody::ContactModel, int, int>(
                       &c3::multibody::LCSFactory::GetNumContactVariables),
@@ -83,73 +204,10 @@ PYBIND11_MODULE(multibody, m) {
                   py::arg("num_friction_directions"))
       .def_static(
           "GetNumContactVariables",
-          py::overload_cast<const drake::multibody::MultibodyPlant<double>&,
-                            const c3::LCSFactoryOptions&>(
+          py::overload_cast<c3::multibody::ContactModel, int, std::vector<int>>(
               &c3::multibody::LCSFactory::GetNumContactVariables),
-          py::arg("plant"), py::arg("options"));
-
-  py::class_<ContactPairConfig>(m, "ContactPairConfig")
-      .def(py::init<>())
-      .def_readwrite("body_A", &ContactPairConfig::body_A)
-      .def_readwrite("body_B", &ContactPairConfig::body_B)
-      .def_readwrite("body_A_collision_geom_indices",
-                     &ContactPairConfig::body_A_collision_geom_indices)
-      .def_readwrite("body_B_collision_geom_indices",
-                     &ContactPairConfig::body_B_collision_geom_indices)
-      .def_readwrite("mu", &ContactPairConfig::mu)
-      .def_readwrite("num_friction_directions",
-                     &ContactPairConfig::num_friction_directions)
-      .def_readwrite("planar_normal_direction",
-                     &ContactPairConfig::planar_normal_direction)
-      .def_readwrite("num_active_contact_pairs",
-                     &ContactPairConfig::num_active_contact_pairs);
-
-  py::class_<LCSFactoryOptions>(m, "LCSFactoryOptions")
-      .def(py::init<>())
-      .def_readwrite("dt", &LCSFactoryOptions::dt)
-      .def_readwrite("N", &LCSFactoryOptions::N)
-      .def_property(
-          "contact_model",
-          [](const LCSFactoryOptions& self) {
-            // Convert string back to enum for Python
-            if (self.contact_model == "stewart_and_trinkle")
-              return c3::multibody::ContactModel::kStewartAndTrinkle;
-            if (self.contact_model == "anitescu")
-              return c3::multibody::ContactModel::kAnitescu;
-            if (self.contact_model == "frictionless_spring")
-              return c3::multibody::ContactModel::kFrictionlessSpring;
-            return c3::multibody::ContactModel::kUnknown;
-          },
-          [](LCSFactoryOptions& self, c3::multibody::ContactModel val) {
-            // Convert enum to the string the C++ struct expects
-            switch (val) {
-              case c3::multibody::ContactModel::kStewartAndTrinkle:
-                self.contact_model = "stewart_and_trinkle";
-                break;
-              case c3::multibody::ContactModel::kAnitescu:
-                self.contact_model = "anitescu";
-                break;
-              case c3::multibody::ContactModel::kFrictionlessSpring:
-                self.contact_model = "frictionless_spring";
-                break;
-              default:
-                self.contact_model = "unknown";
-                break;
-            }
-          })
-      .def_readwrite("num_friction_directions",
-                     &LCSFactoryOptions::num_friction_directions)
-      .def_readwrite("num_friction_directions_per_contact",
-                     &LCSFactoryOptions::num_friction_directions_per_contact)
-      .def_readwrite("num_contacts", &LCSFactoryOptions::num_contacts)
-      .def_readwrite("spring_stiffness", &LCSFactoryOptions::spring_stiffness)
-      .def_readwrite("mu", &LCSFactoryOptions::mu)
-      .def_readwrite("planar_normal_direction",
-                     &LCSFactoryOptions::planar_normal_direction)
-      .def_readwrite("planar_normal_direction_per_contact",
-                     &LCSFactoryOptions::planar_normal_direction_per_contact)
-      .def_readwrite("contact_pair_configs",
-                     &LCSFactoryOptions::contact_pair_configs);
+          py::arg("contact_model"), py::arg("num_contacts"),
+          py::arg("num_friction_directions_per_contact"));
 
   m.def("LoadLCSFactoryOptions", &LoadLCSFactoryOptions);
 }

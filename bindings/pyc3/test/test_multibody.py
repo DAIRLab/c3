@@ -29,18 +29,18 @@ class TestLCSFactoryOptions(unittest.TestCase):
         opts.N = 3
         opts.num_contacts = 2
         # mu is list[float] per binding
-        opts.mu = [0.5]
+        opts.mu = 0.5
         opts.spring_stiffness = 100.0
         opts.num_friction_directions = 4
         self.assertAlmostEqual(opts.dt, 0.01)
         self.assertEqual(opts.N, 3)
         self.assertEqual(opts.num_contacts, 2)
-        self.assertAlmostEqual(opts.mu[0], 0.5)
+        self.assertAlmostEqual(opts.mu, 0.5)
 
     def test_contact_model(self):
         opts = multibody.LCSFactoryOptions()
-        opts.contact_model = multibody.ContactModel.StewartAndTrinkle
-        self.assertEqual(opts.contact_model, multibody.ContactModel.StewartAndTrinkle)
+        opts.contact_model = str(multibody.ContactModel.StewartAndTrinkle)
+        self.assertEqual(opts.contact_model, "stewart_and_trinkle")
 
     def test_contact_pair_configs(self):
         opts = multibody.LCSFactoryOptions()
@@ -83,7 +83,7 @@ class TestLCSFactoryGetNumContactVariables(unittest.TestCase):
         opts = multibody.LCSFactoryOptions()
         opts.num_contacts = 2
         opts.num_friction_directions = 4
-        opts.contact_model = multibody.ContactModel.StewartAndTrinkle
+        opts.contact_model = "stewart_and_trinkle"
         n = multibody.LCSFactory.GetNumContactVariables(opts)
         self.assertGreater(n, 0)
 
@@ -96,9 +96,9 @@ class TestLoadLCSFactoryOptions(unittest.TestCase):
         self.assertEqual(opts.N, 10)
         self.assertAlmostEqual(opts.dt, 0.01)
         self.assertEqual(opts.num_contacts, 3)
-        self.assertEqual(opts.contact_model, multibody.ContactModel.StewartAndTrinkle)
+        self.assertEqual(opts.contact_model, "stewart_and_trinkle")
         self.assertEqual(opts.num_friction_directions, 1)
-        self.assertAlmostEqual(opts.mu[0], 0.1)
+        self.assertAlmostEqual(opts.mu, 0.1)
         self.assertEqual(len(opts.contact_pair_configs), 3)
         self.assertEqual(opts.contact_pair_configs[0].body_A, "cube")
         self.assertEqual(opts.contact_pair_configs[0].body_B, "left_finger")
@@ -106,6 +106,9 @@ class TestLoadLCSFactoryOptions(unittest.TestCase):
     def test_get_num_contact_variables_from_loaded_options(self):
         opts = multibody.LoadLCSFactoryOptions(
             "multibody/test/resources/lcs_factory_pivoting_options.yaml"
+        )
+        opts.contact_pair_configs = (
+            None  # test that GetNumContactVariables doesn't require this field
         )
         n = multibody.LCSFactory.GetNumContactVariables(opts)
         self.assertGreater(n, 0)

@@ -95,8 +95,6 @@ class TestTrajectoryEvaluator(unittest.TestCase):
         opts.R = self.R_matrix
         opts.G = np.eye(self.n_x + self.n_u + self.n_lambda)
         opts.U = np.eye(self.n_x + self.n_u + self.n_lambda)
-        opts.g_vector = [1.0] * self.n_lambda + [0.0] * self.n_u
-        opts.u_vector = [1.0] * self.n_lambda + [0.0] * self.n_u
         opts.warm_start = False
         opts.scale_lcs = False
         opts.end_on_qp_step = True

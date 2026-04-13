@@ -3,13 +3,20 @@ jammy_task:
   only_if: "$CIRRUS_PR != ''  || $CIRRUS_BRANCH == 'main'" # This condition ensures the task runs only for PRs or on the main branch.
   timeout_in: 120m
   container:
-    image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42
+    image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42.0-2
     cpu: 8
     memory: 24
   format_script:
     - apt update && apt install -y clang-format
     - ./tools/scripts/check_format.sh
   test_script:
+    - | # For PRs, merge the base branch to ensure the latest changes are included in the CI environment. This helps catch merge conflicts early and ensures tests run against the most up-to-date code.
+      if [ -n "$CIRRUS_PR" ]; then
+        git config user.email "ci@ci.com"
+        git config user.name "CI"
+        git fetch origin $CIRRUS_BASE_BRANCH
+        git merge origin/$CIRRUS_BASE_BRANCH --no-edit || (echo "Merge conflict with $CIRRUS_BASE_BRANCH" && exit 1)
+      fi
     - export CC=clang-15
     - export CXX=clang++-15
     - apt update && apt install -y python3-venv
@@ -40,13 +47,20 @@ noble_task:
   only_if: "$CIRRUS_PR != ''  || $CIRRUS_BRANCH == 'main'"
   timeout_in: 120m
   container:
-    image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
+    image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42.0-2
     cpu: 8
     memory: 24
   format_script:
     - apt update && apt install -y clang-format
     - ./tools/scripts/check_format.sh
   test_script:
+    - | # For PRs, merge the base branch to ensure the latest changes are included in the CI environment. This helps catch merge conflicts early and ensures tests run against the most up-to-date code.
+      if [ -n "$CIRRUS_PR" ]; then
+        git config user.email "ci@ci.com"
+        git config user.name "CI"
+        git fetch origin $CIRRUS_BASE_BRANCH
+        git merge origin/$CIRRUS_BASE_BRANCH --no-edit || (echo "Merge conflict with $CIRRUS_BASE_BRANCH" && exit 1)
+      fi
     - export CC=clang-15
     - export CXX=clang++-15
     - apt update && apt install -y python3-venv
