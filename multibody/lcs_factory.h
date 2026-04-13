@@ -236,6 +236,19 @@ class LCSFactory {
       const LCSFactoryOptions& options,
       const drake::multibody::MultibodyPlant<double>* plant = nullptr);
 
+  /**
+   * @brief Get the Num Contact Variables object based on the internal state of
+   * the factory.
+   *
+   * This method returns the number of contact variables (n_lambda_) that was
+   * computed during the construction of the LCSFactory. This value is
+   * determined by the contact model and the number of contacts, and is used to
+   * define the size of the contact force variable in the generated LCS.
+   *
+   * @return int
+   */
+  [[nodiscard]] int GetNumContactVariables() const { return n_lambda_; }
+
  private:
   /**
    * @brief Initializes contact evaluators for all contact pairs.

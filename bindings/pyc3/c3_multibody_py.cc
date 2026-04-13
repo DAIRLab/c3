@@ -179,6 +179,9 @@ PYBIND11_MODULE(multibody, m) {
                   py::arg("other"), py::arg("active_lambda_inds"),
                   py::arg("inactive_lambda_inds"))
       // Overload the function GetNumContactVariables
+      .def("GetNumContactVariablesInstance",
+           py::overload_cast<>(
+               &c3::multibody::LCSFactory::GetNumContactVariables, py::const_))
       .def_static(
           "GetNumContactVariables",
           [](const c3::LCSFactoryOptions& options) {
