@@ -230,16 +230,6 @@ PYBIND11_MODULE(c3, m) {
       .def_property(
           "U", [](C3Options const& self) { return self.U; },
           [](C3Options& self, const Eigen::MatrixXd& val) { self.U = val; })
-      .def_property(
-          "g_vector", [](C3Options const& self) { return self.g_vector; },
-          [](C3Options& self, const std::vector<double>& val) {
-            self.g_vector = val;
-          })
-      .def_property(
-          "u_vector", [](C3Options const& self) { return self.u_vector; },
-          [](C3Options& self, const std::vector<double>& val) {
-            self.u_vector = val;
-          })
       .def_readwrite("warm_start", &C3Options::warm_start)
       .def_property(
           "penalize_input_change",

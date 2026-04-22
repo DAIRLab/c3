@@ -7,6 +7,8 @@
 #include <Eigen/Dense>
 
 #include "core/lcs.h"
+#include "multibody/contact_evaluator.h"
+#include "multibody/geom_geom_collider.h"
 #include "multibody/lcs_factory_options.h"
 
 #include "drake/common/sorted_pair.h"
@@ -46,6 +48,19 @@ inline const std::map<std::string, ContactModel>& GetContactModelMap() {
       {"frictionless_spring", ContactModel::kFrictionlessSpring}};
   return kContactModelMap;
 }
+
+struct LCSContactDescription {
+  Eigen::Vector3d witness_point_A;  ///< Witness point on geometry A.
+  Eigen::Vector3d witness_point_B;  ///< Witness point on geometry B.
+  Eigen::Vector3d force_basis;      ///< Force basis vector
+  bool is_slack = false;  ///< Indicates if the contact variable associate to
+                          ///< the LCS is a slack variable.
+
+  static LCSContactDescription CreateSlackVariableDescription() {
+    return {Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
+            Eigen::Vector3d::Zero(), true};
+  }
+};
 
 /**
  * @class LCSFactory
@@ -112,16 +127,12 @@ class LCSFactory {
   LCS GenerateLCS();
 
   /**
-   * @brief Computes the contact Jacobian for a given multibody plant and
-   * context.
+   * @brief Finds the witness points for each contact pair.
    *
-   * This method calculates the signed distance values and the contact Jacobians
-   * for normal and tangential forces at the specified contact points.
-   *
-   * @return A pair containing the contact Jacobian matrix and a vector of
-   * contact points.
+   * @return A pair of vectors containing the witness points on each geometry
+   * for each contact pair.
    */
-  std::pair<MatrixXd, std::vector<VectorXd>> GetContactJacobianAndPoints();
+  std::vector<LCSContactDescription> GetContactDescriptions();
 
   /**
    * @brief Updates the state and input vectors in the internal context.
@@ -215,11 +226,46 @@ class LCSFactory {
    *
    * @param options The LCS options specifying contact model and friction
    * properties.
+   * @param plant Optional pointer to the MultibodyPlant, required if contact
+   * pair configurations are specified in the options. Used to expand contact
+   * pair configurations to determine the actual number of contacts and friction
+   * directions.
    * @return int The number of contact variables.
    */
-  static int GetNumContactVariables(const LCSFactoryOptions options);
+  static int GetNumContactVariables(
+      const LCSFactoryOptions& options,
+      const drake::multibody::MultibodyPlant<double>* plant = nullptr);
+
+  /**
+   * @brief Get the Num Contact Variables object based on the internal state of
+   * the factory.
+   *
+   * This method returns the number of contact variables (n_lambda_) that was
+   * computed during the construction of the LCSFactory. This value is
+   * determined by the contact model and the number of contacts, and is used to
+   * define the size of the contact force variable in the generated LCS.
+   *
+   * @return int
+   */
+  [[nodiscard]] int GetNumContactVariables() const { return n_lambda_; }
 
  private:
+  /**
+   * @brief Initializes contact evaluators for all contact pairs.
+   *
+   * This method creates and configures ContactEvaluator objects for each
+   * contact pair, setting up the friction directions and planar normal
+   * constraints as specified.
+   *
+   * @param friction_dirs Vector specifying the number of friction directions
+   * for each contact.
+   * @param planar_normals Vector of optional planar normal vectors for each
+   * contact. If specified, constrains the contact normal to lie in a plane.
+   */
+  void InitializeContactEvaluators(
+      const std::vector<int>& friction_dirs,
+      const std::vector<std::optional<std::array<double, 3>>>& planar_normals);
+
   /**
    * @brief Formulates the contact dynamics for the frictionless spring contact
    * model.
@@ -316,14 +362,6 @@ class LCSFactory {
    */
   void ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn, MatrixXd& Jt);
 
-  /**
-   * @brief Finds the witness points for each contact pair.
-   *
-   * @return A pair of vectors containing the witness points on each geometry
-   * for each contact pair.
-   */
-  std::pair<std::vector<VectorXd>, std::vector<VectorXd>> FindWitnessPoints();
-
   // References to the MultibodyPlant and its contexts
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>& context_;
@@ -335,18 +373,13 @@ class LCSFactory {
   LCSFactoryOptions options_;
 
   int n_contacts_;  ///< Number of contact points.
-  std::vector<int>
-      n_friction_directions_per_contact_;  ///< Number of friction directions.
-  std::vector<std::array<double, 3>>
-      planar_normal_direction_per_contact_;  ///< Optional normal vector for
-                                             ///< planar contact for each
-                                             ///< contact.
-  ContactModel contact_model_;               ///< The contact model being used.
-  int n_q_;       ///< Number of configuration variables.
-  int n_v_;       ///< Number of velocity variables.
-  int n_x_;       ///< Number of state variables.
-  int n_lambda_;  ///< Number of contact force variables.
-  int n_u_;       ///< Number of input variables.
+  std::vector<std::unique_ptr<ContactEvaluator<double>>> contact_evaluators_;
+  ContactModel contact_model_;  ///< The contact model being used.
+  int n_q_;                     ///< Number of configuration variables.
+  int n_v_;                     ///< Number of velocity variables.
+  int n_x_;                     ///< Number of state variables.
+  int n_lambda_;                ///< Number of contact force variables.
+  int n_u_;                     ///< Number of input variables.
 
   std::vector<double> mu_;  ///< Vector of friction coefficients.
   bool frictionless_;       ///< Flag indicating frictionless contacts.

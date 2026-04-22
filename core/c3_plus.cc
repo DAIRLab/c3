@@ -5,7 +5,10 @@
 #include <Eigen/Dense>
 
 #include "c3_options.h"
+#include "common/logging_utils.hpp"
 #include "lcs.h"
+
+#include "drake/common/text_logging.h"
 
 namespace c3 {
 
@@ -50,10 +53,7 @@ C3Plus::C3Plus(const LCS& lcs, const CostMatrices& costs,
     EtaLinEq.block(0, n_x_ + n_lambda_, n_lambda_, n_u_) = lcs_.H().at(i);
 
     eta_constraints_[i] =
-        prog_
-            .AddLinearEqualityConstraint(
-                EtaLinEq, -lcs_.c().at(i),
-                {x_.at(i), lambda_.at(i), u_.at(i), eta_.at(i)})
+        prog_.AddLinearEqualityConstraint(EtaLinEq, -lcs_.c().at(i), z_.at(i))
             .evaluator()
             .get();
   }
@@ -91,16 +91,23 @@ void C3Plus::SetInitialGuessQP(const Eigen::VectorXd& x0, int admm_iteration) {
 void C3Plus::StoreQPResults(const MathematicalProgramResult& result,
                             int admm_iteration, bool is_final_solve) {
   C3::StoreQPResults(result, admm_iteration, is_final_solve);
+  drake::log()->trace("C3Plus::StoreQPResults storing eta results.");
   for (int i = 0; i < N_; i++) {
     if (is_final_solve) {
       eta_sol_->at(i) = result.GetSolution(eta_[i]);
     }
     z_sol_->at(i).segment(n_x_ + n_lambda_ + n_u_, n_lambda_) =
         result.GetSolution(eta_[i]);
+    drake::log()->trace(
+        "C3Plus::StoreQPResults storing solution for time step {}:  "
+        "eta = {}",
+        i, EigenToString(eta_sol_->at(i).transpose()));
   }
 
   if (!warm_start_)
     return;  // No warm start, so no need to update warm start parameters
+
+  drake::log()->trace("C3Plus::StoreQPResults storing warm start eta.");
   for (int i = 0; i < N_; ++i) {
     warm_start_eta_[admm_iteration][i] = result.GetSolution(eta_[i]);
   }
@@ -187,6 +194,12 @@ VectorXd C3Plus::SolveSingleProjection(const MatrixXd& U,
 
   VectorXd lambda_c = delta_c.segment(n_x_, n_lambda_);
   VectorXd eta_c = delta_c.segment(n_x_ + n_lambda_ + n_u_, n_lambda_);
+
+  drake::log()->trace(
+      "C3Plus::SolveSingleProjection ADMM iteration {}: pre-projection "
+      "lambda = {}, eta = {}",
+      admm_iteration, EigenToString(lambda_c.transpose()),
+      EigenToString(eta_c.transpose()));
 
   // Set the smaller of lambda and eta to zero
   Eigen::Array<bool, Eigen::Dynamic, 1> eta_larger =

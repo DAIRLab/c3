@@ -12,7 +12,7 @@ jobs:
       group: ci-${{ github.ref }}
       cancel-in-progress: true
     container:
-      image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
+      image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.51.1
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

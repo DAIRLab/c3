@@ -3,7 +3,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "core/lcs.h"
 #include "core/traj_eval.h"
 
 namespace py = pybind11;

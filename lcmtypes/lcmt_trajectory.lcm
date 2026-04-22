@@ -1,0 +1,11 @@
+package c3;
+
+struct lcmt_trajectory
+{
+  string trajectory_name;
+  
+  int32_t num_timesteps;
+  int32_t vector_dim;
+  float timestamps[num_timesteps];
+  float values[vector_dim][num_timesteps];
+}

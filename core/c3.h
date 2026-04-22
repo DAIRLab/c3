@@ -393,6 +393,12 @@ class C3 {
       const drake::solvers::MathematicalProgramResult& result,
       int admm_iteration, bool is_final_solve);
 
+  /// Sets a safe fallback solution when the QP solver fails. Sets all states
+  /// to the current state x0 and all inputs/forces to zero, ensuring the
+  /// robot holds position rather than executing stale or undefined commands.
+  virtual void SetFallbackSolution(const Eigen::VectorXd& x0,
+                                   bool is_final_solve);
+
   LCS lcs_;
   double AnDn_ = 1.0;  // Scaling factor for lambdas
   CostMatrices cost_matrices_;
