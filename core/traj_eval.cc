@@ -63,6 +63,19 @@ TrajectoryEvaluator::SimulatePDControlWithLCS(
 }
 
 std::pair<vector<VectorXd>, vector<VectorXd>>
+TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
+                                              const VectorXd& Kp,
+                                              const VectorXd& Kd,
+                                              const LCS& lcs,
+                                              const LCSSimulateConfig& config) {
+  const vector<VectorXd> empty_u_plan(lcs.N(),
+                                      VectorXd::Zero(lcs.num_inputs()));
+  const bool use_feedforward = false;
+  return SimulatePDControlWithLCS(x_plan, empty_u_plan, Kp, Kd, lcs,
+                                  use_feedforward, config);
+}
+
+std::pair<vector<VectorXd>, vector<VectorXd>>
 TrajectoryEvaluator::SimulatePDControlWithLCS(
     const vector<VectorXd>& x_plan, const vector<VectorXd>& u_plan,
     const VectorXd& Kp, const VectorXd& Kd, const LCS& coarse_lcs,
@@ -85,6 +98,20 @@ TrajectoryEvaluator::SimulatePDControlWithLCS(
       DownsampleTrajectories(x_sim_fine, u_sim_fine, upsample_rate);
 
   return std::make_pair(x_sim, u_sim);
+}
+
+std::pair<vector<VectorXd>, vector<VectorXd>>
+TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
+                                              const VectorXd& Kp,
+                                              const VectorXd& Kd,
+                                              const LCS& coarse_lcs,
+                                              const LCS& fine_lcs,
+                                              const LCSSimulateConfig& config) {
+  const vector<VectorXd> empty_u_plan(coarse_lcs.N(),
+                                      VectorXd::Zero(coarse_lcs.num_inputs()));
+  const bool use_feedforward = false;
+  return SimulatePDControlWithLCS(x_plan, empty_u_plan, Kp, Kd, coarse_lcs,
+                                  fine_lcs, use_feedforward, config);
 }
 
 vector<VectorXd> TrajectoryEvaluator::SimulateLCSOverTrajectory(

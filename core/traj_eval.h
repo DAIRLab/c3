@@ -217,6 +217,15 @@ class TrajectoryEvaluator {
       const bool& use_feedforward = true,
       const LCSSimulateConfig& config = LCSSimulateConfig());
   /**
+   * @brief Special case: the input plan is not provided, so use no feedforward
+   * control from the plan.
+   */
+  static std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
+  SimulatePDControlWithLCS(
+      const std::vector<Eigen::VectorXd>& x_plan, const Eigen::VectorXd& Kp,
+      const Eigen::VectorXd& Kd, const LCS& lcs,
+      const LCSSimulateConfig& config = LCSSimulateConfig());
+  /**
    * @brief Special case: simulate plans from a coarser LCS with a finer LCS.
    * The returned trajectory is downsampled back to be compatible with the
    * coarser LCS. The two LCSs must be compatible with each other, and the state
@@ -228,6 +237,15 @@ class TrajectoryEvaluator {
       const std::vector<Eigen::VectorXd>& u_plan, const Eigen::VectorXd& Kp,
       const Eigen::VectorXd& Kd, const LCS& coarse_lcs, const LCS& fine_lcs,
       const bool& use_feedforward = true,
+      const LCSSimulateConfig& config = LCSSimulateConfig());
+  /**
+   * *@brief Special case: simulate plans from a coarser LCS with a finer LCS,
+   * and the input plan is not provided.
+   */
+  static std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
+  SimulatePDControlWithLCS(
+      const std::vector<Eigen::VectorXd>& x_plan, const Eigen::VectorXd& Kp,
+      const Eigen::VectorXd& Kd, const LCS& coarse_lcs, const LCS& fine_lcs,
       const LCSSimulateConfig& config = LCSSimulateConfig());
 
   /**
