@@ -90,6 +90,110 @@ class TestTrajectoryEvaluator(unittest.TestCase):
         )
         self.assertGreater(cost, 0)
 
+    def test_compute_quadratic_trajectory_cost_with_start_end_indices(self):
+        data = [
+            np.array([1.0, 2.0, 3.0, 4.0]),
+            np.array([2.0, 3.0, 4.0, 5.0]),
+        ]
+        data_des = [
+            np.array([0.0, 1.0, 1.0, 1.0]),
+            np.array([0.0, 1.0, 1.0, 1.0]),
+        ]
+
+        # Use diagonal weights so expected subset cost is easy to verify.
+        Q0 = np.diag([1.0, 2.0, 3.0, 4.0])
+        Q1 = np.diag([5.0, 6.0, 7.0, 8.0])
+        Q_list = [Q0, Q1]
+
+        # Compute cost only on indices [1, 3).
+        start_index, end_index = 1, 3
+        expected_subset = (
+            2.0 * (2.0 - 1.0) ** 2
+            + 3.0 * (3.0 - 1.0) ** 2
+            + 6.0 * (3.0 - 1.0) ** 2
+            + 7.0 * (4.0 - 1.0) ** 2
+        )
+
+        cost_list = (
+            traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(
+                start_index,
+                end_index,
+                data,
+                data_des,
+                Q_list,
+            )
+        )
+        self.assertAlmostEqual(cost_list, expected_subset)
+
+        # Single-matrix overload should match manually computed value.
+        Q_single = np.diag([10.0, 20.0, 30.0, 40.0])
+        expected_single = (
+            20.0 * (2.0 - 1.0) ** 2
+            + 30.0 * (3.0 - 1.0) ** 2
+            + 20.0 * (3.0 - 1.0) ** 2
+            + 30.0 * (4.0 - 1.0) ** 2
+        )
+        cost_single = (
+            traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(
+                start_index,
+                end_index,
+                data,
+                data_des,
+                Q_single,
+            )
+        )
+        self.assertAlmostEqual(cost_single, expected_single)
+
+        # Zero-desired overload with indices.
+        expected_zero_des = (
+            20.0 * (2.0) ** 2
+            + 30.0 * (3.0) ** 2
+            + 20.0 * (3.0) ** 2
+            + 30.0 * (4.0) ** 2
+        )
+        cost_zero_des = (
+            traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(
+                start_index,
+                end_index,
+                data,
+                Q_single,
+            )
+        )
+        self.assertAlmostEqual(cost_zero_des, expected_zero_des)
+
+    def test_compute_quadratic_trajectory_cost_with_start_end_index_errors(
+        self,
+    ):
+        data = [np.ones(self.n_x) for _ in range(self.N + 1)]
+        data_des = [np.zeros(self.n_x) for _ in range(self.N + 1)]
+
+        with self.assertRaises(Exception):
+            traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(
+                -1,
+                2,
+                data,
+                data_des,
+                self.Q_matrix,
+            )
+
+        with self.assertRaises(Exception):
+            traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(
+                3,
+                2,
+                data,
+                data_des,
+                self.Q_matrix,
+            )
+
+        with self.assertRaises(Exception):
+            traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(
+                0,
+                self.n_x + 1,
+                data,
+                data_des,
+                self.Q_matrix,
+            )
+
     def test_compute_quadratic_trajectory_cost_with_c3(self):
         # Create a C3 solver similar to core_test.cc but with penalize_input_change = False
         opts = c3.C3Options()

@@ -425,6 +425,71 @@ TEST_F(TrajectoryEvaluatorTest, QuadraticCostMatchesManual) {
       x, x_des, Q, u, u_des, R, lambda, lambda_des, S_wrong_size));
 }
 
+TEST_F(TrajectoryEvaluatorTest, QuadraticCostWithStartEndIndexArguments) {
+  vector<VectorXd> x(2, VectorXd::Zero(3));
+  vector<VectorXd> x_des(2, VectorXd::Zero(3));
+
+  x[0] << 1.0, 2.0, 3.0;
+  x[1] << 4.0, 5.0, 6.0;
+  x_des[0] << 0.5, 1.5, 1.0;
+  x_des[1] << 3.0, 4.5, 7.0;
+
+  vector<MatrixXd> Q(2, MatrixXd::Zero(3, 3));
+  Q[0](0, 0) = 1.0;
+  Q[0](1, 1) = 2.0;
+  Q[0](2, 2) = 3.0;
+  Q[1](0, 0) = 4.0;
+  Q[1](1, 1) = 5.0;
+  Q[1](2, 2) = 6.0;
+
+  // Compute only over indices [1, 3).
+  const int start = 1;
+  const int end = 3;
+  double expected_subset = 0.0;
+  expected_subset += 2.0 * (2.0 - 1.5) * (2.0 - 1.5);
+  expected_subset += 3.0 * (3.0 - 1.0) * (3.0 - 1.0);
+  expected_subset += 5.0 * (5.0 - 4.5) * (5.0 - 4.5);
+  expected_subset += 6.0 * (6.0 - 7.0) * (6.0 - 7.0);
+
+  double actual_subset = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+      start, end, x, x_des, Q);
+  EXPECT_NEAR(actual_subset, expected_subset, 1e-12);
+
+  // Same subset computation, but with no desired trajectory (assumed zero).
+  double expected_subset_zero_des = 0.0;
+  expected_subset_zero_des += 2.0 * 2.0 * 2.0;
+  expected_subset_zero_des += 3.0 * 3.0 * 3.0;
+  expected_subset_zero_des += 5.0 * 5.0 * 5.0;
+  expected_subset_zero_des += 6.0 * 6.0 * 6.0;
+
+  double actual_subset_zero_des =
+      TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(start, end, x, Q);
+  EXPECT_NEAR(actual_subset_zero_des, expected_subset_zero_des, 1e-12);
+
+  // Repeated-cost-matrix overload with start/end.
+  MatrixXd Q_repeat = MatrixXd::Zero(3, 3);
+  Q_repeat(0, 0) = 2.0;
+  Q_repeat(1, 1) = 3.0;
+  Q_repeat(2, 2) = 4.0;
+  double expected_repeat_subset = 0.0;
+  expected_repeat_subset += 3.0 * (2.0 - 1.5) * (2.0 - 1.5);
+  expected_repeat_subset += 4.0 * (3.0 - 1.0) * (3.0 - 1.0);
+  expected_repeat_subset += 3.0 * (5.0 - 4.5) * (5.0 - 4.5);
+  expected_repeat_subset += 4.0 * (6.0 - 7.0) * (6.0 - 7.0);
+  double actual_repeat_subset =
+      TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(start, end, x, x_des,
+                                                          Q_repeat);
+  EXPECT_NEAR(actual_repeat_subset, expected_repeat_subset, 1e-12);
+
+  // Invalid ranges should throw.
+  ASSERT_ANY_THROW(
+      TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(-1, 2, x, x_des, Q));
+  ASSERT_ANY_THROW(
+      TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(2, 1, x, x_des, Q));
+  ASSERT_ANY_THROW(
+      TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(0, 4, x, x_des, Q));
+}
+
 TEST_F(TrajectoryEvaluatorTest, SimulatePDControlWithLCSTest) {
   const int n = 4;  // 4 states: 2 positions, 2 velocities
   const int k = 2;  // 2 inputs
