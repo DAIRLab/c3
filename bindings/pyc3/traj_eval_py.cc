@@ -45,6 +45,21 @@ PYBIND11_MODULE(traj_eval, m) {
           py::arg("data"), py::arg("data_des"), py::arg("cost_matrix"),
           "Compute quadratic cost with single desired vector and single cost "
           "matrix.")
+      // Binding: (int, int, vector<VectorXd>, VectorXd, MatrixXd)
+      .def_static(
+          "ComputeQuadraticTrajectoryCost",
+          [](const int& start_index, const int& end_index,
+             const std::vector<Eigen::VectorXd>& data,
+             const Eigen::VectorXd& data_des,
+             const Eigen::MatrixXd& cost_matrix) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(start_index, end_index, data,
+                                               data_des, cost_matrix);
+          },
+          py::arg("start_index"), py::arg("end_index"), py::arg("data"),
+          py::arg("data_des"), py::arg("cost_matrix"),
+          "Compute quadratic cost with single desired vector, single cost "
+          "matrix, and start/end indices.")
       // Binding: (vector<VectorXd>, vector<VectorXd>, MatrixXd)
       .def_static(
           "ComputeQuadraticTrajectoryCost",
@@ -56,6 +71,21 @@ PYBIND11_MODULE(traj_eval, m) {
           },
           py::arg("data"), py::arg("data_des"), py::arg("cost_matrix"),
           "Compute quadratic cost with single cost matrix.")
+      // Binding: (int, int, vector<VectorXd>, vector<VectorXd>, MatrixXd)
+      .def_static(
+          "ComputeQuadraticTrajectoryCost",
+          [](const int& start_index, const int& end_index,
+             const std::vector<Eigen::VectorXd>& data,
+             const std::vector<Eigen::VectorXd>& data_des,
+             const Eigen::MatrixXd& cost_matrix) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(start_index, end_index, data,
+                                               data_des, cost_matrix);
+          },
+          py::arg("start_index"), py::arg("end_index"), py::arg("data"),
+          py::arg("data_des"), py::arg("cost_matrix"),
+          "Compute quadratic cost with single cost matrix and start/end "
+          "indices.")
       // Binding: (vector<VectorXd>, MatrixXd)
       .def_static(
           "ComputeQuadraticTrajectoryCost",
@@ -66,6 +96,20 @@ PYBIND11_MODULE(traj_eval, m) {
           },
           py::arg("data"), py::arg("cost_matrix"),
           "Compute quadratic cost with single matrix and zero desired.")
+      // Binding: (int, int, vector<VectorXd>, MatrixXd)
+      .def_static(
+          "ComputeQuadraticTrajectoryCost",
+          [](const int& start_index, const int& end_index,
+             const std::vector<Eigen::VectorXd>& data,
+             const Eigen::MatrixXd& cost_matrix) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(start_index, end_index, data,
+                                               cost_matrix);
+          },
+          py::arg("start_index"), py::arg("end_index"), py::arg("data"),
+          py::arg("cost_matrix"),
+          "Compute quadratic cost with single matrix, zero desired, and "
+          "start/end indices.")
 
       // Vector-of-matrices overloads registered AFTER single-matrix overloads.
 
@@ -80,6 +124,21 @@ PYBIND11_MODULE(traj_eval, m) {
           },
           py::arg("data"), py::arg("data_des"), py::arg("cost_matrices"),
           "Compute quadratic cost with single desired vector.")
+      // Binding: (int, int, vector<VectorXd>, VectorXd, vector<MatrixXd>)
+      .def_static(
+          "ComputeQuadraticTrajectoryCost",
+          [](const int& start_index, const int& end_index,
+             const std::vector<Eigen::VectorXd>& data,
+             const Eigen::VectorXd& data_des,
+             const std::vector<Eigen::MatrixXd>& cost_matrices) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(start_index, end_index, data,
+                                               data_des, cost_matrices);
+          },
+          py::arg("start_index"), py::arg("end_index"), py::arg("data"),
+          py::arg("data_des"), py::arg("cost_matrices"),
+          "Compute quadratic cost with single desired vector and start/end "
+          "indices.")
       // Binding: (vector<VectorXd>, vector<VectorXd>, vector<MatrixXd>)
       .def_static(
           "ComputeQuadraticTrajectoryCost",
@@ -91,6 +150,22 @@ PYBIND11_MODULE(traj_eval, m) {
           },
           py::arg("data"), py::arg("data_des"), py::arg("cost_matrices"),
           "Compute quadratic cost for full trajectory cost computation.")
+      // Binding: (int, int, vector<VectorXd>, vector<VectorXd>,
+      // vector<MatrixXd>)
+      .def_static(
+          "ComputeQuadraticTrajectoryCost",
+          [](const int& start_index, const int& end_index,
+             const std::vector<Eigen::VectorXd>& data,
+             const std::vector<Eigen::VectorXd>& data_des,
+             const std::vector<Eigen::MatrixXd>& cost_matrices) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(start_index, end_index, data,
+                                               data_des, cost_matrices);
+          },
+          py::arg("start_index"), py::arg("end_index"), py::arg("data"),
+          py::arg("data_des"), py::arg("cost_matrices"),
+          "Compute quadratic cost for full trajectory cost computation with "
+          "start/end indices.")
       // Binding: (vector<VectorXd>, vector<MatrixXd>)
       .def_static(
           "ComputeQuadraticTrajectoryCost",
@@ -101,6 +176,20 @@ PYBIND11_MODULE(traj_eval, m) {
           },
           py::arg("data"), py::arg("cost_matrices"),
           "Compute quadratic cost assuming zero desired data.")
+      // Binding: (int, int, vector<VectorXd>, vector<MatrixXd>)
+      .def_static(
+          "ComputeQuadraticTrajectoryCost",
+          [](const int& start_index, const int& end_index,
+             const std::vector<Eigen::VectorXd>& data,
+             const std::vector<Eigen::MatrixXd>& cost_matrices) -> double {
+            return traj_eval::TrajectoryEvaluator::
+                ComputeQuadraticTrajectoryCost(start_index, end_index, data,
+                                               cost_matrices);
+          },
+          py::arg("start_index"), py::arg("end_index"), py::arg("data"),
+          py::arg("cost_matrices"),
+          "Compute quadratic cost assuming zero desired data and with "
+          "start/end indices.")
 
       // C3-based overloads: single-matrix overloads first.
 
@@ -154,27 +243,64 @@ PYBIND11_MODULE(traj_eval, m) {
           "Compute cost from C3 with custom cost matrices.")
 
       // SimulatePDControlWithLCS overloads
+      // Binding: (vector<VectorXd>, vector<VectorXd>, VectorXd, VectorXd,
+      //           LCS, bool, LCSSimulateConfig)
       .def_static(
           "SimulatePDControlWithLCS",
           static_cast<std::pair<std::vector<Eigen::VectorXd>,
                                 std::vector<Eigen::VectorXd>> (*)(
               const std::vector<Eigen::VectorXd>&,
               const std::vector<Eigen::VectorXd>&, const Eigen::VectorXd&,
-              const Eigen::VectorXd&, const LCS&)>(
+              const Eigen::VectorXd&, const LCS&, const bool&,
+              const c3::LCSSimulateConfig&)>(
               &traj_eval::TrajectoryEvaluator::SimulatePDControlWithLCS),
           py::arg("x_plan"), py::arg("u_plan"), py::arg("Kp"), py::arg("Kd"),
-          py::arg("lcs"), "Simulate PD control with an LCS")
+          py::arg("lcs"), py::arg("use_feedforward") = true,
+          py::arg("config") = c3::LCSSimulateConfig(),
+          "Simulate PD control with an LCS")
+      // Binding: (vector<VectorXd>, VectorXd, VectorXd, LCS,
+      //           LCSSimulateConfig)
+      .def_static(
+          "SimulatePDControlWithLCS",
+          static_cast<std::pair<std::vector<Eigen::VectorXd>,
+                                std::vector<Eigen::VectorXd>> (*)(
+              const std::vector<Eigen::VectorXd>&, const Eigen::VectorXd&,
+              const Eigen::VectorXd&, const LCS&,
+              const c3::LCSSimulateConfig&)>(
+              &traj_eval::TrajectoryEvaluator::SimulatePDControlWithLCS),
+          py::arg("x_plan"), py::arg("Kp"), py::arg("Kd"), py::arg("lcs"),
+          py::arg("config") = c3::LCSSimulateConfig(),
+          "Simulate PD control with an LCS without feedforward")
+      // Binding: (vector<VectorXd>, vector<VectorXd>, VectorXd, VectorXd,
+      //           LCS, LCS, bool, LCSSimulateConfig)
       .def_static(
           "SimulatePDControlWithLCS",
           static_cast<std::pair<std::vector<Eigen::VectorXd>,
                                 std::vector<Eigen::VectorXd>> (*)(
               const std::vector<Eigen::VectorXd>&,
               const std::vector<Eigen::VectorXd>&, const Eigen::VectorXd&,
-              const Eigen::VectorXd&, const LCS&, const LCS&)>(
+              const Eigen::VectorXd&, const LCS&, const LCS&, const bool&,
+              const c3::LCSSimulateConfig&)>(
               &traj_eval::TrajectoryEvaluator::SimulatePDControlWithLCS),
           py::arg("x_plan"), py::arg("u_plan"), py::arg("Kp"), py::arg("Kd"),
           py::arg("coarse_lcs"), py::arg("fine_lcs"),
+          py::arg("use_feedforward") = true,
+          py::arg("config") = c3::LCSSimulateConfig(),
           "Simulate PD control with coarse and fine LCSs")
+      // Binding: (vector<VectorXd>, VectorXd, VectorXd, LCS, LCS,
+      //           LCSSimulateConfig)
+      .def_static(
+          "SimulatePDControlWithLCS",
+          static_cast<std::pair<std::vector<Eigen::VectorXd>,
+                                std::vector<Eigen::VectorXd>> (*)(
+              const std::vector<Eigen::VectorXd>&, const Eigen::VectorXd&,
+              const Eigen::VectorXd&, const LCS&, const LCS&,
+              const c3::LCSSimulateConfig&)>(
+              &traj_eval::TrajectoryEvaluator::SimulatePDControlWithLCS),
+          py::arg("x_plan"), py::arg("Kp"), py::arg("Kd"),
+          py::arg("coarse_lcs"), py::arg("fine_lcs"),
+          py::arg("config") = c3::LCSSimulateConfig(),
+          "Simulate PD control with coarse and fine LCSs without feedforward")
 
       // SimulateLCSOverTrajectory overloads
       .def_static(

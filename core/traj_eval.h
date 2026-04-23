@@ -38,8 +38,14 @@ class TrajectoryEvaluator {
    * each individual cost is computed as:
    *
    *    Cost = Sum_{i = 0, ... N-1}
-   *       (data_i-data_des_i)^T CostMatrix_i (data_i-data_des_i)
+   *       (data_i[start_index:end_index]-data_des_i[start_index:end_index])^T
+   *       CostMatrix_i[start_index:end_index, start_index:end_index]
+   *       (data_i[start_index:end_index]-data_des_i[start_index:end_index])
    *
+   * @param start_index Starting index of the data vectors over which to compute
+   * costs (inclusive)
+   * @param end_index Ending index of the data vectors over which to compute
+   * costs (exclusive)
    * @param data Trajectory of length N of vectors
    * @param data_des Trajectory of length N of desired vectors
    * @param cost_matrices Trajectory of length N of cost matrices.  This can be
@@ -60,11 +66,18 @@ class TrajectoryEvaluator {
             typename = std::enable_if_t<detail::IsDataType<T_des>::value &&
                                         detail::IsCostType<T_cost>::value>>
   static double ComputeQuadraticTrajectoryCost(
+      const int& start_index, const int& end_index,
       const std::vector<Eigen::VectorXd>& data, const T_des& data_des,
       const T_cost& cost_matrices, Rest&&... rest) {
     double cost = 0.0;
     int N = data.size();
+    DRAKE_THROW_UNLESS(N > 0);
     int n_data = data[0].size();
+
+    DRAKE_THROW_UNLESS(start_index >= 0);
+    DRAKE_THROW_UNLESS(end_index >= start_index);
+    DRAKE_THROW_UNLESS(end_index <= n_data);
+    int subset_size = end_index - start_index;
 
     // Handle if data_des is provided as a single vector instead of a trajectory
     // of vectors.
@@ -97,12 +110,32 @@ class TrajectoryEvaluator {
       DRAKE_THROW_UNLESS(cost_matrices_vec[i].rows() == n_data);
       DRAKE_THROW_UNLESS(cost_matrices_vec[i].cols() == n_data);
 
-      cost += (data[i] - data_des_vec[i]).transpose() * cost_matrices_vec[i] *
-              (data[i] - data_des_vec[i]);
+      cost += (data[i] - data_des_vec[i])
+                  .segment(start_index, subset_size)
+                  .transpose() *
+              cost_matrices_vec[i].block(start_index, start_index, subset_size,
+                                         subset_size) *
+              (data[i] - data_des_vec[i]).segment(start_index, subset_size);
     }
 
     return cost + ComputeQuadraticTrajectoryCost(std::forward<Rest>(rest)...);
   }
+
+  /** @brief Same as above, but no start_index and end_index are provided, so
+   * the cost is computed over the entire data vectors.
+   */
+  template <typename T_des, typename T_cost, typename... Rest,
+            typename = std::enable_if_t<detail::IsDataType<T_des>::value &&
+                                        detail::IsCostType<T_cost>::value>>
+  static double ComputeQuadraticTrajectoryCost(
+      const std::vector<Eigen::VectorXd>& data, const T_des& data_des,
+      const T_cost& cost_matrices, Rest&&... rest) {
+    DRAKE_THROW_UNLESS(!data.empty());
+    return ComputeQuadraticTrajectoryCost(0, data[0].size(), data, data_des,
+                                          cost_matrices,
+                                          std::forward<Rest>(rest)...);
+  }
+
   /** @brief Special case: no desired data is provided, so it is assumed the
    * desired data is zero.
    */
@@ -111,8 +144,26 @@ class TrajectoryEvaluator {
   static double ComputeQuadraticTrajectoryCost(
       const std::vector<Eigen::VectorXd>& data, const T_cost& cost_matrices,
       Rest&&... rest) {
+    DRAKE_THROW_UNLESS(!data.empty());
     return ComputeQuadraticTrajectoryCost(
         data,
+        std::vector<Eigen::VectorXd>(data.size(),
+                                     Eigen::VectorXd::Zero(data[0].size())),
+        cost_matrices, std::forward<Rest>(rest)...);
+  }
+
+  /** @brief Same as above but computes cost only over [start_index,
+   * end_index).
+   */
+  template <typename T_cost, typename... Rest,
+            typename = std::enable_if_t<detail::IsCostType<T_cost>::value>>
+  static double ComputeQuadraticTrajectoryCost(
+      const int& start_index, const int& end_index,
+      const std::vector<Eigen::VectorXd>& data, const T_cost& cost_matrices,
+      Rest&&... rest) {
+    DRAKE_THROW_UNLESS(!data.empty());
+    return ComputeQuadraticTrajectoryCost(
+        start_index, end_index, data,
         std::vector<Eigen::VectorXd>(data.size(),
                                      Eigen::VectorXd::Zero(data[0].size())),
         cost_matrices, std::forward<Rest>(rest)...);
@@ -205,13 +256,26 @@ class TrajectoryEvaluator {
    * @param Kd Derivative gains (length n_x, with exactly k non-zero
    * entries)
    * @param lcs LCS system to simulate
+   * @param use_feedforward Whether to include feedforward control from the plan
+   * @param config Configuration for simulating the LCS
    * @return Pair of (simulated states, simulated inputs)
    */
   static std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
-  SimulatePDControlWithLCS(const std::vector<Eigen::VectorXd>& x_plan,
-                           const std::vector<Eigen::VectorXd>& u_plan,
-                           const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd,
-                           const LCS& lcs);
+  SimulatePDControlWithLCS(
+      const std::vector<Eigen::VectorXd>& x_plan,
+      const std::vector<Eigen::VectorXd>& u_plan, const Eigen::VectorXd& Kp,
+      const Eigen::VectorXd& Kd, const LCS& lcs,
+      const bool& use_feedforward = true,
+      const LCSSimulateConfig& config = LCSSimulateConfig());
+  /**
+   * @brief Special case: the input plan is not provided, so use no feedforward
+   * control from the plan.
+   */
+  static std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
+  SimulatePDControlWithLCS(
+      const std::vector<Eigen::VectorXd>& x_plan, const Eigen::VectorXd& Kp,
+      const Eigen::VectorXd& Kd, const LCS& lcs,
+      const LCSSimulateConfig& config = LCSSimulateConfig());
   /**
    * @brief Special case: simulate plans from a coarser LCS with a finer LCS.
    * The returned trajectory is downsampled back to be compatible with the
@@ -219,10 +283,21 @@ class TrajectoryEvaluator {
    * and input plans must be compatible with the coarser LCS.
    */
   static std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
-  SimulatePDControlWithLCS(const std::vector<Eigen::VectorXd>& x_plan,
-                           const std::vector<Eigen::VectorXd>& u_plan,
-                           const Eigen::VectorXd& Kp, const Eigen::VectorXd& Kd,
-                           const LCS& coarse_lcs, const LCS& fine_lcs);
+  SimulatePDControlWithLCS(
+      const std::vector<Eigen::VectorXd>& x_plan,
+      const std::vector<Eigen::VectorXd>& u_plan, const Eigen::VectorXd& Kp,
+      const Eigen::VectorXd& Kd, const LCS& coarse_lcs, const LCS& fine_lcs,
+      const bool& use_feedforward = true,
+      const LCSSimulateConfig& config = LCSSimulateConfig());
+  /**
+   * *@brief Special case: simulate plans from a coarser LCS with a finer LCS,
+   * and the input plan is not provided.
+   */
+  static std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
+  SimulatePDControlWithLCS(
+      const std::vector<Eigen::VectorXd>& x_plan, const Eigen::VectorXd& Kp,
+      const Eigen::VectorXd& Kd, const LCS& coarse_lcs, const LCS& fine_lcs,
+      const LCSSimulateConfig& config = LCSSimulateConfig());
 
   /**
    * @brief Simulate an LCS forward from an initial condition over a trajectory

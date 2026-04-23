@@ -46,7 +46,9 @@ class TestTrajectoryEvaluator(unittest.TestCase):
         self.Q_matrices = [
             np.eye(self.n_x, dtype=np.float64) for _ in range(self.N + 1)
         ]
-        self.R_matrices = [np.eye(self.n_u, dtype=np.float64) for _ in range(self.N)]
+        self.R_matrices = [
+            np.eye(self.n_u, dtype=np.float64) for _ in range(self.N)
+        ]
 
     def test_compute_quadratic_trajectory_cost_basic(self):
         # Test with single matrices
@@ -88,6 +90,110 @@ class TestTrajectoryEvaluator(unittest.TestCase):
         )
         self.assertGreater(cost, 0)
 
+    def test_compute_quadratic_trajectory_cost_with_start_end_indices(self):
+        data = [
+            np.array([1.0, 2.0, 3.0, 4.0]),
+            np.array([2.0, 3.0, 4.0, 5.0]),
+        ]
+        data_des = [
+            np.array([0.0, 1.0, 1.0, 1.0]),
+            np.array([0.0, 1.0, 1.0, 1.0]),
+        ]
+
+        # Use diagonal weights so expected subset cost is easy to verify.
+        Q0 = np.diag([1.0, 2.0, 3.0, 4.0])
+        Q1 = np.diag([5.0, 6.0, 7.0, 8.0])
+        Q_list = [Q0, Q1]
+
+        # Compute cost only on indices [1, 3).
+        start_index, end_index = 1, 3
+        expected_subset = (
+            2.0 * (2.0 - 1.0) ** 2
+            + 3.0 * (3.0 - 1.0) ** 2
+            + 6.0 * (3.0 - 1.0) ** 2
+            + 7.0 * (4.0 - 1.0) ** 2
+        )
+
+        cost_list = (
+            traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(
+                start_index,
+                end_index,
+                data,
+                data_des,
+                Q_list,
+            )
+        )
+        self.assertAlmostEqual(cost_list, expected_subset)
+
+        # Single-matrix overload should match manually computed value.
+        Q_single = np.diag([10.0, 20.0, 30.0, 40.0])
+        expected_single = (
+            20.0 * (2.0 - 1.0) ** 2
+            + 30.0 * (3.0 - 1.0) ** 2
+            + 20.0 * (3.0 - 1.0) ** 2
+            + 30.0 * (4.0 - 1.0) ** 2
+        )
+        cost_single = (
+            traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(
+                start_index,
+                end_index,
+                data,
+                data_des,
+                Q_single,
+            )
+        )
+        self.assertAlmostEqual(cost_single, expected_single)
+
+        # Zero-desired overload with indices.
+        expected_zero_des = (
+            20.0 * (2.0) ** 2
+            + 30.0 * (3.0) ** 2
+            + 20.0 * (3.0) ** 2
+            + 30.0 * (4.0) ** 2
+        )
+        cost_zero_des = (
+            traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(
+                start_index,
+                end_index,
+                data,
+                Q_single,
+            )
+        )
+        self.assertAlmostEqual(cost_zero_des, expected_zero_des)
+
+    def test_compute_quadratic_trajectory_cost_with_start_end_index_errors(
+        self,
+    ):
+        data = [np.ones(self.n_x) for _ in range(self.N + 1)]
+        data_des = [np.zeros(self.n_x) for _ in range(self.N + 1)]
+
+        with self.assertRaises(Exception):
+            traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(
+                -1,
+                2,
+                data,
+                data_des,
+                self.Q_matrix,
+            )
+
+        with self.assertRaises(Exception):
+            traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(
+                3,
+                2,
+                data,
+                data_des,
+                self.Q_matrix,
+            )
+
+        with self.assertRaises(Exception):
+            traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(
+                0,
+                self.n_x + 1,
+                data,
+                data_des,
+                self.Q_matrix,
+            )
+
     def test_compute_quadratic_trajectory_cost_with_c3(self):
         # Create a C3 solver similar to core_test.cc but with penalize_input_change = False
         opts = c3.C3Options()
@@ -103,14 +209,18 @@ class TestTrajectoryEvaluator(unittest.TestCase):
         opts.M = 100.0
         opts.gamma = 1.0
         opts.rho_scale = 1.0
-        opts.penalize_input_change = False  # This should prevent the constraint failure
+        opts.penalize_input_change = (
+            False  # This should prevent the constraint failure
+        )
 
         costs = c3.C3.CreateCostMatricesFromC3Options(opts, self.N)
         solver = c3.C3QP(self.lcs, costs, self.x_des, opts)
         solver.Solve(np.zeros(self.n_x))
 
         # Test cost computation from C3 solver
-        cost = traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(solver)
+        cost = traj_eval.TrajectoryEvaluator.ComputeQuadraticTrajectoryCost(
+            solver
+        )
         self.assertGreaterEqual(cost, 0)
 
         # Test with custom matrices
@@ -141,11 +251,49 @@ class TestTrajectoryEvaluator(unittest.TestCase):
         for u in u_sim:
             self.assertEqual(len(u), self.n_u)
 
+    def test_simulate_pd_control_with_lcs_no_feedforward_overload(self):
+        # Test the overload without u_plan.
+        Kp = np.zeros(self.n_x)
+        Kd = np.zeros(self.n_x)
+        Kp[0] = 10.0
+        Kp[1] = 10.0
+        Kd[2] = 1.0
+        Kd[3] = 1.0
+
+        x_sim, u_sim = traj_eval.TrajectoryEvaluator.SimulatePDControlWithLCS(
+            self.x_traj, Kp, Kd, self.lcs
+        )
+
+        self.assertEqual(len(x_sim), self.N + 1)
+        self.assertEqual(len(u_sim), self.N)
+        for x in x_sim:
+            self.assertEqual(len(x), self.n_x)
+        for u in u_sim:
+            self.assertEqual(len(u), self.n_u)
+
+        # This overload should match explicit zero feedforward behavior.
+        zero_u_plan = [np.zeros(self.n_u) for _ in range(self.N)]
+        x_sim_zero, u_sim_zero = (
+            traj_eval.TrajectoryEvaluator.SimulatePDControlWithLCS(
+                self.x_traj,
+                zero_u_plan,
+                Kp,
+                Kd,
+                self.lcs,
+                False,
+            )
+        )
+        for x_a, x_b in zip(x_sim, x_sim_zero):
+            np.testing.assert_allclose(x_a, x_b)
+        for u_a, u_b in zip(u_sim, u_sim_zero):
+            np.testing.assert_allclose(u_a, u_b)
+
     def test_simulate_pd_control_with_coarse_fine_lcs(self):
         # Create fine LCS with smaller dt, following core_test.cc pattern
         fine_lcs = c3.LCS(
             np.eye(self.n_x),
-            np.ones((self.n_x, self.n_u)) / 2.0,  # Scale B matrix for finer time step
+            np.ones((self.n_x, self.n_u))
+            / 2.0,  # Scale B matrix for finer time step
             np.ones((self.n_x, self.n_lambda)),
             np.zeros(self.n_x),
             np.ones((self.n_lambda, self.n_x)),
@@ -170,6 +318,55 @@ class TestTrajectoryEvaluator(unittest.TestCase):
 
         self.assertEqual(len(x_sim), self.N + 1)
         self.assertEqual(len(u_sim), self.N)
+
+    def test_simulate_pd_control_with_coarse_fine_lcs_no_feedforward_overload(
+        self,
+    ):
+        # Test the coarse/fine overload without u_plan.
+        fine_lcs = c3.LCS(
+            np.eye(self.n_x),
+            np.ones((self.n_x, self.n_u)) / 2.0,
+            np.ones((self.n_x, self.n_lambda)),
+            np.zeros(self.n_x),
+            np.ones((self.n_lambda, self.n_x)),
+            np.eye(self.n_lambda),
+            np.ones((self.n_lambda, self.n_u)),
+            np.ones(self.n_lambda),
+            self.N * 2,
+            self.dt / 2,
+        )
+
+        Kp = np.zeros(self.n_x)
+        Kd = np.zeros(self.n_x)
+        Kp[0] = 10.0
+        Kp[1] = 10.0
+        Kd[2] = 1.0
+        Kd[3] = 1.0
+
+        x_sim, u_sim = traj_eval.TrajectoryEvaluator.SimulatePDControlWithLCS(
+            self.x_traj, Kp, Kd, self.lcs, fine_lcs
+        )
+
+        self.assertEqual(len(x_sim), self.N + 1)
+        self.assertEqual(len(u_sim), self.N)
+
+        # This overload should match explicit zero feedforward behavior.
+        zero_u_plan = [np.zeros(self.n_u) for _ in range(self.N)]
+        x_sim_zero, u_sim_zero = (
+            traj_eval.TrajectoryEvaluator.SimulatePDControlWithLCS(
+                self.x_traj,
+                zero_u_plan,
+                Kp,
+                Kd,
+                self.lcs,
+                fine_lcs,
+                False,
+            )
+        )
+        for x_a, x_b in zip(x_sim, x_sim_zero):
+            np.testing.assert_allclose(x_a, x_b)
+        for u_a, u_b in zip(u_sim, u_sim_zero):
+            np.testing.assert_allclose(u_a, u_b)
 
     def test_simulate_lcs_over_trajectory(self):
         config = c3.LCSSimulateConfig()
@@ -320,7 +517,9 @@ class TestTrajectoryEvaluator(unittest.TestCase):
             )
 
         # Test with wrong length
-        short_x = [np.ones(self.n_x) for _ in range(self.N)]  # Missing one state
+        short_x = [
+            np.ones(self.n_x) for _ in range(self.N)
+        ]  # Missing one state
 
         with self.assertRaises(Exception):
             traj_eval.TrajectoryEvaluator.CheckLCSAndTrajectoryCompatibility(

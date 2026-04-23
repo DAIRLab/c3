@@ -79,7 +79,7 @@ TEST_F(C3CartpoleTest, InitializationTest) {
 
 // Test if GetLinearConstraints is working as expected
 TEST_F(C3CartpoleTest, LinearConstraintsTest) {
-  std::vector<LinearConstraintBinding> user_constraints;
+  vector<LinearConstraintBinding> user_constraints;
   ASSERT_NO_THROW({ user_constraints = pOpt->GetLinearConstraints(); });
   ASSERT_EQ(user_constraints.size(), 0);
 }
@@ -117,7 +117,7 @@ TEST_P(C3CartpoleTestParameterizedLinearConstraints, LinearConstraintsTest) {
     pOpt->AddLinearConstraint(Al, lb, ub, constraint_type);
   }
 
-  std::vector<LinearConstraintBinding> user_constraints =
+  vector<LinearConstraintBinding> user_constraints =
       pOpt->GetLinearConstraints();
   // Number of constraints must be N-1 for state and N for input and lambda
   EXPECT_EQ(user_constraints.size(), num_of_new_constraints);
@@ -152,7 +152,7 @@ TEST_F(C3CartpoleTest, RemoveLinearConstraintsTest) {
 
   pOpt->AddLinearConstraint(Al, lb, ub, c3::ConstraintVariable::STATE);
 
-  std::vector<LinearConstraintBinding> user_constraints =
+  vector<LinearConstraintBinding> user_constraints =
       pOpt->GetLinearConstraints();
   EXPECT_EQ(user_constraints.size(), N - 1);
 
@@ -177,8 +177,7 @@ TEST_F(C3CartpoleTest, UpdateTargetTest) {
 
   pOpt->UpdateTarget(xdesired);
 
-  std::vector<drake::solvers::QuadraticCost*> target_costs =
-      pOpt->GetTargetCost();
+  vector<drake::solvers::QuadraticCost*> target_costs = pOpt->GetTargetCost();
   EXPECT_EQ(target_costs.size(), N + 1);
 
   for (int i = 0; i < N + 1; ++i) {
@@ -214,8 +213,7 @@ TEST_F(C3CartpoleTest, UpdateCostMatrix) {
   }
 
   // Ensure target state costs are updated
-  std::vector<drake::solvers::QuadraticCost*> target_costs =
-      pOpt->GetTargetCost();
+  vector<drake::solvers::QuadraticCost*> target_costs = pOpt->GetTargetCost();
 
   for (int i = 0; i < N + 1; ++i) {
     // Quadratic Q and b cost matrices should be updated
@@ -251,7 +249,7 @@ TEST_P(C3CartpoleTestParameterizedScalingLCSTest, ScalingLCSTest) {
   LinEq.block(0, n, n, m) = pSystem->D().at(0);
   LinEq.block(0, n + m, n, k) = pSystem->B().at(0);
 
-  std::vector<drake::solvers::LinearEqualityConstraint*> dynamic_constraints =
+  vector<drake::solvers::LinearEqualityConstraint*> dynamic_constraints =
       optimizer.GetDynamicConstraints();
   for (int i = 0; i < N; ++i) {
     // Linear Equality A matrix should be updated
@@ -283,9 +281,9 @@ TEST_F(C3CartpoleTest, ZSolStaleTest) {
   int timesteps = 5;  // number of timesteps for the simulation
 
   // Create state and input arrays
-  std::vector<VectorXd> z(timesteps, VectorXd::Zero(n + m + k));
-  std::vector<VectorXd> state(timesteps, VectorXd::Zero(n));
-  std::vector<VectorXd> input(timesteps, VectorXd::Zero(k));
+  vector<VectorXd> z(timesteps, VectorXd::Zero(n + m + k));
+  vector<VectorXd> state(timesteps, VectorXd::Zero(n));
+  vector<VectorXd> input(timesteps, VectorXd::Zero(k));
 
   state[0] << 0.1, -0.5, 0.5, -0.4;  // initial state with contact to right wall
 
@@ -327,12 +325,12 @@ TEST_F(C3CartpoleTest, WarmStartSmokeTest) {
 class TrajectoryEvaluatorTest : public testing::Test {};
 
 TEST_F(TrajectoryEvaluatorTest, QuadraticCostMatchesManual) {
-  std::vector<VectorXd> x(2, VectorXd::Zero(1));
-  std::vector<VectorXd> u(1, VectorXd::Zero(1));
-  std::vector<VectorXd> lambda(1, VectorXd::Zero(1));
-  std::vector<VectorXd> x_des(2, VectorXd::Zero(1));
-  std::vector<VectorXd> u_des(1, VectorXd::Zero(1));
-  std::vector<VectorXd> lambda_des(1, VectorXd::Zero(1));
+  vector<VectorXd> x(2, VectorXd::Zero(1));
+  vector<VectorXd> u(1, VectorXd::Zero(1));
+  vector<VectorXd> lambda(1, VectorXd::Zero(1));
+  vector<VectorXd> x_des(2, VectorXd::Zero(1));
+  vector<VectorXd> u_des(1, VectorXd::Zero(1));
+  vector<VectorXd> lambda_des(1, VectorXd::Zero(1));
 
   x[0](0) = 1.0;
   x[1](0) = 2.0;
@@ -343,9 +341,9 @@ TEST_F(TrajectoryEvaluatorTest, QuadraticCostMatchesManual) {
   u_des[0](0) = 2.0;
   lambda_des[0](0) = 0.0;
 
-  std::vector<MatrixXd> Q(2, MatrixXd::Zero(1, 1));
-  std::vector<MatrixXd> R(1, MatrixXd::Zero(1, 1));
-  std::vector<MatrixXd> S(1, MatrixXd::Zero(1, 1));
+  vector<MatrixXd> Q(2, MatrixXd::Zero(1, 1));
+  vector<MatrixXd> R(1, MatrixXd::Zero(1, 1));
+  vector<MatrixXd> S(1, MatrixXd::Zero(1, 1));
   Q[0](0, 0) = 2.0;
   Q[1](0, 0) = 4.0;
   R[0](0, 0) = 3.0;
@@ -402,29 +400,94 @@ TEST_F(TrajectoryEvaluatorTest, QuadraticCostMatchesManual) {
               1e-12);  // State costs with no desired trajectory
 
   // Test any mismatched dimensions throw errors.
-  std::vector<VectorXd> x_wrong(3, VectorXd::Zero(1));
+  vector<VectorXd> x_wrong(3, VectorXd::Zero(1));
   ASSERT_ANY_THROW(
       TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(x_wrong, x_des, Q));
 
-  std::vector<VectorXd> u_wrong(2, VectorXd::Zero(1));
+  vector<VectorXd> u_wrong(2, VectorXd::Zero(1));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
       x, x_des, Q, u_wrong, u_des, R));
 
-  std::vector<VectorXd> lambda_wrong(2, VectorXd::Zero(1));
+  vector<VectorXd> lambda_wrong(2, VectorXd::Zero(1));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
       x, x_des, Q, u, u_des, R, lambda_wrong, lambda_des, S));
 
-  std::vector<MatrixXd> Q_wrong_size(2, MatrixXd::Zero(2, 2));
+  vector<MatrixXd> Q_wrong_size(2, MatrixXd::Zero(2, 2));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
       x, x_des, Q_wrong_size));
 
-  std::vector<MatrixXd> R_wrong_size(1, MatrixXd::Zero(2, 2));
+  vector<MatrixXd> R_wrong_size(1, MatrixXd::Zero(2, 2));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
       x, x_des, Q, u, u_des, R_wrong_size));
 
-  std::vector<MatrixXd> S_wrong_size(1, MatrixXd::Zero(2, 2));
+  vector<MatrixXd> S_wrong_size(1, MatrixXd::Zero(2, 2));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
       x, x_des, Q, u, u_des, R, lambda, lambda_des, S_wrong_size));
+}
+
+TEST_F(TrajectoryEvaluatorTest, QuadraticCostWithStartEndIndexArguments) {
+  vector<VectorXd> x(2, VectorXd::Zero(3));
+  vector<VectorXd> x_des(2, VectorXd::Zero(3));
+
+  x[0] << 1.0, 2.0, 3.0;
+  x[1] << 4.0, 5.0, 6.0;
+  x_des[0] << 0.5, 1.5, 1.0;
+  x_des[1] << 3.0, 4.5, 7.0;
+
+  vector<MatrixXd> Q(2, MatrixXd::Zero(3, 3));
+  Q[0](0, 0) = 1.0;
+  Q[0](1, 1) = 2.0;
+  Q[0](2, 2) = 3.0;
+  Q[1](0, 0) = 4.0;
+  Q[1](1, 1) = 5.0;
+  Q[1](2, 2) = 6.0;
+
+  // Compute only over indices [1, 3).
+  const int start = 1;
+  const int end = 3;
+  double expected_subset = 0.0;
+  expected_subset += 2.0 * (2.0 - 1.5) * (2.0 - 1.5);
+  expected_subset += 3.0 * (3.0 - 1.0) * (3.0 - 1.0);
+  expected_subset += 5.0 * (5.0 - 4.5) * (5.0 - 4.5);
+  expected_subset += 6.0 * (6.0 - 7.0) * (6.0 - 7.0);
+
+  double actual_subset = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+      start, end, x, x_des, Q);
+  EXPECT_NEAR(actual_subset, expected_subset, 1e-12);
+
+  // Same subset computation, but with no desired trajectory (assumed zero).
+  double expected_subset_zero_des = 0.0;
+  expected_subset_zero_des += 2.0 * 2.0 * 2.0;
+  expected_subset_zero_des += 3.0 * 3.0 * 3.0;
+  expected_subset_zero_des += 5.0 * 5.0 * 5.0;
+  expected_subset_zero_des += 6.0 * 6.0 * 6.0;
+
+  double actual_subset_zero_des =
+      TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(start, end, x, Q);
+  EXPECT_NEAR(actual_subset_zero_des, expected_subset_zero_des, 1e-12);
+
+  // Repeated-cost-matrix overload with start/end.
+  MatrixXd Q_repeat = MatrixXd::Zero(3, 3);
+  Q_repeat(0, 0) = 2.0;
+  Q_repeat(1, 1) = 3.0;
+  Q_repeat(2, 2) = 4.0;
+  double expected_repeat_subset = 0.0;
+  expected_repeat_subset += 3.0 * (2.0 - 1.5) * (2.0 - 1.5);
+  expected_repeat_subset += 4.0 * (3.0 - 1.0) * (3.0 - 1.0);
+  expected_repeat_subset += 3.0 * (5.0 - 4.5) * (5.0 - 4.5);
+  expected_repeat_subset += 4.0 * (6.0 - 7.0) * (6.0 - 7.0);
+  double actual_repeat_subset =
+      TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(start, end, x, x_des,
+                                                          Q_repeat);
+  EXPECT_NEAR(actual_repeat_subset, expected_repeat_subset, 1e-12);
+
+  // Invalid ranges should throw.
+  ASSERT_ANY_THROW(
+      TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(-1, 2, x, x_des, Q));
+  ASSERT_ANY_THROW(
+      TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(2, 1, x, x_des, Q));
+  ASSERT_ANY_THROW(
+      TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(0, 4, x, x_des, Q));
 }
 
 TEST_F(TrajectoryEvaluatorTest, SimulatePDControlWithLCSTest) {
@@ -449,8 +512,8 @@ TEST_F(TrajectoryEvaluatorTest, SimulatePDControlWithLCSTest) {
   LCS lcs(A, B, D, d, E, F, H, c, N, dt);
 
   // Create a planned trajectory
-  std::vector<VectorXd> x_plan(N + 1, VectorXd::Zero(n));
-  std::vector<VectorXd> u_plan(N, VectorXd::Zero(k));
+  vector<VectorXd> x_plan(N + 1, VectorXd::Zero(n));
+  vector<VectorXd> u_plan(N, VectorXd::Zero(k));
 
   x_plan[0] << 0.0, 0.0, 0.0, 0.0;
   x_plan[1] << 0.5, 0.5, 0.0, 0.0;
@@ -470,29 +533,64 @@ TEST_F(TrajectoryEvaluatorTest, SimulatePDControlWithLCSTest) {
   Kd(3) = 1.0;
 
   // Simulate with PD control
-  std::pair<std::vector<VectorXd>, std::vector<VectorXd>> result =
+  std::pair<vector<VectorXd>, vector<VectorXd>> result =
       TrajectoryEvaluator::SimulatePDControlWithLCS(x_plan, u_plan, Kp, Kd,
                                                     lcs);
 
-  std::vector<VectorXd> x_sim = result.first;
-  std::vector<VectorXd> u_sim = result.second;
+  vector<VectorXd> x_sim = result.first;
+  vector<VectorXd> u_sim = result.second;
 
   EXPECT_EQ(x_sim.size(), x_plan.size());
   EXPECT_EQ(u_sim.size(), u_plan.size());
   EXPECT_TRUE(x_sim[0].isApprox(x_plan[0]));
 
+  // Test new overload with no feedforward argument. This should match using an
+  // explicit zero feedforward trajectory with use_feedforward = false.
+  std::pair<vector<VectorXd>, vector<VectorXd>> result_no_ff =
+      TrajectoryEvaluator::SimulatePDControlWithLCS(x_plan, Kp, Kd, lcs);
+  std::pair<vector<VectorXd>, vector<VectorXd>> result_zero_ff =
+      TrajectoryEvaluator::SimulatePDControlWithLCS(
+          x_plan, vector<VectorXd>(N, VectorXd::Zero(k)), Kp, Kd, lcs, false);
+  EXPECT_EQ(result_no_ff.first.size(), result_zero_ff.first.size());
+  EXPECT_EQ(result_no_ff.second.size(), result_zero_ff.second.size());
+  for (int i = 0; i < N + 1; ++i) {
+    EXPECT_TRUE(result_no_ff.first[i].isApprox(result_zero_ff.first[i]));
+  }
+  for (int i = 0; i < N; ++i) {
+    EXPECT_TRUE(result_no_ff.second[i].isApprox(result_zero_ff.second[i]));
+  }
+
   // Test with coarse and fine LCS (fine has 2x time resolution)
   LCS fine_lcs(A, B / 2.0, D, d, E, F, H, c, N * 2, dt / 2);
-  std::pair<std::vector<VectorXd>, std::vector<VectorXd>> result_fine =
+  std::pair<vector<VectorXd>, vector<VectorXd>> result_fine =
       TrajectoryEvaluator::SimulatePDControlWithLCS(x_plan, u_plan, Kp, Kd, lcs,
                                                     fine_lcs);
 
-  std::vector<VectorXd> x_sim_fine = result_fine.first;
-  std::vector<VectorXd> u_sim_fine = result_fine.second;
+  vector<VectorXd> x_sim_fine = result_fine.first;
+  vector<VectorXd> u_sim_fine = result_fine.second;
 
   EXPECT_EQ(x_sim_fine.size(), x_plan.size());
   EXPECT_EQ(u_sim_fine.size(), u_plan.size());
   EXPECT_TRUE(x_sim_fine[0].isApprox(x_plan[0]));
+
+  // Test new coarse/fine overload with no feedforward argument.
+  std::pair<vector<VectorXd>, vector<VectorXd>> result_fine_no_ff =
+      TrajectoryEvaluator::SimulatePDControlWithLCS(x_plan, Kp, Kd, lcs,
+                                                    fine_lcs);
+  std::pair<vector<VectorXd>, vector<VectorXd>> result_fine_zero_ff =
+      TrajectoryEvaluator::SimulatePDControlWithLCS(
+          x_plan, vector<VectorXd>(N, VectorXd::Zero(k)), Kp, Kd, lcs, fine_lcs,
+          false);
+  EXPECT_EQ(result_fine_no_ff.first.size(), result_fine_zero_ff.first.size());
+  EXPECT_EQ(result_fine_no_ff.second.size(), result_fine_zero_ff.second.size());
+  for (int i = 0; i < N + 1; ++i) {
+    EXPECT_TRUE(
+        result_fine_no_ff.first[i].isApprox(result_fine_zero_ff.first[i]));
+  }
+  for (int i = 0; i < N; ++i) {
+    EXPECT_TRUE(
+        result_fine_no_ff.second[i].isApprox(result_fine_zero_ff.second[i]));
+  }
 
   // Test error checking for mismatched dimensions
   VectorXd Kp_wrong_size = VectorXd::Zero(n + 1);
@@ -511,12 +609,12 @@ TEST_F(TrajectoryEvaluatorTest, SimulatePDControlWithLCSTest) {
 }
 
 TEST_F(TrajectoryEvaluatorTest, ZeroOrderHoldAndDownsampleRoundTrip) {
-  std::vector<VectorXd> coarse(2, VectorXd::Zero(2));
+  vector<VectorXd> coarse(2, VectorXd::Zero(2));
   coarse[0] << 1.0, 2.0;
   coarse[1] << 3.0, 4.0;
 
   const int upsample_rate = 3;
-  std::vector<VectorXd> fine =
+  vector<VectorXd> fine =
       TrajectoryEvaluator::ZeroOrderHoldTrajectory(coarse, upsample_rate);
   EXPECT_EQ(fine.size(), coarse.size() * upsample_rate);
   for (int i = 0; i < upsample_rate; ++i) {
@@ -524,7 +622,7 @@ TEST_F(TrajectoryEvaluatorTest, ZeroOrderHoldAndDownsampleRoundTrip) {
     EXPECT_TRUE(fine[i + upsample_rate].isApprox(coarse[1]));
   }
 
-  std::vector<VectorXd> downsampled =
+  vector<VectorXd> downsampled =
       TrajectoryEvaluator::DownsampleTrajectory(fine, upsample_rate);
   EXPECT_EQ(downsampled.size(), coarse.size());
   EXPECT_TRUE(downsampled[0].isApprox(coarse[0]));
@@ -532,20 +630,20 @@ TEST_F(TrajectoryEvaluatorTest, ZeroOrderHoldAndDownsampleRoundTrip) {
 }
 
 TEST_F(TrajectoryEvaluatorTest, MultiZeroOrderHoldAndDownsampleRoundTrip) {
-  std::vector<VectorXd> x_coarse(3, VectorXd::Zero(2));
+  vector<VectorXd> x_coarse(3, VectorXd::Zero(2));
   x_coarse[0] << 1.0, 2.0;
   x_coarse[1] << 3.0, 4.0;
   x_coarse[2] << 5.0, 6.0;
-  std::vector<VectorXd> u_coarse(2, VectorXd::Zero(1));
+  vector<VectorXd> u_coarse(2, VectorXd::Zero(1));
   u_coarse[0] << 7.0;
   u_coarse[1] << 8.0;
 
   const int upsample_rate = 3;
-  std::pair<std::vector<VectorXd>, std::vector<VectorXd>> fine =
+  std::pair<vector<VectorXd>, vector<VectorXd>> fine =
       TrajectoryEvaluator::ZeroOrderHoldTrajectories(x_coarse, u_coarse,
                                                      upsample_rate);
-  std::vector<VectorXd> x_fine = fine.first;
-  std::vector<VectorXd> u_fine = fine.second;
+  vector<VectorXd> x_fine = fine.first;
+  vector<VectorXd> u_fine = fine.second;
   EXPECT_EQ(x_fine.size(), (x_coarse.size() - 1) * upsample_rate + 1);
   EXPECT_EQ(u_fine.size(), u_coarse.size() * upsample_rate);
   for (int i = 0; i < upsample_rate; ++i) {
@@ -556,11 +654,11 @@ TEST_F(TrajectoryEvaluatorTest, MultiZeroOrderHoldAndDownsampleRoundTrip) {
   }
   EXPECT_TRUE(x_fine.back().isApprox(x_coarse.back()));
 
-  std::pair<std::vector<VectorXd>, std::vector<VectorXd>> downsampled =
+  std::pair<vector<VectorXd>, vector<VectorXd>> downsampled =
       TrajectoryEvaluator::DownsampleTrajectories(x_fine, u_fine,
                                                   upsample_rate);
-  std::vector<VectorXd> x_downsampled = downsampled.first;
-  std::vector<VectorXd> u_downsampled = downsampled.second;
+  vector<VectorXd> x_downsampled = downsampled.first;
+  vector<VectorXd> u_downsampled = downsampled.second;
   EXPECT_EQ(x_downsampled.size(), 3);
   EXPECT_EQ(x_downsampled.size(), x_coarse.size());
   EXPECT_EQ(u_downsampled.size(), 2);
@@ -572,16 +670,16 @@ TEST_F(TrajectoryEvaluatorTest, MultiZeroOrderHoldAndDownsampleRoundTrip) {
   EXPECT_TRUE(u_downsampled[1].isApprox(u_coarse[1]));
 
   // Test any mismatched dimensions throw errors.
-  std::vector<VectorXd> x_coarse_wrong(2, VectorXd::Zero(3));
+  vector<VectorXd> x_coarse_wrong(2, VectorXd::Zero(3));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ZeroOrderHoldTrajectories(
       x_coarse_wrong, u_coarse, upsample_rate));
-  std::vector<VectorXd> u_coarse_wrong(3, VectorXd::Zero(2));
+  vector<VectorXd> u_coarse_wrong(3, VectorXd::Zero(2));
   ASSERT_ANY_THROW(TrajectoryEvaluator::ZeroOrderHoldTrajectories(
       x_coarse, u_coarse_wrong, upsample_rate));
-  std::vector<VectorXd> x_fine_wrong(2, VectorXd::Zero(3));
+  vector<VectorXd> x_fine_wrong(2, VectorXd::Zero(3));
   ASSERT_ANY_THROW(TrajectoryEvaluator::DownsampleTrajectories(
       x_fine_wrong, u_fine, upsample_rate));
-  std::vector<VectorXd> u_fine_wrong(3, VectorXd::Zero(2));
+  vector<VectorXd> u_fine_wrong(3, VectorXd::Zero(2));
   ASSERT_ANY_THROW(TrajectoryEvaluator::DownsampleTrajectories(
       x_fine, u_fine_wrong, upsample_rate));
 }
@@ -607,11 +705,11 @@ TEST_F(TrajectoryEvaluatorTest,
 
   VectorXd x_init = VectorXd::Zero(n);
   x_init << 1.0, 1.0;
-  std::vector<VectorXd> u_plan(N, VectorXd::Zero(k));
+  vector<VectorXd> u_plan(N, VectorXd::Zero(k));
   u_plan[0] << 1.0, 0.0;
   u_plan[1] << 0.0, 2.0;
 
-  std::vector<VectorXd> x_sim =
+  vector<VectorXd> x_sim =
       TrajectoryEvaluator::SimulateLCSOverTrajectory(x_init, u_plan, lcs);
   ASSERT_EQ(x_sim.size(), static_cast<size_t>(N + 1));
 
@@ -623,7 +721,7 @@ TEST_F(TrajectoryEvaluatorTest,
 
   // Test with a finer LCS (smaller dt)
   LCS finer_lcs(A, B / 10.0, D, d, E, F, H, c, N * 10, dt / 10);
-  std::vector<VectorXd> x_sim_from_finer =
+  vector<VectorXd> x_sim_from_finer =
       TrajectoryEvaluator::SimulateLCSOverTrajectory(x_init, u_plan, lcs,
                                                      finer_lcs);
   ASSERT_EQ(x_sim_from_finer.size(), static_cast<size_t>(N + 1));
@@ -632,7 +730,7 @@ TEST_F(TrajectoryEvaluatorTest,
   EXPECT_TRUE(x_sim_from_finer[2].isApprox(x2_expected));
 
   // Test any mismatched dimensions throw errors.
-  std::vector<VectorXd> u_plan_wrong(2, VectorXd::Zero(3));
+  vector<VectorXd> u_plan_wrong(2, VectorXd::Zero(3));
   ASSERT_ANY_THROW(TrajectoryEvaluator::SimulateLCSOverTrajectory(
       x_init, u_plan_wrong, lcs));
   VectorXd x_init_wrong = VectorXd::Zero(3);
@@ -658,8 +756,8 @@ TYPED_TEST_SUITE(C3CartpoleTypedTest, projection_types);
 TYPED_TEST(C3CartpoleTypedTest, UpdateLCSTest) {
   c3::C3* pOpt = this->pOpt.get();
   auto dt = this->dt;
-  std::vector<drake::solvers::LinearEqualityConstraint*>
-      pre_dynamic_constraints = pOpt->GetDynamicConstraints();
+  vector<drake::solvers::LinearEqualityConstraint*> pre_dynamic_constraints =
+      pOpt->GetDynamicConstraints();
   auto& N = this->N;
   auto n = this->n;
   auto k = this->k;
@@ -685,8 +783,8 @@ TYPED_TEST(C3CartpoleTypedTest, UpdateLCSTest) {
 
   pOpt->UpdateLCS(TestSystem);
 
-  std::vector<drake::solvers::LinearEqualityConstraint*>
-      pst_dynamic_constraints = pOpt->GetDynamicConstraints();
+  vector<drake::solvers::LinearEqualityConstraint*> pst_dynamic_constraints =
+      pOpt->GetDynamicConstraints();
   for (int i = 0; i < N; ++i) {
     // Linear Equality A matrix should be updated
     MatrixXd pst_Al = pst_dynamic_constraints[i]->GetDenseA();
@@ -700,8 +798,8 @@ TYPED_TEST(C3CartpoleTypedTest, End2EndCartpoleTest) {
   int timesteps = 1000;  // number of timesteps for the simulation
 
   /// create state and input arrays
-  std::vector<VectorXd> x(timesteps, VectorXd::Zero(this->n));
-  std::vector<VectorXd> input(timesteps, VectorXd::Zero(this->k));
+  vector<VectorXd> x(timesteps, VectorXd::Zero(this->n));
+  vector<VectorXd> input(timesteps, VectorXd::Zero(this->k));
 
   x[0] = this->x0;
 
@@ -732,9 +830,9 @@ TYPED_TEST(C3CartpoleTypedTest, ComputeCost) {
 
   // Solve one iteration of the problem.
   optimizer.Solve(this->x0);
-  std::vector<VectorXd> x_sol = optimizer.GetStateSolution();
-  std::vector<VectorXd> u_sol = optimizer.GetInputSolution();
-  std::vector<VectorXd> lambda_sol = optimizer.GetForceSolution();
+  vector<VectorXd> x_sol = optimizer.GetStateSolution();
+  vector<VectorXd> u_sol = optimizer.GetInputSolution();
+  vector<VectorXd> lambda_sol = optimizer.GetForceSolution();
 
   // The state trajectory excludes the N+1 time step.  Add it to the end via
   // LCS rollout since it contributes to the C3 internal cost optimization.
@@ -748,9 +846,9 @@ TYPED_TEST(C3CartpoleTypedTest, ComputeCost) {
 
   // Get the cost matrices and desired state.
   const C3::CostMatrices cost_matrices = optimizer.GetCostMatrices();
-  std::vector<MatrixXd> Q = cost_matrices.Q;
-  std::vector<MatrixXd> R = cost_matrices.R;
-  std::vector<VectorXd> x_des = optimizer.GetDesiredState();
+  vector<MatrixXd> Q = cost_matrices.Q;
+  vector<MatrixXd> R = cost_matrices.R;
+  vector<VectorXd> x_des = optimizer.GetDesiredState();
   ASSERT_EQ(x_sol.size(), x_des.size());
   ASSERT_EQ(x_sol.size(), Q.size());
   ASSERT_EQ(u_sol.size(), R.size());

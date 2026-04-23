@@ -16,11 +16,10 @@ using Eigen::VectorXd;
 using std::vector;
 
 std::pair<vector<VectorXd>, vector<VectorXd>>
-TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
-                                              const vector<VectorXd>& u_plan,
-                                              const VectorXd& Kp,
-                                              const VectorXd& Kd,
-                                              const LCS& lcs) {
+TrajectoryEvaluator::SimulatePDControlWithLCS(
+    const vector<VectorXd>& x_plan, const vector<VectorXd>& u_plan,
+    const VectorXd& Kp, const VectorXd& Kd, const LCS& lcs,
+    const bool& use_feedforward, const LCSSimulateConfig& config) {
   CheckLCSAndTrajectoryCompatibility(lcs, x_plan, u_plan);
 
   int N = lcs.N();
@@ -54,20 +53,34 @@ TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
 
   x[0] = x_plan[0];
   for (int i = 0; i < N; i++) {
-    u[i] =
-        u_plan[i] + Kp_mat * (x_plan[i] - x[i]) + Kd_mat * (x_plan[i] - x[i]);
-    x[i + 1] = lcs.Simulate(x[i], u[i]);
+    u[i] = Kp_mat * (x_plan[i] - x[i]) + Kd_mat * (x_plan[i] - x[i]);
+    if (use_feedforward) {
+      u[i] += u_plan[i];
+    }
+    x[i + 1] = lcs.Simulate(x[i], u[i], config);
   }
   return std::make_pair(x, u);
 }
 
 std::pair<vector<VectorXd>, vector<VectorXd>>
 TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
-                                              const vector<VectorXd>& u_plan,
                                               const VectorXd& Kp,
                                               const VectorXd& Kd,
-                                              const LCS& coarse_lcs,
-                                              const LCS& fine_lcs) {
+                                              const LCS& lcs,
+                                              const LCSSimulateConfig& config) {
+  const vector<VectorXd> empty_u_plan(lcs.N(),
+                                      VectorXd::Zero(lcs.num_inputs()));
+  const bool use_feedforward = false;
+  return SimulatePDControlWithLCS(x_plan, empty_u_plan, Kp, Kd, lcs,
+                                  use_feedforward, config);
+}
+
+std::pair<vector<VectorXd>, vector<VectorXd>>
+TrajectoryEvaluator::SimulatePDControlWithLCS(
+    const vector<VectorXd>& x_plan, const vector<VectorXd>& u_plan,
+    const VectorXd& Kp, const VectorXd& Kd, const LCS& coarse_lcs,
+    const LCS& fine_lcs, const bool& use_feedforward,
+    const LCSSimulateConfig& config) {
   int upsample_rate = CheckCoarseAndFineLCSCompatibility(coarse_lcs, fine_lcs);
 
   // Zero-order hold the planned trajectory to match the finer time
@@ -76,8 +89,8 @@ TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
       ZeroOrderHoldTrajectories(x_plan, u_plan, upsample_rate);
 
   // Do PD control with the finer trajectory and LCS.
-  auto [x_sim_fine, u_sim_fine] =
-      SimulatePDControlWithLCS(x_plan_finer, u_plan_finer, Kp, Kd, fine_lcs);
+  auto [x_sim_fine, u_sim_fine] = SimulatePDControlWithLCS(
+      x_plan_finer, u_plan_finer, Kp, Kd, fine_lcs, use_feedforward, config);
 
   // Downsample the resulting trajectory back to the original time
   // discretization.
@@ -85,6 +98,20 @@ TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
       DownsampleTrajectories(x_sim_fine, u_sim_fine, upsample_rate);
 
   return std::make_pair(x_sim, u_sim);
+}
+
+std::pair<vector<VectorXd>, vector<VectorXd>>
+TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
+                                              const VectorXd& Kp,
+                                              const VectorXd& Kd,
+                                              const LCS& coarse_lcs,
+                                              const LCS& fine_lcs,
+                                              const LCSSimulateConfig& config) {
+  const vector<VectorXd> empty_u_plan(coarse_lcs.N(),
+                                      VectorXd::Zero(coarse_lcs.num_inputs()));
+  const bool use_feedforward = false;
+  return SimulatePDControlWithLCS(x_plan, empty_u_plan, Kp, Kd, coarse_lcs,
+                                  fine_lcs, use_feedforward, config);
 }
 
 vector<VectorXd> TrajectoryEvaluator::SimulateLCSOverTrajectory(
@@ -197,9 +224,9 @@ int TrajectoryEvaluator::CheckCoarseAndFineLCSCompatibility(
 }
 
 void TrajectoryEvaluator::CheckLCSAndTrajectoryCompatibility(
-    const LCS& lcs, const std::vector<Eigen::VectorXd>& x,
-    const std::optional<std::vector<Eigen::VectorXd>>& u,
-    const std::optional<std::vector<Eigen::VectorXd>>& lambda) {
+    const LCS& lcs, const vector<VectorXd>& x,
+    const std::optional<vector<VectorXd>>& u,
+    const std::optional<vector<VectorXd>>& lambda) {
   DRAKE_THROW_UNLESS(lcs.N() == x.size() - 1);
   if (u.has_value()) {
     DRAKE_THROW_UNLESS(lcs.N() == u->size());
