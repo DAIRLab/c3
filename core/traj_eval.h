@@ -69,9 +69,56 @@ class TrajectoryEvaluator {
       const int& start_index, const int& end_index,
       const std::vector<Eigen::VectorXd>& data, const T_des& data_des,
       const T_cost& cost_matrices, Rest&&... rest) {
-    return ComputeQuadraticTrajectoryCostPrivate(start_index, end_index, data,
-                                                 data_des, cost_matrices,
-                                                 std::forward<Rest>(rest)...);
+    double cost = 0.0;
+    int N = data.size();
+    DRAKE_THROW_UNLESS(N > 0);
+    int n_data = data[0].size();
+
+    DRAKE_THROW_UNLESS(start_index >= 0);
+    DRAKE_THROW_UNLESS(end_index >= start_index);
+    DRAKE_THROW_UNLESS(end_index <= n_data);
+    int subset_size = end_index - start_index;
+
+    // Handle if data_des is provided as a single vector instead of a trajectory
+    // of vectors.
+    std::vector<Eigen::VectorXd> data_des_vec;
+    if constexpr (std::is_same_v<T_des, std::vector<Eigen::VectorXd>>) {
+      DRAKE_THROW_UNLESS(N == data_des.size());
+      data_des_vec = data_des;
+    } else {
+      bool is_single_vector = std::is_same_v<T_des, Eigen::VectorXd>;
+      DRAKE_THROW_UNLESS(is_single_vector);
+      data_des_vec = std::vector<Eigen::VectorXd>(N, data_des);
+    }
+
+    // Handle if cost_matrices is provided as a single matrix instead of a
+    // trajectory of matrices.
+    std::vector<Eigen::MatrixXd> cost_matrices_vec;
+    if constexpr (std::is_same_v<T_cost, std::vector<Eigen::MatrixXd>>) {
+      DRAKE_THROW_UNLESS(N == cost_matrices.size());
+      cost_matrices_vec = cost_matrices;
+    } else {
+      bool is_single_matrix = std::is_same_v<T_cost, Eigen::MatrixXd>;
+      DRAKE_THROW_UNLESS(is_single_matrix);
+      cost_matrices_vec = std::vector<Eigen::MatrixXd>(N, cost_matrices);
+    }
+
+    // Sum the costs and check sizes.
+    for (int i = 0; i < N; i++) {
+      DRAKE_THROW_UNLESS(data[i].size() == n_data);
+      DRAKE_THROW_UNLESS(data_des_vec[i].size() == n_data);
+      DRAKE_THROW_UNLESS(cost_matrices_vec[i].rows() == n_data);
+      DRAKE_THROW_UNLESS(cost_matrices_vec[i].cols() == n_data);
+
+      cost += (data[i] - data_des_vec[i])
+                  .segment(start_index, subset_size)
+                  .transpose() *
+              cost_matrices_vec[i].block(start_index, start_index, subset_size,
+                                         subset_size) *
+              (data[i] - data_des_vec[i]).segment(start_index, subset_size);
+    }
+
+    return cost + ComputeQuadraticTrajectoryCost(std::forward<Rest>(rest)...);
   }
 
   /** @brief Same as above, but no start_index and end_index are provided, so
@@ -84,9 +131,9 @@ class TrajectoryEvaluator {
       const std::vector<Eigen::VectorXd>& data, const T_des& data_des,
       const T_cost& cost_matrices, Rest&&... rest) {
     DRAKE_THROW_UNLESS(!data.empty());
-    return ComputeQuadraticTrajectoryCostPrivate(0, data[0].size(), data,
-                                                 data_des, cost_matrices,
-                                                 std::forward<Rest>(rest)...);
+    return ComputeQuadraticTrajectoryCost(0, data[0].size(), data, data_des,
+                                          cost_matrices,
+                                          std::forward<Rest>(rest)...);
   }
 
   /** @brief Special case: no desired data is provided, so it is assumed the
@@ -380,68 +427,6 @@ class TrajectoryEvaluator {
    * not be called externally with no input arguments.
    */
   static double ComputeQuadraticTrajectoryCost() { return 0.0; }
-
-  /** @brief Private implementation of ComputeQuadraticTrajectoryCost for
-   * handling the general case with start/end index arguments.
-   */
-  template <typename T_des, typename T_cost, typename... Rest,
-            typename = std::enable_if_t<detail::IsDataType<T_des>::value &&
-                                        detail::IsCostType<T_cost>::value>>
-  static double ComputeQuadraticTrajectoryCostPrivate(
-      const int& start_index, const int& end_index,
-      const std::vector<Eigen::VectorXd>& data, const T_des& data_des,
-      const T_cost& cost_matrices, Rest&&... rest) {
-    double cost = 0.0;
-    int N = data.size();
-    DRAKE_THROW_UNLESS(N > 0);
-    int n_data = data[0].size();
-
-    DRAKE_THROW_UNLESS(start_index >= 0);
-    DRAKE_THROW_UNLESS(end_index >= start_index);
-    DRAKE_THROW_UNLESS(end_index <= n_data);
-    int subset_size = end_index - start_index;
-
-    // Handle if data_des is provided as a single vector instead of a trajectory
-    // of vectors.
-    std::vector<Eigen::VectorXd> data_des_vec;
-    if constexpr (std::is_same_v<T_des, std::vector<Eigen::VectorXd>>) {
-      DRAKE_THROW_UNLESS(N == data_des.size());
-      data_des_vec = data_des;
-    } else {
-      bool is_single_vector = std::is_same_v<T_des, Eigen::VectorXd>;
-      DRAKE_THROW_UNLESS(is_single_vector);
-      data_des_vec = std::vector<Eigen::VectorXd>(N, data_des);
-    }
-
-    // Handle if cost_matrices is provided as a single matrix instead of a
-    // trajectory of matrices.
-    std::vector<Eigen::MatrixXd> cost_matrices_vec;
-    if constexpr (std::is_same_v<T_cost, std::vector<Eigen::MatrixXd>>) {
-      DRAKE_THROW_UNLESS(N == cost_matrices.size());
-      cost_matrices_vec = cost_matrices;
-    } else {
-      bool is_single_matrix = std::is_same_v<T_cost, Eigen::MatrixXd>;
-      DRAKE_THROW_UNLESS(is_single_matrix);
-      cost_matrices_vec = std::vector<Eigen::MatrixXd>(N, cost_matrices);
-    }
-
-    // Sum the costs and check sizes.
-    for (int i = 0; i < N; i++) {
-      DRAKE_THROW_UNLESS(data[i].size() == n_data);
-      DRAKE_THROW_UNLESS(data_des_vec[i].size() == n_data);
-      DRAKE_THROW_UNLESS(cost_matrices_vec[i].rows() == n_data);
-      DRAKE_THROW_UNLESS(cost_matrices_vec[i].cols() == n_data);
-
-      cost += (data[i] - data_des_vec[i])
-                  .segment(start_index, subset_size)
-                  .transpose() *
-              cost_matrices_vec[i].block(start_index, start_index, subset_size,
-                                         subset_size) *
-              (data[i] - data_des_vec[i]).segment(start_index, subset_size);
-    }
-
-    return cost + ComputeQuadraticTrajectoryCost(std::forward<Rest>(rest)...);
-  }
 };
 
 }  // namespace traj_eval
