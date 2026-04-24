@@ -283,6 +283,21 @@ void C3::UpdateFinalCost(const Eigen::MatrixXd Q_final, const Eigen::VectorXd bi
   UpdateCostMatrices(CostMatrices(Q, cost_matrices_.R, cost_matrices_.G, cost_matrices_.U));
 }
 
+void C3::AddEETrackingCost(double weight, std::vector<Eigen::VectorXd> x_des, int ee_start_idx, int ee_size) {  
+  DRAKE_DEMAND(x_des.size() == N_+1);
+  
+  double discount_factor = 1;
+  for (int i = 0; i < x_des.size(); i++) {
+    DRAKE_DEMAND(x_des.at(i).size() == ee_size);
+    MatrixXd Q = weight * discount_factor * MatrixXd::Identity(ee_size, ee_size);
+    drake::solvers::VectorXDecisionVariable ee_x = x_.at(i).segment(ee_start_idx, ee_size);
+
+    prog_.AddQuadraticCost(2 * Q, -2 * Q * x_des.at(i), ee_x);
+  }
+  
+}
+
+
 const std::vector<drake::solvers::QuadraticCost*>& C3::GetTargetCost() {
   return target_costs_;
 }

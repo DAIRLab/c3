@@ -122,6 +122,13 @@ class C3 {
    */ 
   void UpdateFinalCost(const Eigen::MatrixXd Q_final, const Eigen::VectorXd bias);
 
+	/**
+	 * @brief Adds cost to track some desired ee trajectory (that is different from the nominal in xdes)
+	 *
+	 * @param Q_final quadratic cost term on final x
+	 * @param bias linear cost term on final x
+	 */ 
+  void AddEETrackingCost(double weight, std::vector<Eigen::VectorXd> x_des, int ee_start_idx, int ee_size);
 
   /**
    * @brief Get the current cost matrices used in the system.
