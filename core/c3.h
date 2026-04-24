@@ -125,10 +125,13 @@ class C3 {
 	/**
 	 * @brief Adds cost to track some desired ee trajectory (that is different from the nominal in xdes)
 	 *
-	 * @param Q_final quadratic cost term on final x
-	 * @param bias linear cost term on final x
+	 * @param weight scalar cost weigh tterm
+	 * @param ee_start_idx start index of ee in x vector
+	 * @param ee_size size of ee in x vector
 	 */ 
-  void AddEETrackingCost(double weight, std::vector<Eigen::VectorXd> x_des, int ee_start_idx, int ee_size);
+  void AddEETrackingCost(int ee_start_idx, int ee_size);
+	
+  void UpdateEETrackingTargetAndCost(std::vector<Eigen::VectorXd> ee_tracking_target, double weight, int ee_start_idx, int ee_size);
 
   /**
    * @brief Get the current cost matrices used in the system.
@@ -440,6 +443,7 @@ class C3 {
   std::vector<drake::solvers::QuadraticCost*> target_costs_;
   std::vector<QuadraticCostBinding> augmented_costs_;
   std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
+  std::vector<drake::solvers::QuadraticCost*> ee_tracking_costs_;
 
   // Solutions
   std::unique_ptr<std::vector<Eigen::VectorXd>> x_sol_;
