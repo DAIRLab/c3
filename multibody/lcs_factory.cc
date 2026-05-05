@@ -195,7 +195,16 @@ void LCSFactory::InitializeContactEvaluators(
   contact_evaluators_.reserve(n_contacts_);
 
   for (int i = 0; i < n_contacts_; ++i) {
-    if (frictionless_ || friction_dirs[i] == 1) {
+    if (friction_dirs[i] == 0) {
+      // 1D normal-only contact
+      contact_evaluators_.push_back(
+          std::make_unique<OneDimensionalContactEvaluator<double>>(
+              plant_, contact_pairs_[i]));
+      // TODO @bibit:  seems like frictionless_ should indicate 1D normal-only
+      // contact, but this was historically implemented the same as planar
+      // contact so continue to do so.  May want to figure out if this should
+      // use the 1D evaluator.
+    } else if (frictionless_ || friction_dirs[i] == 1) {
       // Planar contact
       DRAKE_DEMAND(planar_normals[i].has_value());
       Eigen::Vector3d planar_normal =
@@ -298,6 +307,7 @@ void LCSFactory::UpdateStateAndInput(
                                              &context_ad_);
   SetInputsIfNew<AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u_), &context_ad_);
 }
+
 // Linearizes the dynamics of a multibody plant_ into a Linear Complementarity
 // System (LCS)
 LCS LCSFactory::GenerateLCS() {
@@ -420,6 +430,7 @@ LCS LCSFactory::GenerateLCS() {
 
   return LCS(A, B, D, d, E, F, H, c, options_.N, dt_);  // Return the system;
 }
+
 void LCSFactory::FormulateFrictionlessSpringContactDynamics(
     const VectorXd& phi, const MatrixXd& Jn, const MatrixXd& qdotNv,
     const double& spring_stiffness, MatrixX<AutoDiffXd>& M, MatrixXd& D,

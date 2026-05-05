@@ -105,15 +105,17 @@ class GeomGeomCollider {
    * @brief Computes a basis for contact forces in the world frame.
    *
    * Depending on the number of friction directions, this method constructs
-   * either a planar (2D) or polytope (3D) basis for the contact forces at the
-   * collision point, expressed in the world frame. For planar contact
-   * (num_friction_directions < 1), the basis is constructed from the contact
-   * normal and the provided planar normal. For 3D contact, a polytope basis is
-   * generated and rotated to align with the contact normal.
+   * either a planar (2D), polytope (3D), or normal-only (1D) basis for the
+   * contact forces at the collision point, expressed in the world frame. For
+   * planar contact (num_friction_directions < 0), the basis is constructed from
+   * the contact normal and the provided planar normal. For 3D contact, a
+   * polytope basis is generated and rotated to align with the contact normal.
+   * Normal-only basis is specified by num_friction_directions = 0.
    *
    * @param context The context for the MultibodyPlant.
    * @param num_friction_directions The number of friction directions for the
-   * polytope approximation. If less than 1, a planar basis is used.
+   * polytope approximation. If 0, this is a 1D (normal-only) force basis (i.e.
+   * 0 tangential friction directions). If less than 0, a planar basis is used.
    * @param planar_normal The normal vector defining the plane for planar
    * contact (default: {0, 1, 0}).
    * @return A matrix whose rows form an orthonormal basis for the contact

@@ -74,6 +74,32 @@ class ContactEvaluator {
 };
 
 /**
+ * @brief Contact evaluator for 1D (normal-only) contact forces.
+ */
+template <typename T>
+class OneDimensionalContactEvaluator : public ContactEvaluator<T> {
+ public:
+  OneDimensionalContactEvaluator(
+      const drake::multibody::MultibodyPlant<T>& plant,
+      const drake::SortedPair<drake::geometry::GeometryId>& contact_pair)
+      : ContactEvaluator<T>(plant, contact_pair) {}
+
+  std::pair<T, drake::MatrixX<T>> Eval(
+      const drake::systems::Context<T>& context,
+      drake::multibody::JacobianWrtVariable wrt =
+          drake::multibody::JacobianWrtVariable::kV) const override {
+    return this->collider_.EvalPolytope(context, 0, wrt);
+  }
+
+  int GetNumFrictionDirections() const override { return 0; }
+
+  Eigen::Matrix<double, Eigen::Dynamic, 3> CalcForceBasis(
+      const drake::systems::Context<T>& context) const override {
+    return this->collider_.CalcForceBasisInWorldFrame(context, 0);
+  }
+};
+
+/**
  * @brief Contact evaluator for polytope friction cone approximation.
  */
 template <typename T>
@@ -138,9 +164,9 @@ class PlanarContactEvaluator : public ContactEvaluator<T> {
 
   Eigen::Matrix<double, Eigen::Dynamic, 3> CalcForceBasis(
       const drake::systems::Context<T>& context) const override {
-    // For planar contact, pass num_friction_directions = 0 to trigger planar
+    // For planar contact, pass num_friction_directions = -1 to trigger planar
     // mode
-    return this->collider_.CalcForceBasisInWorldFrame(context, 0,
+    return this->collider_.CalcForceBasisInWorldFrame(context, -1,
                                                       planar_normal_);
   }
 
