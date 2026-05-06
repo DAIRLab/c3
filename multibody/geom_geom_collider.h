@@ -85,6 +85,22 @@ class GeomGeomCollider {
           drake::multibody::JacobianWrtVariable::kV);
 
   /**
+   * @brief Calculates the signed distance and contact frame Jacobian for a
+   *        bi-directional 1D contact scenario.
+   *
+   * @param context The context for the MultibodyPlant.
+   * @param wrt An enum specifying whether the Jacobian should be computed with
+   *        respect to configuration variables (q) or velocity variables (v).
+   *        Defaults to JacobianWrtVariable::kV.
+   * @return A pair containing the signed distance as a scalar and the contact
+   *         frame Jacobian as a matrix.
+   */
+  std::pair<T, drake::MatrixX<T>> EvalBidirectionalOneDim(
+      const drake::systems::Context<T>& context,
+      drake::multibody::JacobianWrtVariable wrt =
+          drake::multibody::JacobianWrtVariable::kV);
+
+  /**
    * @brief Returns the positions, expressed in the World frame, of the
    *        closest points on each Geometry.
    *
@@ -105,15 +121,20 @@ class GeomGeomCollider {
    * @brief Computes a basis for contact forces in the world frame.
    *
    * Depending on the number of friction directions, this method constructs
-   * either a planar (2D) or polytope (3D) basis for the contact forces at the
-   * collision point, expressed in the world frame. For planar contact
-   * (num_friction_directions < 1), the basis is constructed from the contact
-   * normal and the provided planar normal. For 3D contact, a polytope basis is
-   * generated and rotated to align with the contact normal.
+   * either a planar (2D), polytope (3D), or bi-directional (1D) basis for the
+   * contact forces at the collision point, expressed in the world frame. For
+   * planar contact (num_friction_directions < 1), the basis is constructed from
+   * the contact normal and the provided planar normal. For 3D contact, a
+   * polytope basis is generated and rotated to align with the contact normal.
+   * Bi-directional 1D contact is specified by include_opposite_normal = true,
+   * and num_friction_directions must be 0.
    *
    * @param context The context for the MultibodyPlant.
    * @param num_friction_directions The number of friction directions for the
-   * polytope approximation. If less than 1, a planar basis is used.
+   * polytope approximation. Must be 0 if include_opposite_normal is true.
+   * Otherwise, if less than 1, a planar basis is used.
+   * @param include_opposite_normal If true, the second column of the returned
+   * matrix will be the opposite of the contact normal in the first column.
    * @param planar_normal The normal vector defining the plane for planar
    * contact (default: {0, 1, 0}).
    * @return A matrix whose rows form an orthonormal basis for the contact
@@ -121,6 +142,7 @@ class GeomGeomCollider {
    */
   Eigen::Matrix<double, Eigen::Dynamic, 3> CalcForceBasisInWorldFrame(
       const drake::systems::Context<T>& context, int num_friction_directions,
+      const bool& include_opposite_normal = false,
       const Eigen::Vector3d& planar_normal = {0, 1, 0}) const;
 
   /**
@@ -178,7 +200,8 @@ class GeomGeomCollider {
 
  private:
   /**
-   * @brief Internal helper function for EvalPolytope and EvalPlanar.
+   * @brief Internal helper function for EvalPolytope, EvalPlanar, and
+   * EvalBidirectionalOneDim.
    *
    * This function performs the core computation of the signed distance and
    * contact frame Jacobian, given a specified force basis and rotation matrix.
@@ -186,15 +209,18 @@ class GeomGeomCollider {
    * @param context The context for the MultibodyPlant.
    * @param query_result The struct containing the results of the geometry
    *        query.
-   * @param force_basis A matrix whose columns form an orthonormal basis for
-   *        the contact forces. For a 3D contact, this will typically be a 3x3
-   *        identity matrix. For a 2D planar contact, this will be a 3x2
-   *        matrix whose columns are the contact normal and tangent vectors.
+   * @param force_basis A matrix whose rows form a basis for the contact forces.
+   *        For a 3D contact, this will be a (1 + 2*num_friction_directions) x 3
+   *        matrix where the 1 normal direction row is [1, 0, 0] and the
+   *        tangential directions span the YZ plane.  For a 2D planar contact,
+   *        this will be a 3x3 matrix whose rows are the contact normal and
+   *        tangent vectors.  For a 1D bi-directional contact, this will be a
+   *        2x3 matrix whose rows are [1, 0, 0] and [-1, 0, 0].
    * @param wrt An enum specifying whether the Jacobian should be computed with
    *        respect to configuration variables (q) or velocity variables (v).
    * @param R_WC A rotation matrix from the world frame to the contact frame.
-   * @return A pair containing the signed distance as a scalar and the
-   *         contact frame Jacobian as a matrix.
+   * @return A pair containing the signed distance as a scalar and the contact
+   *         frame Jacobian as a matrix.
    */
   std::pair<T, drake::MatrixX<T>> DoEval(
       const drake::systems::Context<T>& context,
@@ -216,10 +242,9 @@ class GeomGeomCollider {
    *        the polytope approximation. This value determines the number of
    *        edges in the polytope and must be greater than 1.
    *
-   * @return A matrix whose columns form  basis vectors for the
-   *         contact forces. The first column is the contact normal, and the
-   *         remaining columns are tangent vectors that define the edges of the
-   *         polytope.
+   * @return A matrix whose columns form basis vectors for the contact forces.
+   *         The first column is the contact normal, and the remaining columns
+   *         are tangent vectors that define the edges of the polytope.
    */
   Eigen::Matrix<double, Eigen::Dynamic, 3> ComputePolytopeForceBasis(
       const int num_friction_directions) const;
@@ -239,6 +264,15 @@ class GeomGeomCollider {
   Eigen::Matrix3d ComputePlanarForceBasis(
       const Eigen::Vector3d& contact_normal,
       const Eigen::Vector3d& planar_normal) const;
+
+  /**
+   * @brief Computes the force basis for a 1D bi-directional contact.
+   *
+   * @return A 2x3 matrix whose rows are [1, 0, 0] and [-1, 0, 0], representing
+   *         the normal and opposite normal directions for bi-directional
+   *         contact.
+   */
+  Eigen::Matrix<double, 2, 3> ComputeBidirectionalOneDimForceBasis() const;
 
   /**
    * @brief Determines if the geometry pair consists of a sphere and a mesh.

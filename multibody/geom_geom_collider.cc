@@ -220,6 +220,31 @@ GeomGeomCollider<T>::ComputePolytopeForceBasis(
 }
 
 template <typename T>
+std::pair<T, MatrixX<T>> GeomGeomCollider<T>::EvalBidirectionalOneDim(
+    const Context<T>& context, JacobianWrtVariable wrt) {
+  auto bidirectional_1d_force_basis = ComputeBidirectionalOneDimForceBasis();
+
+  // Get geometry query result to access contact normal
+  const auto query_result = GetGeometryQueryResult(context);
+
+  // Create rotation matrix from contact normal
+  auto R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(
+      query_result.nhat_BA_W, 0);
+
+  return DoEval(context, query_result, bidirectional_1d_force_basis, wrt, R_WC);
+}
+
+template <typename T>
+Matrix<double, 2, 3> GeomGeomCollider<T>::ComputeBidirectionalOneDimForceBasis()
+    const {
+  // Build friction basis
+  Matrix<double, 2, 3> force_basis(2, 3);
+  force_basis.row(0) << 1, 0, 0;
+  force_basis.row(1) << -1, 0, 0;
+  return force_basis;
+}
+
+template <typename T>
 std::pair<T, MatrixX<T>> GeomGeomCollider<T>::EvalPlanar(
     const Context<T>& context, const Vector3d& planar_normal,
     JacobianWrtVariable wrt) {
@@ -276,7 +301,7 @@ template <typename T>
 Matrix<double, Eigen::Dynamic, 3>
 GeomGeomCollider<T>::CalcForceBasisInWorldFrame(
     const Context<T>& context, int num_friction_directions,
-    const Vector3d& planar_normal) const {
+    const bool& include_opposite_normal, const Vector3d& planar_normal) const {
   const auto query_result = GetGeometryQueryResult(context);
 
   // Compute the force basis in the world frame for contact forces.
@@ -293,15 +318,29 @@ GeomGeomCollider<T>::CalcForceBasisInWorldFrame(
   // For friction cone discretization:
   // - The first basis vector is the normal force direction: -nhat_BA_W
   // - The remaining basis vectors span the tangent plane (friction directions)
+  //
+  // For bi-directional 1D contact forces:
+  // - The first basis vector is the normal force direction: -nhat_BA_W
+  // - The second basis vector is the opposite normal direction: +nhat_BA_W
 
-  if (num_friction_directions < 1) {
+  if (include_opposite_normal) {
+    // Bi-directional 1D contact: basis consists of the normal and opposite
+    // normal.
+    // This is used for internal plasticity forces, which are analogous to
+    // tangential friction forces that are restricted by a fixed normal force.
+    DRAKE_DEMAND(num_friction_directions == 0 &&
+                 "Opposite normal can only be included for 1D contact.");
+    auto R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(
+        -query_result.nhat_BA_W, 0);
+    return ComputeBidirectionalOneDimForceBasis() * R_WC.matrix().transpose();
+  } else if (num_friction_directions < 1) {
     // Planar contact: basis is constructed from the contact and planar normals.
     // The planar_normal defines the plane of admissible motion.
     // This is typically used for 2D contact scenarios or constrained motion.
     return ComputePlanarForceBasis(-query_result.nhat_BA_W, planar_normal);
   } else {
-    // 3D contact: build polytope basis and rotate using contact normal.
-    // The polytope basis consists of 2*num_friction_directions + 1 vectors:
+    // 3D contact: build polytope basis and rotate using contact normal. The
+    // polytope basis consists of 2*num_friction_directions + 1 vectors:
     // - 1 normal force vector
     // - 2*num_friction_directions tangential vectors (forming a friction cone)
     // We rotate this basis from the contact frame to the world frame using

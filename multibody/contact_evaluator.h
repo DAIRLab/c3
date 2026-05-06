@@ -74,6 +74,37 @@ class ContactEvaluator {
 };
 
 /**
+ * @brief Contact evaluator for bi-directional 1D contact forces.  This is used
+ * for internal plasticity forces, which can be thought of as analogous to a
+ * planar contact with fixed normal force.  The bi-directional contact forces
+ * are along the collider's contact normal, implying the "fixed normal force" is
+ * in any direction perpendicular to that.
+ */
+template <typename T>
+class BidirectionalOneDimContactEvaluator : public ContactEvaluator<T> {
+ public:
+  BidirectionalOneDimContactEvaluator(
+      const drake::multibody::MultibodyPlant<T>& plant,
+      const drake::SortedPair<drake::geometry::GeometryId>& contact_pair)
+      : ContactEvaluator<T>(plant, contact_pair) {}
+
+  std::pair<T, drake::MatrixX<T>> Eval(
+      const drake::systems::Context<T>& context,
+      drake::multibody::JacobianWrtVariable wrt =
+          drake::multibody::JacobianWrtVariable::kV) const override {
+    return this->collider_.EvalBidirectionalOneDim(context, wrt);
+  }
+
+  // TODO @bibit:  this might need to be different
+  int GetNumFrictionDirections() const override { return 0; }
+
+  Eigen::Matrix<double, Eigen::Dynamic, 3> CalcForceBasis(
+      const drake::systems::Context<T>& context) const override {
+    return this->collider_.CalcForceBasisInWorldFrame(context, 0, true);
+  }
+};
+
+/**
  * @brief Contact evaluator for polytope friction cone approximation.
  */
 template <typename T>
@@ -140,7 +171,7 @@ class PlanarContactEvaluator : public ContactEvaluator<T> {
       const drake::systems::Context<T>& context) const override {
     // For planar contact, pass num_friction_directions = 0 to trigger planar
     // mode
-    return this->collider_.CalcForceBasisInWorldFrame(context, 0,
+    return this->collider_.CalcForceBasisInWorldFrame(context, 0, false,
                                                       planar_normal_);
   }
 
