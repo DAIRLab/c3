@@ -182,7 +182,7 @@ template <typename T>
 std::pair<T, MatrixX<T>> GeomGeomCollider<T>::EvalPolytope(
     const Context<T>& context, int num_friction_directions,
     JacobianWrtVariable wrt) {
-  if (num_friction_directions < 0) {
+  if (num_friction_directions < 1) {
     throw std::runtime_error(fmt::format(
         "GeomGeomCollider cannot specify %d friction direction unless "
         "using EvalPlanar.",
@@ -294,15 +294,14 @@ GeomGeomCollider<T>::CalcForceBasisInWorldFrame(
   // - The first basis vector is the normal force direction: -nhat_BA_W
   // - The remaining basis vectors span the tangent plane (friction directions)
 
-  if (num_friction_directions < 0) {
+  if (num_friction_directions < 1) {
     // Planar contact: basis is constructed from the contact and planar normals.
     // The planar_normal defines the plane of admissible motion.
     // This is typically used for 2D contact scenarios or constrained motion.
     return ComputePlanarForceBasis(-query_result.nhat_BA_W, planar_normal);
   } else {
-    // 1D (normal-only) or 3D contact: build polytope basis and rotate using
-    // contact normal. The polytope basis consists of 2*num_friction_directions
-    // + 1 vectors:
+    // 3D contact: build polytope basis and rotate using contact normal.
+    // The polytope basis consists of 2*num_friction_directions + 1 vectors:
     // - 1 normal force vector
     // - 2*num_friction_directions tangential vectors (forming a friction cone)
     // We rotate this basis from the contact frame to the world frame using
