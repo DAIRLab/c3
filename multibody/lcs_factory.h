@@ -124,7 +124,7 @@ class LCSFactory {
    *
    * @return LCS The resulting Linear Complementarity System.
    */
-  LCS GenerateLCS();
+  virtual LCS GenerateLCS();
 
   /**
    * @brief Finds the witness points for each contact pair.
@@ -132,7 +132,7 @@ class LCSFactory {
    * @return A pair of vectors containing the witness points on each geometry
    * for each contact pair.
    */
-  std::vector<LCSContactDescription> GetContactDescriptions();
+  virtual std::vector<LCSContactDescription> GetContactDescriptions();
 
   /**
    * @brief Updates the state and input vectors in the internal context.
@@ -249,6 +249,33 @@ class LCSFactory {
    */
   [[nodiscard]] int GetNumContactVariables() const { return n_lambda_; }
 
+ protected:  // TODO @bibit:  not all of this may be necessary to put as
+             // protected; some could remain private.
+  // References to the MultibodyPlant and its contexts
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>& context_;
+  const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
+  drake::systems::Context<drake::AutoDiffXd>& context_ad_;
+  std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_pairs_;
+
+  // Configuration options for the LCSFactory
+  LCSFactoryOptions options_;
+
+  int n_contacts_;  ///< Number of contact points.
+  std::vector<std::unique_ptr<ContactEvaluator<double>>> contact_evaluators_;
+  ContactModel contact_model_;  ///< The contact model being used.
+  int n_q_;                     ///< Number of configuration variables.
+  int n_v_;                     ///< Number of velocity variables.
+  int n_x_;                     ///< Number of state variables.
+  int n_lambda_;                ///< Number of contact force variables.
+  int n_u_;                     ///< Number of input variables.
+
+  std::vector<double> mu_;  ///< Vector of friction coefficients.
+  bool frictionless_;       ///< Flag indicating frictionless contacts.
+  double dt_;               ///< Time step.
+
+  VectorXi Jt_row_sizes_;  ///< Row sizes for tangential Jacobian blocks.
+
  private:
   /**
    * @brief Initializes contact evaluators for all contact pairs.
@@ -361,31 +388,6 @@ class LCSFactory {
    * @param[out] Jt Contact Jacobian for tangential forces.
    */
   void ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn, MatrixXd& Jt);
-
-  // References to the MultibodyPlant and its contexts
-  const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>& context_;
-  const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
-  drake::systems::Context<drake::AutoDiffXd>& context_ad_;
-  std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_pairs_;
-
-  // Configuration options for the LCSFactory
-  LCSFactoryOptions options_;
-
-  int n_contacts_;  ///< Number of contact points.
-  std::vector<std::unique_ptr<ContactEvaluator<double>>> contact_evaluators_;
-  ContactModel contact_model_;  ///< The contact model being used.
-  int n_q_;                     ///< Number of configuration variables.
-  int n_v_;                     ///< Number of velocity variables.
-  int n_x_;                     ///< Number of state variables.
-  int n_lambda_;                ///< Number of contact force variables.
-  int n_u_;                     ///< Number of input variables.
-
-  std::vector<double> mu_;  ///< Vector of friction coefficients.
-  bool frictionless_;       ///< Flag indicating frictionless contacts.
-  double dt_;               ///< Time step.
-
-  VectorXi Jt_row_sizes_;  ///< Row sizes for tangential Jacobian blocks.
 };
 
 }  // namespace multibody

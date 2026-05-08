@@ -36,11 +36,13 @@ cc_library(
     name = "lcs_factory",
     srcs = [
         "lcs_factory.cc", 
-        "contact_evaluator.cc"
+        "contact_evaluator.cc",
+        "elastoplastic_lcs_factory.cc"
     ],
     hdrs = [
         "lcs_factory.h", 
-        "contact_evaluator.h"
+        "contact_evaluator.h",
+        "elastoplastic_lcs_factory.h"
     ],
     deps = [
         ":geom_geom_collider",
@@ -56,8 +58,9 @@ cc_library(
 cc_library(
     name = "options",
     hdrs = [
-        "lcs_factory_options.h"
-            ],
+        "lcs_factory_options.h",
+        "elastoplastic_lcs_factory_options.h"
+    ],
     deps = [
         "@drake//:drake_shared_library",
     ],

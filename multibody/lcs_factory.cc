@@ -298,6 +298,7 @@ void LCSFactory::UpdateStateAndInput(
                                              &context_ad_);
   SetInputsIfNew<AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u_), &context_ad_);
 }
+
 // Linearizes the dynamics of a multibody plant_ into a Linear Complementarity
 // System (LCS)
 LCS LCSFactory::GenerateLCS() {
@@ -420,6 +421,7 @@ LCS LCSFactory::GenerateLCS() {
 
   return LCS(A, B, D, d, E, F, H, c, options_.N, dt_);  // Return the system;
 }
+
 void LCSFactory::FormulateFrictionlessSpringContactDynamics(
     const VectorXd& phi, const MatrixXd& Jn, const MatrixXd& qdotNv,
     const double& spring_stiffness, MatrixX<AutoDiffXd>& M, MatrixXd& D,
@@ -684,11 +686,11 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
   std::vector<int> remaining_inds;
 
   // Assumes constant number of contacts per index
-  int n_lambda_ = other.F()[0].rows();
+  int n_lambda = other.F()[0].rows();
 
   // Need to solve for lambda_active in terms of remaining elements
   // Build temporary [F1, F2] by eliminating rows for inactive
-  for (int i = 0; i < n_lambda_; i++) {
+  for (int i = 0; i < n_lambda; i++) {
     // active/inactive must be exclusive
     DRAKE_ASSERT(!active_lambda_inds.count(i) ||
                  !inactive_lambda_inds.count(i));
@@ -709,8 +711,8 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
   // S_a selects active indices
   // S_r selects remaining indices
 
-  MatrixXd S_a = MatrixXd::Zero(n_active, n_lambda_);
-  MatrixXd S_r = MatrixXd::Zero(n_remaining, n_lambda_);
+  MatrixXd S_a = MatrixXd::Zero(n_active, n_lambda);
+  MatrixXd S_r = MatrixXd::Zero(n_remaining, n_lambda);
 
   for (int i = 0; i < n_remaining; i++) {
     S_r(i, remaining_inds[i]) = 1;
@@ -749,7 +751,7 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
     //  F_k = L F S_r^t
     //  H_k = L H
     //  c_k = L c
-    MatrixXd L = S_r * (MatrixXd::Identity(n_lambda_, n_lambda_) -
+    MatrixXd L = S_r * (MatrixXd::Identity(n_lambda, n_lambda) -
                         other.F()[k] * S_a.transpose() * svd.solve(S_a));
     MatrixXd E_k = L * other.E()[k];
     MatrixXd F_k = L * other.F()[k] * S_r.transpose();
