@@ -74,7 +74,7 @@ class LCSFactory {
       drake::systems::Context<double>& context,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       drake::systems::Context<drake::AutoDiffXd>& context_ad,
-      LCSFactoryOptions& options);
+      const LCSFactoryOptions& options);
   /**
    * @brief Constructor for the LCSFactory class.
    *
@@ -249,8 +249,19 @@ class LCSFactory {
    */
   [[nodiscard]] int GetNumContactVariables() const { return n_lambda_; }
 
- protected:  // TODO @bibit:  not all of this may be necessary to put as
-             // protected; some could remain private.
+ protected:
+  /**
+   * @brief Computes the contact Jacobian matrices for normal and tangential
+   * forces.
+   *
+   * @param[out] phi Vector of signed distances.
+   * @param[out] Jn Contact Jacobian for normal forces.
+   * @param[out] Jt Contact Jacobian for tangential forces.
+   */
+  void ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn, MatrixXd& Jt);
+
+  // TODO @bibit:  not all of this may be necessary to put as protected; some
+  // could remain private.
   // References to the MultibodyPlant and its contexts
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>& context_;
@@ -378,16 +389,6 @@ class LCSFactory {
       const VectorXd& d_v, const MatrixXd& vNqdot, const MatrixXd& qdotNv,
       const VectorXd& mu, MatrixX<AutoDiffXd>& M, MatrixXd& D, MatrixXd& E,
       MatrixXd& F, MatrixXd& H, VectorXd& c);
-
-  /**
-   * @brief Computes the contact Jacobian matrices for normal and tangential
-   * forces.
-   *
-   * @param[out] phi Vector of signed distances.
-   * @param[out] Jn Contact Jacobian for normal forces.
-   * @param[out] Jt Contact Jacobian for tangential forces.
-   */
-  void ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn, MatrixXd& Jt);
 };
 
 }  // namespace multibody

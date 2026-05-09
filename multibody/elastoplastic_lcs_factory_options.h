@@ -111,6 +111,7 @@ struct ElastoPlasticLCSFactoryOptions : LCSFactoryOptions {
 
   template <typename Archive>
   void Serialize(Archive* a) {
+    LCSFactoryOptions::Serialize(a);
     a->Visit(DRAKE_NVP(deformation_model));
     a->Visit(DRAKE_NVP(num_internal_contacts));
     a->Visit(DRAKE_NVP(internal_contact_pair_configs));
@@ -138,6 +139,7 @@ struct ElastoPlasticLCSFactoryOptions : LCSFactoryOptions {
 
   // TODO @bibit:  Do we need this, or can we just send an
   // ElastoPlasticLCSFactoryOptions object to LCSFactory?
+  // I think this can be deleted.
   LCSFactoryOptions GetExternalLCSFactoryOptions() const {
     LCSFactoryOptions options;
     options.contact_model = contact_model;

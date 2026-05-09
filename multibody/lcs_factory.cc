@@ -121,7 +121,7 @@ LCSFactory::LCSFactory(
     drake::systems::Context<double>& context,
     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>& context_ad,
-    LCSFactoryOptions& options)
+    const LCSFactoryOptions& options)
     : plant_(plant),
       context_(context),
       plant_ad_(plant_ad),
@@ -262,10 +262,9 @@ std::vector<SortedPair<GeometryId>> LCSFactory::GetNClosestContactPairs(
 
 void LCSFactory::ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn,
                                         MatrixXd& Jt) {
-  phi.resize(n_contacts_);       // Signed distance values for contacts
-  Jn.resize(n_contacts_, n_v_);  // Normal contact Jacobian
-  Jt.resize(Jt_row_sizes_.sum(),
-            n_v_);  // Tangential contact Jacobian
+  phi.resize(n_contacts_);               // Signed distance values for contacts
+  Jn.resize(n_contacts_, n_v_);          // Normal contact Jacobian
+  Jt.resize(Jt_row_sizes_.sum(), n_v_);  // Tangential contact Jacobian
 
   double phi_i;
   MatrixX<double> J_i;
@@ -276,7 +275,7 @@ void LCSFactory::ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn,
     // Signed distance value for contact i
     phi(i) = phi_i;
 
-    // J_i is 3 x n_v_
+    // J_i is (1 + 2*num_friction_directions) x n_v_
     // row (0) is contact normal
     // rows (1-num_friction directions) are the contact tangents
     Jn.row(i) = J_i.row(0);
@@ -504,7 +503,7 @@ void LCSFactory::FormulateAnitescuContactDynamics(
   auto M_ldlt = ExtractValue(M).ldlt();
 
   // Eₜ = blkdiag(e,.., e), e ∈ 1ⁿᵉ
-  // (ne) number of directions in firctional cone
+  // (ne) number of directions in frictional cone
   MatrixXd E_t = MatrixXd::Zero(n_contacts_, Jt_row_sizes_.sum());
   for (int i = 0; i < n_contacts_; i++) {
     E_t.block(i, Jt_row_sizes_.segment(0, i).sum(), 1, Jt_row_sizes_(i)) =

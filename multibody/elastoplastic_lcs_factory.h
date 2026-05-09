@@ -70,12 +70,11 @@ class ElastoPlasticLCSFactory : LCSFactory {
    * @param options Options for elastoplastic LCS creation, including friction
    * properties, contact model, and deformation model.
    */
-  ElastoPlasticLCSFactory(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>& context,
-      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-      drake::systems::Context<drake::AutoDiffXd>& context_ad,
-      ElastoPlasticLCSFactoryOptions& options);
+  ElastoPlasticLCSFactory(const MultibodyPlant<double>& plant,
+                          Context<double>& context,
+                          const MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+                          Context<drake::AutoDiffXd>& context_ad,
+                          const ElastoPlasticLCSFactoryOptions& options);
   /**
    * @brief Same as above, but with external and internal geometry pairs
    * specified outside of factory options.  Has the following additional input
@@ -85,17 +84,17 @@ class ElastoPlasticLCSFactory : LCSFactory {
    * contact points.
    * @param internal_contact_geoms Vector of geometry pairs defining internal
    * contact points.
+   * @param yield_forces Vector of yield forces for each internal contact point
+   * (must be same length as internal_contact_geoms).
    */
   ElastoPlasticLCSFactory(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>& context,
-      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-      drake::systems::Context<drake::AutoDiffXd>& context_ad,
-      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-          external_contact_geoms,
-      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-          internal_contact_geoms,
-      ElastoPlasticLCSFactoryOptions& options);
+      const MultibodyPlant<double>& plant, Context<double>& context,
+      const MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+      Context<drake::AutoDiffXd>& context_ad,
+      const vector<SortedPair<GeometryId>>& external_contact_geoms,
+      const vector<SortedPair<GeometryId>>& internal_contact_geoms,
+      const vector<double>& yield_forces,
+      const ElastoPlasticLCSFactoryOptions& options);
   /**
    * TODO @bibit:  consider versions with just one of external/internal contact
    * geoms.
@@ -114,10 +113,9 @@ class ElastoPlasticLCSFactory : LCSFactory {
   // FormulateAnitescuContactDynamics (private)
   // ComputeContactJacobian (private) -- will add a separate plasticity one
   // FixSomeModes
-
-  // TODO @bibit:  these might be able to use the same implementation
-
-  // TODO @bibit:  determine what these need to be
+  // GetNumContactVariables -- this returns n_lambda_ which is just the external
+  //   contact complementarity variables, excluding internal.  I think this
+  //   isn't a problem, but might be for downstream tests.
 
   /**
    * @brief Finds the witness points for each contact pair.
@@ -127,97 +125,89 @@ class ElastoPlasticLCSFactory : LCSFactory {
    * first, followed by the internal contact descriptions, so the first
    * n_lambda_ entries correspond to external contacts and the next
    * n_lambda_internal_ entries correspond to internal contacts.
-   *
-   * TODO @bibit:
-   *  - store internal contact evaluators as internal_contact_evaluators_
    */
-  std::vector<LCSContactDescription> GetContactDescriptions() override;
+  vector<LCSContactDescription> GetContactDescriptions() override;
 
-  // TODO @bibit:  probably needs a custom implementation
-  // InitializeContactEvaluators (private)
-  //  - Might be able to call the parent implementation for the external contact
-  //    evaluators, then also initialize internal contact evaluators.
-  //  - Or could add a new function InitializeInternalContactEvaluators and not
-  //    override the parent implementation.
-
-  // TODO @bibit:  probably needs a custom implementation
-  // - Might throw an error if certain input argument sets are used, and require
-  //   the num_friction_directions_per_contact argument.
-  static int GetNumContactVariables(
-      ContactModel contact_model, int num_contacts,
-      int num_friction_directions);  // Throw error
-  static int GetNumContactVariables(
-      ContactModel contact_model, int num_contacts,
-      std::vector<int> num_friction_directions_per_contact);  // This works
-  static int GetNumContactVariables(
-      const LCSFactoryOptions& options,
-      const drake::multibody::MultibodyPlant<double>* plant =
-          nullptr);  // This could work
   /**
-   * @brief Get the Num Contact Variables object based on the internal state of
-   * the factory.
+   * @brief Generates a Linear Complementarity System (LCS).
    *
-   * This method returns the number of external contact variables (n_lambda_)
-   * plus internal contact variables (n_sigma_) that were computed during the
-   * construction of the LCSFactory. This value is determined by the contact
-   * model and the number of contacts, and is used to define the size of the
-   * contact force variable in the generated LCS.
-   *
-   * @return int
+   * @return LCS The resulting Linear Complementarity System.
    */
-  [[nodiscard]] int GetNumContactVariables() const {
-    return n_lambda_ + n_lambda_internal_;
-  }
-
-  // TODO @bibit:  probably needs a custom implementation
   LCS GenerateLCS() override;
 
-  // TODO @bibit:  probably needs a custom implementation
-  // - Might just want to throw an error if this method is called as-is and
-  //   introduce a new set of input arguments that requires external and
-  //   internal contact geometries separately plus
-  //   ElastoPlasticLCSFactoryOptions instead of LCSFactoryOptions.
+  /**
+   * @brief Overwrites the base class's static method and throws an error since
+   * internal contact geometries and yield forces are also needed to generate an
+   * elastoplastic LCS.
+   */
   static LCS LinearizePlantToLCS(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>& context,
-      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-      drake::systems::Context<drake::AutoDiffXd>& context_ad,
-      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-          contact_geoms,
+      const MultibodyPlant<double>& plant, Context<double>& context,
+      const MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+      Context<drake::AutoDiffXd>& context_ad,
+      const vector<SortedPair<GeometryId>>& contact_geoms,
       const LCSFactoryOptions& options,
       const Eigen::Ref<const drake::VectorX<double>>& state,
       const Eigen::Ref<const drake::VectorX<double>>& input);
-
-  // TODO @bibit:  this is the old implementation from dairlib
-  /// Build a time-invariant LCS that represents a system including the dynamics
-  /// of an elastoplastic network linearized about a given state.  The
-  /// complementarity variables include internal plasticity forces, in addition
-  /// to any external contacts.
-  /// NOTE:  Is compatible with LCSFactory::PreProcessor to obtain
-  /// external_contact_geoms that can then be passed into this method.
-  static LCS ToLCS(
-      const MultibodyPlant<double>& plant, const Context<double>& context,
+  /**
+   * @brief Linearizes the dynamics of a multibody plant into a Linear
+   * Complementarity System (LCS) with elastoplastic internal forces.
+   *
+   * This method uses two copies of the Context, one for double and one for
+   * AutoDiffXd, to perform gradient calculations. Contacts are specified by the
+   * pairs in `contact_geoms`, where each element defines a collision.
+   *
+   * @param plant The standard MultibodyPlant templated on `double`.
+   * @param context The context about which to linearize (templated on
+   * `double`).
+   * @param plant_ad An AutoDiffXd templated MultibodyPlant for gradient
+   * calculation.
+   * @param context_ad The context about which to linearize (templated on
+   * `AutoDiffXd`).
+   * @param external_contact_geoms Vector of geometry pairs defining external
+   * contact points.
+   * @param internal_contact_geoms Vector of geometry pairs defining internal
+   * contact points.
+   * @param yield_forces Vector of yield forces for each internal contact point
+   * (must be same length as internal_contact_geoms).
+   * @param options Options for LCS creation, including friction properties and
+   * contact model.
+   * @param state The state vector at which to linearize.
+   * @param input The input vector at which to linearize.
+   * @return LCS The resulting Linear Complementarity System.
+   */
+  static LCS LinearizePlantToLCS(
+      const MultibodyPlant<double>& plant, Context<double>& context,
       const MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-      const Context<drake::AutoDiffXd>& context_ad,
+      Context<drake::AutoDiffXd>& context_ad,
       const vector<SortedPair<GeometryId>>& external_contact_geoms,
       const vector<SortedPair<GeometryId>>& internal_contact_geoms,
-      const Eigen::VectorXd& yield_forces, const vector<double>& mu,
-      const double& dt, const int& N, int n_lambda_with_tangential,
-      const vector<int>& num_friction_directions_per_contact,
-      const vector<int>& starting_index_per_contact_in_lambda_t_vector,
-      ContactModel contact_model);
+      const vector<double>& yield_forces,
+      const ElastoPlasticLCSFactoryOptions& options,
+      const Eigen::Ref<const drake::VectorX<double>>& state,
+      const Eigen::Ref<const drake::VectorX<double>>& input);
 
  protected:
-  // TODO @bibit:  I think just the private function overrides need to go here
+  // TODO @bibit:  I don't think anything needs to go here since it's the
+  // derived class.
 
  private:
+  /**
+   * @brief Initializes contact evaluators for all internal contact pairs.
+   *
+   * This method creates and configures BidirectionalOneDimContactEvaluator
+   * objects for each contact pair, setting up the friction directions as
+   * specified.  No input arguments are needed; relies only on the class
+   * variable n_internal_contacts_.
+   */
+  void InitializeInternalContactEvaluators();
+
   /**
    * @brief Formulates the internal plasticity dynamics for a pure plastic
    * deformation model.
    *
-   * @param phi Vector of signed distances.
-   * @param J_n Contact Jacobian for normal forces.
-   * @param J_t Contact Jacobian for tangential forces.
+   * @param Jn Contact Jacobian for normal forces.
+   * @param Jt Contact Jacobian for tangential forces.
+   * @param Jp Contact Jacobian for internal plastic forces.
    * @param Jf_q Jacobian of the friction cone constraints with respect to
    * configuration.
    * @param Jf_v Jacobian of the friction cone constraints with respect to
@@ -225,8 +215,6 @@ class ElastoPlasticLCSFactory : LCSFactory {
    * @param Jf_u Jacobian of the friction cone constraints with respect to
    * input.
    * @param d_v Vector of viscous friction coefficients.
-   * @param vNqdot Matrix relating joint velocities to normal contact
-   * velocities.
    * @param qdotNv Matrix relating joint velocities to normal contact
    * velocities.
    * @param mu Vector of friction coefficients.
@@ -236,39 +224,37 @@ class ElastoPlasticLCSFactory : LCSFactory {
    * @param[out] F_int Contact force mapping matrix.
    * @param[out] H_int Complementarity constraint matrix.
    * @param[out] c_int Constant vector.
-   *
-   * TODO @bibit:
-   *  - finish implementation
-   *  - tweak input arguments as needed
-   *  - determine where the F matrix coupling blocks should be computed
+   * @param[out] F_coupling_bl Bottom left matrix for external-internal force
+   * coupling.
+   * @param[out] F_coupling_ur Upper right matrix for external-internal force
+   * coupling.
    */
   void FormulateInternalPlasticContactDynamics(
-      const VectorXd& phi, const MatrixXd& J_n, const MatrixXd& J_t,
+      const MatrixXd& Jn, const MatrixXd& Jt, const MatrixXd& Jp,
       const MatrixXd& Jf_q, const MatrixXd& Jf_v, const MatrixXd& Jf_u,
-      const VectorXd& d_v, const MatrixXd& vNqdot, const MatrixXd& qdotNv,
-      const VectorXd& mu, MatrixX<AutoDiffXd>& M, MatrixXd& D_int,
-      MatrixXd& E_int, MatrixXd& F_int, MatrixXd& H_int, VectorXd& c_int);
+      const VectorXd& d_v, const MatrixXd& qdotNv, const VectorXd& mu,
+      MatrixX<AutoDiffXd>& M, MatrixXd& D_int, MatrixXd& E_int, MatrixXd& F_int,
+      MatrixXd& H_int, VectorXd& c_int, MatrixXd& F_coupling_bl,
+      MatrixXd& F_coupling_ur);
 
   /**
    * @brief Computes the contact Jacobian matrix for plastic forces.
    *
-   * @param[out] phi Vector of signed distances.
+   * @param[out] phi Vector of signed distances for internal plastic forces.
+   * These are not to be used anywhere unless there are parallel springs in the
+   * deformation model, which is yet to be implemented.
    * @param[out] Jp Contact Jacobian for internal plastic forces.
-   *
-   * TODO @bibit:
-   *  - call this to define Jp
    */
   void ComputeInternalContactJacobian(VectorXd& phi, MatrixXd& Jp);
 
-  std::vector<drake::SortedPair<drake::geometry::GeometryId>>
-      internal_contact_pairs_;
+  vector<SortedPair<GeometryId>> internal_contact_pairs_;
   ElastoPlasticLCSFactoryOptions options_;
   int n_internal_contacts_;
-  std::vector<std::unique_ptr<BidirectionalOneDimContactEvaluator<double>>>
+  int n_lambda_internal_;  // = 3 * n_internal_contacts_
+  vector<std::unique_ptr<BidirectionalOneDimContactEvaluator<double>>>
       internal_contact_evaluators_;
   DeformationModel deformation_model_;
-  int n_lambda_internal_;  // = 3 * n_internal_contacts_
-  VectorXi Jp_row_sizes_;  // TODO @bibit:  I think this should always be 2
+  vector<double> yield_forces_;
 };
 
 }  // namespace multibody
