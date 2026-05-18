@@ -66,6 +66,9 @@ struct C3Options {
   // the g_vector and u_vector into the x, lambda, and u terms. *_lambda are the
   // default weights. If not specified, the Stewart and Trinkle formulation of
   // *_gamma, *_lambda_n, *_lambda_t will be used.
+  // C3+ requires extra weights in the eta variables.
+  // Internal contacts require extra weights for internal slack and sigma
+  // variables.  If C3+, corresponding eta values are also required.
   std::vector<double> q_vector;
   std::vector<double> r_vector;
 
@@ -75,10 +78,14 @@ struct C3Options {
   std::vector<double> g_lambda_t;
   std::vector<double> g_lambda;
   std::vector<double> g_u;
+  std::optional<std::vector<double>> g_internal_slack;
+  std::optional<std::vector<double>> g_internal_sigma;
   std::optional<std::vector<double>> g_eta_slack;
   std::optional<std::vector<double>> g_eta_n;
   std::optional<std::vector<double>> g_eta_t;
   std::optional<std::vector<double>> g_eta;
+  std::optional<std::vector<double>> g_eta_internal_slack;
+  std::optional<std::vector<double>> g_eta_internal_sigma;
 
   std::vector<double> u_x;
   std::vector<double> u_gamma;
@@ -86,10 +93,14 @@ struct C3Options {
   std::vector<double> u_lambda_t;
   std::vector<double> u_lambda;
   std::vector<double> u_u;
+  std::optional<std::vector<double>> u_internal_slack;
+  std::optional<std::vector<double>> u_internal_sigma;
   std::optional<std::vector<double>> u_eta_slack;
   std::optional<std::vector<double>> u_eta_n;
   std::optional<std::vector<double>> u_eta_t;
   std::optional<std::vector<double>> u_eta;
+  std::optional<std::vector<double>> u_eta_internal_slack;
+  std::optional<std::vector<double>> u_eta_internal_sigma;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -124,20 +135,28 @@ struct C3Options {
     a->Visit(DRAKE_NVP(g_lambda_t));
     a->Visit(DRAKE_NVP(g_lambda));
     a->Visit(DRAKE_NVP(g_u));
+    a->Visit(DRAKE_NVP(g_internal_slack));
+    a->Visit(DRAKE_NVP(g_internal_sigma));
     a->Visit(DRAKE_NVP(g_eta_slack));
     a->Visit(DRAKE_NVP(g_eta_n));
     a->Visit(DRAKE_NVP(g_eta_t));
     a->Visit(DRAKE_NVP(g_eta));
+    a->Visit(DRAKE_NVP(g_eta_internal_slack));
+    a->Visit(DRAKE_NVP(g_eta_internal_sigma));
     a->Visit(DRAKE_NVP(u_x));
     a->Visit(DRAKE_NVP(u_gamma));
     a->Visit(DRAKE_NVP(u_lambda_n));
     a->Visit(DRAKE_NVP(u_lambda_t));
     a->Visit(DRAKE_NVP(u_lambda));
     a->Visit(DRAKE_NVP(u_u));
+    a->Visit(DRAKE_NVP(u_internal_slack));
+    a->Visit(DRAKE_NVP(u_internal_sigma));
     a->Visit(DRAKE_NVP(u_eta_slack));
     a->Visit(DRAKE_NVP(u_eta_n));
     a->Visit(DRAKE_NVP(u_eta_t));
     a->Visit(DRAKE_NVP(u_eta));
+    a->Visit(DRAKE_NVP(u_eta_internal_slack));
+    a->Visit(DRAKE_NVP(u_eta_internal_sigma));
 
     std::vector<double> g_vector;
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());
@@ -145,6 +164,14 @@ struct C3Options {
       g_lambda.insert(g_lambda.end(), g_gamma.begin(), g_gamma.end());
       g_lambda.insert(g_lambda.end(), g_lambda_n.begin(), g_lambda_n.end());
       g_lambda.insert(g_lambda.end(), g_lambda_t.begin(), g_lambda_t.end());
+    }
+    if (g_internal_slack.has_value() || g_internal_sigma.has_value()) {
+      DRAKE_ASSERT(g_internal_sigma.has_value() &&
+                   g_internal_slack.has_value());
+      g_lambda.insert(g_lambda.end(), g_internal_slack->begin(),
+                      g_internal_slack->end());
+      g_lambda.insert(g_lambda.end(), g_internal_sigma->begin(),
+                      g_internal_sigma->end());
     }
     g_vector.insert(g_vector.end(), g_lambda.begin(), g_lambda.end());
     g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
@@ -155,6 +182,14 @@ struct C3Options {
       g_eta_vector.insert(g_eta_vector.end(), g_eta_n->begin(), g_eta_n->end());
       g_eta_vector.insert(g_eta_vector.end(), g_eta_t->begin(), g_eta_t->end());
     }
+    if (g_internal_sigma.has_value() || g_eta_internal_sigma.has_value()) {
+      DRAKE_ASSERT(g_eta_internal_slack.has_value() &&
+                   g_eta_internal_sigma.has_value());
+      g_eta_vector.insert(g_eta_vector.end(), g_eta_internal_slack->begin(),
+                          g_eta_internal_slack->end());
+      g_eta_vector.insert(g_eta_vector.end(), g_eta_internal_sigma->begin(),
+                          g_eta_internal_sigma->end());
+    }
     g_vector.insert(g_vector.end(), g_eta_vector.begin(), g_eta_vector.end());
 
     std::vector<double> u_vector;
@@ -164,6 +199,14 @@ struct C3Options {
       u_lambda.insert(u_lambda.end(), u_lambda_n.begin(), u_lambda_n.end());
       u_lambda.insert(u_lambda.end(), u_lambda_t.begin(), u_lambda_t.end());
     }
+    if (u_internal_slack.has_value() || u_internal_sigma.has_value()) {
+      DRAKE_ASSERT(u_internal_sigma.has_value() &&
+                   u_internal_slack.has_value());
+      u_lambda.insert(u_lambda.end(), u_internal_slack->begin(),
+                      u_internal_slack->end());
+      u_lambda.insert(u_lambda.end(), u_internal_sigma->begin(),
+                      u_internal_sigma->end());
+    }
     u_vector.insert(u_vector.end(), u_lambda.begin(), u_lambda.end());
     u_vector.insert(u_vector.end(), u_u.begin(), u_u.end());
     std::vector<double> u_eta_vector = u_eta.value_or(std::vector<double>());
@@ -172,6 +215,14 @@ struct C3Options {
                           u_eta_slack->end());
       u_eta_vector.insert(u_eta_vector.end(), u_eta_n->begin(), u_eta_n->end());
       u_eta_vector.insert(u_eta_vector.end(), u_eta_t->begin(), u_eta_t->end());
+    }
+    if (u_internal_sigma.has_value() || u_eta_internal_sigma.has_value()) {
+      DRAKE_ASSERT(u_eta_internal_slack.has_value() &&
+                   u_eta_internal_sigma.has_value());
+      u_eta_vector.insert(u_eta_vector.end(), u_eta_internal_slack->begin(),
+                          u_eta_internal_slack->end());
+      u_eta_vector.insert(u_eta_vector.end(), u_eta_internal_sigma->begin(),
+                          u_eta_internal_sigma->end());
     }
     u_vector.insert(u_vector.end(), u_eta_vector.begin(), u_eta_vector.end());
 
