@@ -136,28 +136,6 @@ struct ElastoPlasticLCSFactoryOptions : LCSFactoryOptions {
     DRAKE_DEMAND(num_internal_contacts.value() >= 0);
     return num_internal_contacts.value();
   }
-
-  // TODO @bibit:  Do we need this, or can we just send an
-  // ElastoPlasticLCSFactoryOptions object to LCSFactory?
-  // I think this can be deleted.
-  LCSFactoryOptions GetExternalLCSFactoryOptions() const {
-    LCSFactoryOptions options;
-    options.contact_model = contact_model;
-    options.N = N;
-    options.dt = dt;
-    options.num_contacts = num_contacts;
-    options.spring_stiffness = spring_stiffness;
-    options.contact_pair_configs = contact_pair_configs;
-    options.num_friction_directions_per_contact =
-        num_friction_directions_per_contact;
-    options.mu_per_contact = mu_per_contact;
-    options.planar_normal_direction_per_contact =
-        planar_normal_direction_per_contact;
-    options.num_friction_directions = num_friction_directions;
-    options.mu = mu;
-    options.planar_normal_direction = planar_normal_direction;
-    return options;
-  }
 };
 
 inline ElastoPlasticLCSFactoryOptions LoadElastoPlasticLCSFactoryOptions(

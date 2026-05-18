@@ -52,8 +52,7 @@ inline const std::map<std::string, DeformationModel>& GetDeformationModelMap() {
   return kDeformationModelMap;
 }
 
-// NOTE @bibit:  can reuse LCSContactDescription, no need for elastoplastic
-// extension.
+// NOTE:  can reuse LCSContactDescription, no need for elastoplastic extension.
 
 class ElastoPlasticLCSFactory : LCSFactory {
  public:
@@ -104,18 +103,6 @@ class ElastoPlasticLCSFactory : LCSFactory {
    * want to override and throw an error that directs users to use the EPLCSF
    * constructor(s).
    */
-
-  // TODO @bibit:  fairly sure these can reuse same LCSFactory implementations:
-  // GetNClosestContactPairs
-  // UpdateStateAndInput
-  // FormulateFrictionlessSpringContactDynamics (private)
-  // FormulateStewartAndTrinkleContactDynamics (private)
-  // FormulateAnitescuContactDynamics (private)
-  // ComputeContactJacobian (private) -- will add a separate plasticity one
-  // FixSomeModes
-  // GetNumContactVariables -- this returns n_lambda_ which is just the external
-  //   contact complementarity variables, excluding internal.  I think this
-  //   isn't a problem, but might be for downstream tests.
 
   /**
    * @brief Finds the witness points for each contact pair.
@@ -185,10 +172,6 @@ class ElastoPlasticLCSFactory : LCSFactory {
       const ElastoPlasticLCSFactoryOptions& options,
       const Eigen::Ref<const drake::VectorX<double>>& state,
       const Eigen::Ref<const drake::VectorX<double>>& input);
-
- protected:
-  // TODO @bibit:  I don't think anything needs to go here since it's the
-  // derived class.
 
  private:
   /**
