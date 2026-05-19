@@ -38,18 +38,37 @@ enum class DeformationModel {
 };
 
 /**
- * @struct DeformationModelMap
+ * @struct DeformationModelMapFromString
  * @brief A map for converting string representations of deformation models to
  * their enum values.
  */
-inline const std::map<std::string, DeformationModel>& GetDeformationModelMap() {
-  static const std::map<std::string, DeformationModel> kDeformationModelMap = {
-      {"plastic", DeformationModel::kPlastic},
-      {"elastic", DeformationModel::kElastic},
-      {"series_elastoplastic", DeformationModel::kSeriesElastoPlastic},
-      {"parallel_elastoplastic", DeformationModel::kParallelElastoPlastic},
-      {"compound_elastoplastic", DeformationModel::kCompoundElastoPlastic}};
-  return kDeformationModelMap;
+inline const std::map<std::string, DeformationModel>&
+GetDeformationModelMapFromString() {
+  static const std::map<std::string, DeformationModel>
+      kDeformationModelMapFromString = {
+          {"plastic", DeformationModel::kPlastic},
+          {"elastic", DeformationModel::kElastic},
+          {"series_elastoplastic", DeformationModel::kSeriesElastoPlastic},
+          {"parallel_elastoplastic", DeformationModel::kParallelElastoPlastic},
+          {"compound_elastoplastic", DeformationModel::kCompoundElastoPlastic}};
+  return kDeformationModelMapFromString;
+}
+/**
+ * @struct DeformationModelMapToString
+ * @brief A map for converting enum values of deformation models to
+ * their string representations.  This is the inverse of
+ * DeformationModelMapFromString.
+ */
+inline const std::map<DeformationModel, std::string>&
+GetDeformationModelMapToString() {
+  static const std::map<DeformationModel, std::string>
+      kDeformationModelMapToString = {
+          {DeformationModel::kPlastic, "plastic"},
+          {DeformationModel::kElastic, "elastic"},
+          {DeformationModel::kSeriesElastoPlastic, "series_elastoplastic"},
+          {DeformationModel::kParallelElastoPlastic, "parallel_elastoplastic"},
+          {DeformationModel::kCompoundElastoPlastic, "compound_elastoplastic"}};
+  return kDeformationModelMapToString;
 }
 
 // NOTE:  can reuse LCSContactDescription, no need for elastoplastic extension.

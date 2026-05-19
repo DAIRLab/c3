@@ -73,7 +73,7 @@ ElastoPlasticLCSFactory::ElastoPlasticLCSFactory(
     : LCSFactory(plant, context, plant_ad, context_ad, options),
       options_(options),
       deformation_model_(
-          GetDeformationModelMap().at(options_.deformation_model)) {
+          GetDeformationModelMapFromString().at(options_.deformation_model)) {
   DRAKE_DEMAND(options_.internal_contact_pair_configs.has_value());
 
   // Expand contact_pair_configs into per-contact arrays using plant
@@ -105,7 +105,7 @@ ElastoPlasticLCSFactory::ElastoPlasticLCSFactory(
       options_(options),
       n_internal_contacts_(internal_contact_geoms.size()),
       deformation_model_(
-          GetDeformationModelMap().at(options_.deformation_model)),
+          GetDeformationModelMapFromString().at(options_.deformation_model)),
       yield_forces_(yield_forces) {
   DRAKE_DEMAND(yield_forces_.size() == internal_contact_pairs_.size());
 
