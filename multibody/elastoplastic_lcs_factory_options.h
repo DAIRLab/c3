@@ -90,7 +90,7 @@ struct ElastoPlasticContactPairConfig {
                    parallel_spring_constant.has_value() &&
                    parallel_damper_constant.has_value());
     } else {
-      DRAKE_DEMAND(false);  // Invalid deformation type
+      throw std::invalid_argument("invalid elastoplastic deformation type");
     }
   }
 };
@@ -135,6 +135,41 @@ struct ElastoPlasticLCSFactoryOptions : LCSFactoryOptions {
     DRAKE_DEMAND(num_internal_contacts.has_value());
     DRAKE_DEMAND(num_internal_contacts.value() >= 0);
     return num_internal_contacts.value();
+  }
+
+  void SetLCSFactoryOptionsFromBase(const LCSFactoryOptions& base_options) {
+    contact_model = base_options.contact_model;
+    N = base_options.N;
+    dt = base_options.dt;
+    if (base_options.num_contacts.has_value()) {
+      num_contacts = base_options.num_contacts.value();
+    }
+    if (base_options.spring_stiffness.has_value()) {
+      spring_stiffness = base_options.spring_stiffness;
+    }
+    if (base_options.contact_pair_configs.has_value()) {
+      contact_pair_configs = base_options.contact_pair_configs;
+    }
+    if (base_options.num_friction_directions_per_contact.has_value()) {
+      num_friction_directions_per_contact =
+          base_options.num_friction_directions_per_contact;
+    }
+    if (base_options.mu_per_contact.has_value()) {
+      mu_per_contact = base_options.mu_per_contact;
+    }
+    if (base_options.planar_normal_direction_per_contact.has_value()) {
+      planar_normal_direction_per_contact =
+          base_options.planar_normal_direction_per_contact;
+    }
+    if (base_options.num_friction_directions.has_value()) {
+      num_friction_directions = base_options.num_friction_directions;
+    }
+    if (base_options.mu.has_value()) {
+      mu = base_options.mu;
+    }
+    if (base_options.planar_normal_direction.has_value()) {
+      planar_normal_direction = base_options.planar_normal_direction;
+    }
   }
 };
 
