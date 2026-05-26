@@ -249,6 +249,7 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
 void C3::UpdateInputTarget(const std::vector<Eigen::VectorXd>& u_des) {
   u_desired_ = u_des;
   for (int i = 0; i < N_; ++i) {
+    std::cout << "u des " << i << " " << u_desired_.at(i).transpose() << std::endl;
     input_costs_[i]->UpdateCoefficients(
                     2 * cost_matrices_.R.at(i),
                     -2 * cost_matrices_.R.at(i) * u_desired_.at(i));
@@ -265,7 +266,6 @@ void C3::UpdateCostMatrices(const CostMatrices& costs) {
         -2 * cost_matrices_.Q.at(i) * x_desired_.at(i));
     if (i < N_) {
       if (u_desired_.size() == N_) {
-        std::cout << "USING INPUT COSTS" << std::endl;
         for (int i = 0; i < N_; ++i) {
           input_costs_[i]->UpdateCoefficients(
                           2 * cost_matrices_.R.at(i),
@@ -370,6 +370,12 @@ void C3::Solve(const VectorXd& x0) {
       input_costs_[i]->UpdateCoefficients(
           2 * cost_matrices_.R.at(i),
           -2 * cost_matrices_.R.at(i) * u_sol_->at(i));
+    }
+  } else if (u_desired_.size() == N_) {
+    for (int i = 0; i < N_; ++i) {
+      input_costs_[i]->UpdateCoefficients(
+                      2 * cost_matrices_.R.at(i),
+                      -2 * cost_matrices_.R.at(i) * u_desired_.at(i));
     }
   }
 
