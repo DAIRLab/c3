@@ -508,6 +508,14 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   AddAugmentedCost(G, WD, delta, is_final_solve);
   SetInitialGuessQP(x0, admm_iteration);
 
+  for (int i = 0; i < input_costs_.size(); ++i) {
+    
+    std::cout << "--- Step " << i << " ---" << std::endl;
+    std::cout << "Q (Quadratic matrix):\n" << input_costs_[i]->Q() << std::endl;
+    std::cout << "b (Linear vector):\n" << input_costs_[i]->b() << std::endl;
+   
+  }
+
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
   if (!result.is_success()) {
