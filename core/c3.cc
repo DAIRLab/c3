@@ -264,14 +264,16 @@ void C3::UpdateCostMatrices(const CostMatrices& costs) {
         2 * cost_matrices_.Q.at(i),
         -2 * cost_matrices_.Q.at(i) * x_desired_.at(i));
     if (i < N_) {
-      input_costs_[i]->UpdateCoefficients(2 * cost_matrices_.R.at(i),
-                                          VectorXd::Zero(n_u_));
+      std::cout << "u des size " << u_desired_.size() << std::endl;
       if (u_desired_.size() == N_) {
         for (int i = 0; i < N_; ++i) {
           input_costs_[i]->UpdateCoefficients(
                           2 * cost_matrices_.R.at(i),
                           -2 * cost_matrices_.R.at(i) * u_desired_.at(i));
         }
+      } else {
+        input_costs_[i]->UpdateCoefficients(2 * cost_matrices_.R.at(i),
+                                          VectorXd::Zero(n_u_));
       }
     }
   }
