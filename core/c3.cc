@@ -363,7 +363,6 @@ void C3::Solve(const VectorXd& x0) {
   }
 
   if (options_.penalize_input_change.value_or(false)) {
-    std::cout << "PENALIZING CHANGE " << std::endl;
     for (int i = 0; i < N_; ++i) {
       // Penalize deviation from previous input solution:  input cost is
       // (u-u_prev)' * R * (u-u_prev).
@@ -371,8 +370,6 @@ void C3::Solve(const VectorXd& x0) {
           2 * cost_matrices_.R.at(i),
           -2 * cost_matrices_.R.at(i) * u_sol_->at(i));
     }
-  } else {
-
   }
 
   VectorXd delta_init = VectorXd::Zero(n_z_);
@@ -504,14 +501,6 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   AddAugmentedCost(G, WD, delta, is_final_solve);
   SetInitialGuessQP(x0, admm_iteration);
 
-  for (int i = 0; i < input_costs_.size(); ++i) {
-    
-    std::cout << "--- Step " << i << " ---" << std::endl;
-    std::cout << "Q (Quadratic matrix):\n" << input_costs_[i]->Q() << std::endl;
-    std::cout << "b (Linear vector):\n" << input_costs_[i]->b() << std::endl;
-   
-  }
-  
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
   if (!result.is_success()) {
