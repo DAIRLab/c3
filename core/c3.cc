@@ -266,6 +266,13 @@ void C3::UpdateCostMatrices(const CostMatrices& costs) {
     if (i < N_) {
       input_costs_[i]->UpdateCoefficients(2 * cost_matrices_.R.at(i),
                                           VectorXd::Zero(n_u_));
+      if (u_desired_.size() == N_) {
+        for (int i = 0; i < N_; ++i) {
+          input_costs_[i]->UpdateCoefficients(
+                          2 * cost_matrices_.R.at(i),
+                          -2 * cost_matrices_.R.at(i) * u_desired_.at(i));
+        }
+      }
     }
   }
 }
@@ -303,7 +310,7 @@ void C3::UpdateEETrackingTargetAndCost(std::vector<Eigen::VectorXd> ee_tracking_
   DRAKE_DEMAND(ee_tracking_target.size() == N_+1);
   DRAKE_DEMAND(ee_tracking_costs_.size() == N_+1);
 
-    double discount_factor = 1;
+  double discount_factor = 1;
   for (int i = 0; i < N_+1; i++) {
     MatrixXd Q = weight * discount_factor * MatrixXd::Identity(ee_size, ee_size);
     drake::solvers::VectorXDecisionVariable ee_x = x_.at(i).segment(ee_start_idx, ee_size);
