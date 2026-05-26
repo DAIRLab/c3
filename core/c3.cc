@@ -250,6 +250,7 @@ void C3::UpdateInputTarget(const std::vector<Eigen::VectorXd>& u_des) {
   u_desired_ = u_des;
   for (int i = 0; i < N_; ++i) {
     std::cout << "u des " << i << " " << u_desired_.at(i).transpose() << std::endl;
+    std::cout << "b " << (-2 * cost_matrices_.R.at(i) * u_desired_.at(i)).transpose() << std::endl;
     input_costs_[i]->UpdateCoefficients(
                     2 * cost_matrices_.R.at(i),
                     -2 * cost_matrices_.R.at(i) * u_desired_.at(i));
@@ -364,6 +365,7 @@ void C3::Solve(const VectorXd& x0) {
   }
 
   if (options_.penalize_input_change) {
+    std::cout << "penalizing input change " << std::endl;
     for (int i = 0; i < N_; ++i) {
       // Penalize deviation from previous input solution:  input cost is
       // (u-u_prev)' * R * (u-u_prev).
