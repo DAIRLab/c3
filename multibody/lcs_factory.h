@@ -133,6 +133,10 @@ class LCSFactory {
       const Eigen::Ref<const drake::VectorX<double>>& state,
       const Eigen::Ref<const drake::VectorX<double>>& input);
 
+  void SetNewDt(double dt) {
+    dt_ = dt;
+  }
+
   /**
    * @brief Linearizes the dynamics of a multibody plant into a Linear
    * Complementarity System (LCS).
