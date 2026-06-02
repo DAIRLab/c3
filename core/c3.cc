@@ -504,8 +504,12 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
   if (!result.is_success()) {
-    drake::log()->warn("C3::SolveQP failed to solve the QP with status: {}",
-                       result.get_solution_result());
+    const auto& details = result.get_solver_details<drake::solvers::OsqpSolver>();
+    
+    drake::log()->warn("OSQP Status: {}", details.status_val); 
+    drake::log()->warn("Iterations: {}", details.iter);
+    drake::log()->warn("Primal Res: {}", details.primal_res);
+    drake::log()->warn("Dual Res: {}", details.dual_res);
   }
 
   StoreQPResults(result, admm_iteration, is_final_solve);
