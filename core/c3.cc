@@ -307,14 +307,16 @@ void C3::AddEETrackingCost(int ee_start_idx, int ee_size) {
   }
 }
 
-void C3::UpdateEETrackingTargetAndCost(std::vector<Eigen::VectorXd> ee_tracking_target, double weight, int ee_start_idx, int ee_size) {
+void C3::UpdateEETrackingTargetAndCost(std::vector<Eigen::VectorXd> ee_tracking_target, MatrixXd Q_ee) {
   DRAKE_DEMAND(ee_tracking_target.size() == N_+1);
   DRAKE_DEMAND(ee_tracking_costs_.size() == N_+1);
+  DRAKE_DEMAND(Q_ee.rows() == Q_ee.cols());
 
   double discount_factor = 1;
+  int ee_size = Q_ee.rows();
+
   for (int i = 0; i < N_+1; i++) {
-    MatrixXd Q = weight * discount_factor * MatrixXd::Identity(ee_size, ee_size);
-    drake::solvers::VectorXDecisionVariable ee_x = x_.at(i).segment(ee_start_idx, ee_size);
+    MatrixXd Q = discount_factor * Q_ee;
 
     ee_tracking_costs_[i]->UpdateCoefficients(
         2 * Q, -2 * Q * ee_tracking_target.at(i));

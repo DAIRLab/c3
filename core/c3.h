@@ -131,7 +131,7 @@ class C3 {
 	 */ 
   void AddEETrackingCost(int ee_start_idx, int ee_size);
 	
-  void UpdateEETrackingTargetAndCost(std::vector<Eigen::VectorXd> ee_tracking_target, double weight, int ee_start_idx, int ee_size);
+  void UpdateEETrackingTargetAndCost(std::vector<Eigen::VectorXd> ee_tracking_target, Eigen::MatrixXd Q_ee);
 
   /**
    * @brief Get the current cost matrices used in the system.
