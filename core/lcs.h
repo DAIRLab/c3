@@ -3,7 +3,7 @@
 #include <vector>
 
 #include <Eigen/Dense>
-
+#include <iostream>
 #include "drake/common/drake_assert.h"
 
 namespace c3 {
@@ -67,6 +67,10 @@ class LCS {
   const Eigen::VectorXd Simulate(
       Eigen::VectorXd& x_init, Eigen::VectorXd& u,
       const LCSSimulateConfig& config = LCSSimulateConfig()) const;
+
+  const std::pair<Eigen::VectorXd, Eigen::VectorXd> SimulateAndReturnForce(
+    Eigen::VectorXd& x_init, Eigen::VectorXd& u, 
+    const LCSSimulateConfig& config = LCSSimulateConfig()) const;
 
   /*!
    * Accessors dynamics terms

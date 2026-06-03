@@ -74,6 +74,35 @@ const VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& u,
   return x_final;
 }
 
+
+const std::pair<Eigen::VectorXd, Eigen::VectorXd> LCS::SimulateAndReturnForce(VectorXd& x_init, VectorXd& u,
+                             const LCSSimulateConfig& config) const {
+  VectorXd x_final;
+  VectorXd force;
+  drake::solvers::MobyLCPSolver<double> LCPSolver;
+
+  int flag;
+  if (config.regularized) {
+    flag = LCPSolver.SolveLcpLemkeRegularized(
+        F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force, config.min_exp,
+        config.step_exp, config.max_exp, config.piv_tol, config.zero_tol);
+  } else {
+    flag = LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force,
+                            config.piv_tol, config.zero_tol);
+  }
+  if (flag == 0) {
+    std::cout << "LCP failed: returning x_init" << std::endl;
+    std::cout << "force: " << force.transpose() << std::endl;
+
+    //std::cout << x_init.transpose() << std::endl;
+    return std::make_pair(x_init, VectorXd::Zero(F_[0].cols()));
+  }
+
+  x_final = A_[0] * x_init + B_[0] * u + D_[0] * force + d_[0];
+
+  return std::make_pair(x_final, force);
+}
+
 LCS LCS::CreatePlaceholderLCS(int n_x, int n_u, int n_lambda, int N,
                               double dt) {
   MatrixXd A = MatrixXd::Ones(n_x, n_x);
