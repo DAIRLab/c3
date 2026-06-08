@@ -176,6 +176,7 @@ LCSFactory::LCSFactory(
   std::vector<std::optional<std::array<double, 3>>> planar_normals =
       options_.ResolvePlanarNormals();
 
+
   DRAKE_DEMAND(friction_dirs.size() == (size_t)n_contacts_);
   DRAKE_DEMAND(mu_.size() == (size_t)n_contacts_);
   DRAKE_DEMAND(planar_normals.size() == (size_t)n_contacts_);

@@ -321,10 +321,11 @@ void C3::Solve(const VectorXd& x0) {
   }
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_z_));
+
   for (int i = 0; i < N_; ++i) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
-
+  
   SolveQP(x0, G, WD, delta, options_.admm_iter, true);
 
   *w_sol_ = w;
@@ -364,7 +365,6 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
   for (int i = 0; i < N_; ++i) {
     WD.at(i) = delta->at(i) - w->at(i);
   }
-
   vector<VectorXd> z = SolveQP(x0, *G, WD, *delta, admm_iteration, false);
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_z_));
@@ -456,11 +456,33 @@ void C3::AddAugmentedCost(const vector<MatrixXd>& G, const vector<VectorXd>& WD,
     prog_.RemoveCost(cost);
   }
   augmented_costs_.clear();
-  // Add or update augmented costs
-  for (int i = 0; i < N_; ++i) {
-    DRAKE_ASSERT(G.at(i).cols() == WD.at(i).rows());
-    augmented_costs_.push_back(prog_.AddQuadraticCost(
-        2 * G.at(i), -2 * G.at(i) * WD.at(i), z_.at(i), 1));
+
+  // Up-weighted last QP step
+  int large_coeff = 1000;
+  int num_blocks = 1;
+  if (is_final_solve){
+    std::vector<Eigen::MatrixXd> last_qp_G = G;
+    for (int i=0; i<N_; ++i){
+      for (int j=0; j < num_blocks*4; ++j){
+	if (delta.at(i)[n_x_ +j] == 0){
+	  last_qp_G.at(i).block(n_x_+j, n_x_+j, 1, 1) *= large_coeff;
+	} else{
+	  last_qp_G.at(i).block(n_x_+n_lambda_+n_u_+j, n_x_+n_lambda_+n_u_+j, 1, 1) *= large_coeff;
+	}
+      }
+    } 
+
+    for (int i = 0; i < N_; i++) {
+      augmented_costs_.push_back(prog_.AddQuadraticCost(
+        	2 * last_qp_G.at(i), -2 * last_qp_G.at(i) * delta.at(i), z_.at(i), 1));
+    }
+  } else {
+    // Add or update augmented costs
+    for (int i = 0; i < N_; ++i) {
+      DRAKE_ASSERT(G.at(i).cols() == WD.at(i).rows());
+      augmented_costs_.push_back(prog_.AddQuadraticCost(
+	  2 * G.at(i), -2 * G.at(i) * WD.at(i), z_.at(i), 1));
+    }
   }
 }
 

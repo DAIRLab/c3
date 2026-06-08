@@ -190,7 +190,6 @@ drake::systems::EventStatus C3Controller::ComputePlan(
       1e6;
 
   // Update solve time in the discrete state
-  std::cout << "updating filtered solve time" << std::endl;
   if (publish_frequency_ > 0) {
     // Override solve time if a publish frequency is specified
     filtered_solve_time = 1.0 / publish_frequency_;
@@ -199,7 +198,6 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     filtered_solve_time = (1 - solve_time_filter_constant_) * time_ellapsed +
                           solve_time_filter_constant_ * filtered_solve_time;
   }
-  std::cout << "time: " << filtered_solve_time << std::endl;
 
   return drake::systems::EventStatus::Succeeded();
 }
