@@ -13,7 +13,7 @@ int_options:
   adaptive_rho_interval: 0
 
 double_options:
-  rho: 0.01
+  rho: 0.001
   sigma: 1e-6
   eps_abs: 1e-5
   eps_rel: 1e-5
