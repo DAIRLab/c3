@@ -326,6 +326,36 @@ void C3::UpdateEETrackingTargetAndCost(std::vector<Eigen::VectorXd> ee_tracking_
 }
 
 
+void C3::AddAccelerationCost(int n_q, int n_v, double weight) {
+  DRAKE_DEMAND(n_q + n_v == n_x_);
+  // (v[i] - v[i+1])' Q_v (v[i] - v[i+1]) = v[i]' Q_v v[i] - 2v[i]' Q_v v[i+1] + v[i+1]' Q_v v[i+1]
+  for (int i = 0; i < N_; ++i) {
+
+    /* [Q, -Q
+        -Q, Q] */
+    MatrixXd cost_matrix(MatrixXd::Zero(2*n_v, 2*n_v));
+    // cost_matrix.block(0, 0, n_v, n_v) = cost_matrices_.Q.at(i).block(n_q, n_q, n_v, n_v);
+    // cost_matrix.block(n_v, n_v, n_v, n_v) = cost_matrices_.Q.at(i).block(n_q, n_q, n_v, n_v);
+    // cost_matrix.block(n_v, 0, n_v, n_v) = -1 * cost_matrices_.Q.at(i).block(n_q, n_q, n_v, n_v);
+    // cost_matrix.block(0, n_v, n_v, n_v) = -1 * cost_matrices_.Q.at(i).block(n_q, n_q, n_v, n_v);
+
+    cost_matrix.block(0, 0, n_v, n_v) = MatrixXd::Identity(n_v, n_v);
+    cost_matrix.block(n_v, n_v, n_v, n_v) = MatrixXd::Identity(n_v, n_v);
+    cost_matrix.block(n_v, 0, n_v, n_v) = -1 * MatrixXd::Identity(n_v, n_v);
+    cost_matrix.block(0, n_v, n_v, n_v) = -1 * MatrixXd::Identity(n_v, n_v);
+
+    drake::solvers::VariableRefList vars;
+    vars.push_back(x_.at(i).segment(n_q, n_v));
+    vars.push_back(x_.at(i+1).segment(n_q, n_v));
+    drake::solvers::VectorXDecisionVariable z = drake::solvers::ConcatenateVariableRefList(vars);
+
+    prog_.AddQuadraticCost(
+        2 * weight * cost_matrix, VectorXd::Zero(2*n_v), z
+    );
+  }
+  
+} 
+
 
 const std::vector<drake::solvers::QuadraticCost*>& C3::GetTargetCost() {
   return target_costs_;
