@@ -132,8 +132,12 @@ class C3 {
   void AddEETrackingCost(int ee_start_idx, int ee_size);
 	
   void UpdateEETrackingTargetAndCost(std::vector<Eigen::VectorXd> ee_tracking_target, Eigen::MatrixXd Q_ee);
-  
+
   void AddAccelerationCost(int n_q, int n_v, double weight);
+
+  // Only implementing this for C3+, reduces to an extra cost for MIQP/QP projections
+  void UpdateLambdaMatchingCost(Eigen::MatrixXd W) { W_ = W; }
+  void UpdateLambdaMatchingTarget(Eigen::VectorXd lambda_hat) { lambda_hat_ = lambda_hat; }
 
   /**
    * @brief Get the current cost matrices used in the system.
@@ -422,6 +426,10 @@ class C3 {
   const C3Options options_;
   double solve_time_ = 0;
   bool h_is_zero_;
+
+  // Lambda matching cost/target
+  Eigen::MatrixXd W_;
+  Eigen::VectorXd lambda_hat_; 
 
   drake::solvers::MathematicalProgram prog_;
   // QP step variables
