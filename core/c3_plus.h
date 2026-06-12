@@ -51,6 +51,10 @@ class C3Plus final : public C3 {
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index = -1) override;
 
+  // Only implementing this for C3+, reduces to an extra cost for MIQP/QP projections
+  void UpdateLambdaMatchingCost(Eigen::MatrixXd W) { W_ = W; }
+  void UpdateLambdaMatchingTarget(Eigen::VectorXd lambda_hat) { lambda_hat_ = lambda_hat; }
+
  protected:
   std::vector<std::vector<Eigen::VectorXd>> warm_start_eta_;
 
@@ -69,6 +73,9 @@ class C3Plus final : public C3 {
 
   // Store the following constraint η = E * x + F * λ + H * u + c
   std::vector<drake::solvers::LinearEqualityConstraint*> eta_constraints_;
+
+  Eigen::MatrixXd W_;
+  Eigen::VectorXd lambda_hat_; 
 };
 
 }  // namespace c3

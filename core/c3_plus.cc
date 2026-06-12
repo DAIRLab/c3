@@ -58,6 +58,9 @@ C3Plus::C3Plus(const LCS& lcs, const CostMatrices& costs,
             .get();
   }
 
+  W_ = MatrixXd::Zero(n_lambda_, n_lambda_);
+  lambda_hat_ = VectorXd::Zero(n_lambda_);
+
   // Disable parallelization for C3+ because of the overhead cost
   use_parallelization_in_projection_ = false;
 }
@@ -185,13 +188,28 @@ VectorXd C3Plus::SolveSingleProjection(const MatrixXd& U,
         "Negative weights in the cost matrix U are not allowed.");
   }
 
+  VectorXd w_lambda_matching_vec = W_.diagonal();
+  if (w_lambda_matching_vec.minCoeff() < 0) {
+      throw std::runtime_error(
+        "Negative weights in the lambda matching cost matrix W are not allowed.");
+  }
+
   VectorXd lambda_c = delta_c.segment(n_x_, n_lambda_);
   VectorXd eta_c = delta_c.segment(n_x_ + n_lambda_ + n_u_, n_lambda_);
 
-  // Set the smaller of lambda and eta to zero
+  // Get optimal lambda value (if eta=0)
+  VectorXd lambda_star = (w_lambda_vec.array() * lambda_c.array() 
+                          + w_lambda_matching_vec.array() * lambda_hat_.array()) / 
+                          (w_lambda_vec.array() + w_lambda_matching_vec.array());
+
+  // Analytically solve
   Eigen::Array<bool, Eigen::Dynamic, 1> eta_larger =
-      eta_c.array() * w_eta_vec.array().sqrt() >
-      lambda_c.array() * w_lambda_vec.array().sqrt();
+      w_eta_vec.array() * eta_c.array().square() + 
+      w_lambda_vec.array() * (lambda_star.array() - lambda_c.array()).square() + 
+      w_lambda_matching_vec.array() * (lambda_star.array() - lambda_hat_.array()).square()
+      > 
+      w_lambda_vec.array() * lambda_c.array().square() + w_lambda_matching_vec.array() * lambda_hat_.array().square();
+     
 
   delta_proj.segment(n_x_, n_lambda_) =
       eta_larger.select(VectorXd::Zero(n_lambda_), lambda_c);
