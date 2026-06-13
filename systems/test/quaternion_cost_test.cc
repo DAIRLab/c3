@@ -29,6 +29,7 @@ class QuaternionCostTest : public ::testing::Test {
  protected:
   C3ControllerOptions controller_options_;
   std::unique_ptr<drake::systems::Diagram<double>> diagram_;
+  std::vector<int> quaternion_indices_;
   C3Controller* c3_controller_;
 
   void SetUp() override {
@@ -38,6 +39,10 @@ class QuaternionCostTest : public ::testing::Test {
     parser.AddModels("systems/test/resources/cube.sdf");
     parser.AddModels("systems/test/resources/plate.sdf");
     plant.Finalize();
+    for (const auto& body_idx : plant.GetFloatingBaseBodies()) {
+      quaternion_indices_.push_back(
+          plant.get_body(body_idx).floating_positions_start());
+    }
 
     controller_options_ = drake::yaml::LoadYamlFile<C3ControllerOptions>(
         "systems/test/resources/quaternion_cost_test.yaml");
@@ -113,10 +118,7 @@ TEST_F(QuaternionCostTest, QuaternionCostMatrixTest) {
     EXPECT_TRUE(min_eigenval >= 0);
 
     // Check each expected block has been updated
-    std::vector<int> start_indices;
-    start_indices.push_back(5);  // Index of quaternion
-
-    for (int idx : start_indices) {
+    for (int idx : quaternion_indices_) {
       MatrixXd Q_block = Q[i].block(idx, idx, 4, 4);
       MatrixXd Q_diag = Q_block.diagonal().asDiagonal();
       EXPECT_TRUE(!(Q_block.isApprox(Q_diag)));

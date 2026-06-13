@@ -337,6 +337,21 @@ class LCSFactory {
    */
   void ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn, MatrixXd& Jt);
 
+  /**
+   * @brief Appends bilateral weld-constraint dynamics to an already formulated
+   * contact LCS.
+   */
+  void AppendWeldConstraintDynamics(
+      const MatrixXd& Jf_q, const MatrixXd& Jf_v, const MatrixXd& Jf_u,
+      const VectorXd& d_v, const MatrixXd& vNqdot, const MatrixXd& qdotNv,
+      const MatrixX<AutoDiffXd>& M, MatrixXd& D, MatrixXd& E, MatrixXd& F,
+      MatrixXd& H, VectorXd& c);
+
+  /**
+   * @brief Computes weld constraint errors and velocity Jacobians.
+   */
+  void ComputeWeldConstraintJacobian(VectorXd& g, MatrixXd& J);
+
    /**
    * @brief Finds the witness points for each contact pair.
    *

@@ -192,6 +192,44 @@ TEST_F(LCSFactoryPivotingTest, ContactPairParsing) {
             LCSFactory::GetNumContactVariables(fixture.options));
 }
 
+GTEST_TEST(LCSFactoryTest, WeldConstraintAddsBilateralLambdas) {
+  MultibodyPlant<double> plant(0.0);
+  const auto M_BBo_B =
+      drake::multibody::SpatialInertia<double>::MakeUnitary();
+  const auto& body_A = plant.AddRigidBody("body_A", M_BBo_B);
+  const auto& body_B = plant.AddRigidBody("body_B", M_BBo_B);
+  plant.AddWeldConstraint(body_A, drake::math::RigidTransformd::Identity(),
+                          body_B, drake::math::RigidTransformd::Identity());
+  plant.Finalize();
+
+  auto context = plant.CreateDefaultContext();
+  auto plant_ad = System<double>::ToAutoDiffXd(plant);
+  auto context_ad = plant_ad->CreateDefaultContext();
+
+  LCSFactoryOptions options;
+  options.contact_model = "anitescu";
+  options.num_contacts = 0;
+  options.num_friction_directions_per_contact = std::vector<int>{};
+  options.mu = std::vector<double>{};
+  options.N = 1;
+  options.dt = 0.001;
+
+  LCSFactory lcs_factory(plant, *context, *plant_ad, *context_ad,
+                         std::vector<SortedPair<GeometryId>>{}, options);
+  const VectorXd state = plant.GetPositionsAndVelocities(*context);
+  const VectorXd input = VectorXd::Zero(plant.num_actuators());
+  lcs_factory.UpdateStateAndInput(state, input);
+
+  const LCS lcs = lcs_factory.GenerateLCS();
+  EXPECT_EQ(lcs.num_lambdas(), 12);
+  EXPECT_EQ(lcs.D()[0].cols(), 12);
+  EXPECT_EQ(lcs.E()[0].rows(), 12);
+  EXPECT_EQ(lcs.F()[0].rows(), 12);
+  EXPECT_EQ(lcs.H()[0].rows(), 12);
+  EXPECT_EQ(lcs.c()[0].size(), 12);
+  EXPECT_EQ(lcs_factory.GetContactDescriptions().size(), 12);
+}
+
 // Parameterized test fixture for testing different contact models and friction
 // directions
 class LCSFactoryParameterizedPivotingTest

@@ -19,6 +19,7 @@ using drake::VectorX;
 using drake::geometry::GeometryId;
 using drake::math::ExtractGradient;
 using drake::math::ExtractValue;
+using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyForces;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
@@ -236,6 +237,110 @@ void LCSFactory::ComputeContactJacobian(VectorXd& phi, MatrixXd& Jn,
   }
 }
 
+void LCSFactory::ComputeWeldConstraintJacobian(VectorXd& g, MatrixXd& J) {
+  const int n_weld_equations = 6 * plant_.num_weld_constraints();
+  g.resize(n_weld_equations);
+  J.resize(n_weld_equations, n_v_);
+
+  const auto& frame_W = plant_.world_frame();
+  int row = 0;
+  for (const auto& [id, spec] : plant_.get_weld_constraint_specs()) {
+    if (!plant_.GetConstraintActiveStatus(context_, id)) continue;
+
+    const auto& body_A = plant_.get_body(spec.body_A);
+    const auto& body_B = plant_.get_body(spec.body_B);
+
+    const auto& X_WA = body_A.EvalPoseInWorld(context_);
+    const auto& X_WB = body_B.EvalPoseInWorld(context_);
+    const auto X_WP = X_WA * spec.X_AP;
+    const auto X_WQ = X_WB * spec.X_BQ;
+    const auto R_AW = X_WA.rotation().transpose();
+    const auto R_BW = X_WB.rotation().transpose();
+
+    const Eigen::Vector3d p_WM =
+        0.5 * (X_WP.translation() + X_WQ.translation());
+    const Eigen::Vector3d p_AM = R_AW * (p_WM - X_WA.translation());
+    const Eigen::Vector3d p_BM = R_BW * (p_WM - X_WB.translation());
+
+    MatrixX<double> J_WAm(6, n_v_);
+    MatrixX<double> J_WBm(6, n_v_);
+    plant_.CalcJacobianSpatialVelocity(context_, JacobianWrtVariable::kV,
+                                       body_A.body_frame(), p_AM, frame_W,
+                                       frame_W, &J_WAm);
+    plant_.CalcJacobianSpatialVelocity(context_, JacobianWrtVariable::kV,
+                                       body_B.body_frame(), p_BM, frame_W,
+                                       frame_W, &J_WBm);
+
+    const auto a_PQ =
+        X_WP.rotation().InvertAndCompose(X_WQ.rotation()).ToAngleAxis();
+    g.segment<3>(row) =
+        X_WP.rotation() * (a_PQ.angle() * a_PQ.axis());
+    g.segment<3>(row + 3) = X_WQ.translation() - X_WP.translation();
+    J.middleRows(row, 6) = J_WBm - J_WAm;
+    row += 6;
+  }
+
+  g.conservativeResize(row);
+  J.conservativeResize(row, n_v_);
+}
+
+void LCSFactory::AppendWeldConstraintDynamics(
+    const MatrixXd& Jf_q, const MatrixXd& Jf_v, const MatrixXd& Jf_u,
+    const VectorXd& d_v, const MatrixXd& vNqdot, const MatrixXd& qdotNv,
+    const MatrixX<AutoDiffXd>& M, MatrixXd& D, MatrixXd& E, MatrixXd& F,
+    MatrixXd& H, VectorXd& c) {
+  if (plant_.num_weld_constraints() == 0) return;
+
+  VectorXd g_weld;
+  MatrixXd J_weld;
+  ComputeWeldConstraintJacobian(g_weld, J_weld);
+  const int n_weld_equations = g_weld.size();
+  if (n_weld_equations == 0) return;
+
+  const int n_contact_lambda = D.cols();
+  const int n_weld_lambda = 2 * n_weld_equations;
+  const int n_total_lambda = n_contact_lambda + n_weld_lambda;
+
+  MatrixXd J_bilateral(2 * n_weld_equations, n_v_);
+  J_bilateral << J_weld, -J_weld;
+  VectorXd g_bilateral(2 * n_weld_equations);
+  g_bilateral << g_weld, -g_weld;
+
+  auto M_ldlt = ExtractValue(M).ldlt();
+  MatrixXd MinvJ_bilateral_T = M_ldlt.solve(J_bilateral.transpose());
+
+  D.conservativeResize(n_x_, n_total_lambda);
+  E.conservativeResize(n_total_lambda, n_x_);
+  F.conservativeResize(n_total_lambda, n_total_lambda);
+  H.conservativeResize(n_total_lambda, n_u_);
+  c.conservativeResize(n_total_lambda);
+
+  D.rightCols(n_weld_lambda).setZero();
+  E.bottomRows(n_weld_lambda).setZero();
+  F.rightCols(n_weld_lambda).setZero();
+  F.bottomRows(n_weld_lambda).setZero();
+  H.bottomRows(n_weld_lambda).setZero();
+  c.tail(n_weld_lambda).setZero();
+
+  D.block(0, n_contact_lambda, n_q_, n_weld_lambda) =
+      dt_ * dt_ * qdotNv * MinvJ_bilateral_T;
+  D.block(n_q_, n_contact_lambda, n_v_, n_weld_lambda) =
+      dt_ * MinvJ_bilateral_T;
+
+  E.block(n_contact_lambda, 0, n_weld_lambda, n_q_) =
+      dt_ * dt_ * J_bilateral * Jf_q + J_bilateral * vNqdot;
+  E.block(n_contact_lambda, n_q_, n_weld_lambda, n_v_) =
+      dt_ * J_bilateral + dt_ * dt_ * J_bilateral * Jf_v;
+
+  F.block(n_contact_lambda, n_contact_lambda, n_weld_lambda, n_weld_lambda) =
+      dt_ * dt_ * J_bilateral * MinvJ_bilateral_T;
+  H.block(n_contact_lambda, 0, n_weld_lambda, n_u_) =
+      dt_ * dt_ * J_bilateral * Jf_u;
+  c.tail(n_weld_lambda) =
+      g_bilateral + dt_ * dt_ * J_bilateral * d_v -
+      J_bilateral * vNqdot * plant_.GetPositions(context_);
+}
+
 std::pair<std::vector<VectorXd>, std::vector<VectorXd>>
 LCSFactory::FindWitnessPoints() {
   std::vector<VectorXd> WCa;
@@ -379,6 +484,8 @@ LCS LCSFactory::GenerateLCS() {
   } else {
     throw std::out_of_range("Unsupported contact model.");
   }
+  AppendWeldConstraintDynamics(Jf_q, Jf_v, Jf_u, d_v, vNqdot, qdotNv, M, D, E,
+                               F, H, c);
   /*============== Formulate D, E, F, G and c Matrices ==================*/
 
   return LCS(A, B, D, d, E, F, H, c, options_.N, dt_);  // Return the system;
@@ -579,6 +686,15 @@ std::vector<LCSContactDescription> LCSFactory::GetContactDescriptions() {
             normal_contact_descriptions.at(normal_index).force_basis;
         contact_descriptions.at(tangential_index).force_basis.normalize();
       }
+    }
+  }
+
+  for (const auto& weld_constraint : plant_.get_weld_constraint_specs()) {
+    const auto& id = weld_constraint.first;
+    if (!plant_.GetConstraintActiveStatus(context_, id)) continue;
+    for (int i = 0; i < 12; ++i) {
+      contact_descriptions.push_back(
+          LCSContactDescription::CreateSlackVariableDescription());
     }
   }
 
