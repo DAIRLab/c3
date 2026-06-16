@@ -513,6 +513,7 @@ void C3::StoreQPResults(const MathematicalProgramResult& result,
     z_sol_->at(i).segment(n_x_, n_lambda_) = result.GetSolution(lambda_[i]);
     z_sol_->at(i).segment(n_x_ + n_lambda_, n_u_) = result.GetSolution(u_[i]);
   }
+  x_sol_final_ = result.GetSolution(x_[N_]);
 
   if (!warm_start_)
     return;  // No warm start, so no need to update warm start parameters
