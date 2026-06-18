@@ -312,6 +312,8 @@ void C3Controller::UpdateQuaternionCosts(const Eigen::VectorXd& x_curr,
   vector<MatrixXd> R = costs.R;
   vector<MatrixXd> G = costs.G;
   vector<MatrixXd> U = costs.U;
+  vector<MatrixXd> Q_extra = costs.Q_extra;
+  vector<MatrixXd> A_extra = costs.A_extra;
 
   for (int index : quaternion_indices_) {
     Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4);
@@ -347,7 +349,7 @@ void C3Controller::UpdateQuaternionCosts(const Eigen::VectorXd& x_curr,
   }
 
   // Set C3 cost matrices
-  C3::CostMatrices new_costs(Q, R, G, U);
+  C3::CostMatrices new_costs(Q, R, G, U, Q_extra, A_extra);
   c3_->UpdateCostMatrices(new_costs);
 }
 

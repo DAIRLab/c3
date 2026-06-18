@@ -34,11 +34,15 @@ using drake::solvers::Solve;
 C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
                                const std::vector<Eigen::MatrixXd>& R,
                                const std::vector<Eigen::MatrixXd>& G,
-                               const std::vector<Eigen::MatrixXd>& U) {
+                               const std::vector<Eigen::MatrixXd>& U,
+			       const std::vector<Eigen::MatrixXd>& Q_extra,
+			       const std::vector<Eigen::MatrixXd>& A_extra) {
   this->Q = Q;
   this->R = R;
   this->G = G;
   this->U = U;
+  this->Q_extra = Q_extra;
+  this->A_extra = A_extra;
 }
 
 C3::C3(const LCS& lcs, const CostMatrices& costs,
@@ -145,6 +149,19 @@ C3::C3(const LCS& lcs, const CostMatrices& costs,
                               x_.at(i), 1)
             .evaluator()
             .get();
+
+    // extra cost (greysar)
+    if (i < N_){
+	if (cost_matrices_.Q_extra.at(0).size() > 0) {
+	  std::cout << "trying to add extra cost terms." << std::endl;
+	  Eigen::MatrixXd H_xtr = 2.0 * cost_matrices_.A_extra.at(i).transpose() * cost_matrices_.Q_extra.at(i) * cost_matrices_.A_extra.at(i);
+	  prog_.AddQuadraticCost(H_xtr, VectorXd::Zero(H_xtr.rows()),
+				 x_.at(i), 1)
+	    .evaluator()
+	    .get();
+	}
+    }
+    
     // Skip input cost at the (N + 1)th time step
     if (i == N_) break;
     input_costs_[i] = prog_
@@ -185,6 +202,8 @@ C3::CostMatrices C3::CreateCostMatricesFromC3Options(const C3Options& options,
                                                      int N) {
   std::vector<Eigen::MatrixXd> Q;  // State cost matrices.
   std::vector<Eigen::MatrixXd> R;  // Input cost matrices.
+  std::vector<Eigen::MatrixXd> Q_extra;
+  std::vector<Eigen::MatrixXd> A_extra;
 
   std::vector<MatrixXd> G(N,
                           options.G);  // State-input cross-term matrices.
@@ -195,11 +214,14 @@ C3::CostMatrices C3::CreateCostMatricesFromC3Options(const C3Options& options,
   for (int i = 0; i < N; ++i) {
     Q.push_back(discount_factor * options.Q);
     R.push_back(discount_factor * options.R);
+    Q_extra.push_back(discount_factor * options.Q_extra);
+    A_extra.push_back(options.A_extra);
     discount_factor *= options.gamma;
   }
   Q.push_back(discount_factor * options.Q);
+  Q_extra.push_back(discount_factor * options.Q_extra);
 
-  return CostMatrices(Q, R, G, U);  // Initialize the cost matrices.
+  return CostMatrices(Q, R, G, U, Q_extra, A_extra);  // Initialize the cost matrices.
 }
 
 void C3::ScaleLCS() {

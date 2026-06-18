@@ -30,7 +30,9 @@ class C3 {
     CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
                  const std::vector<Eigen::MatrixXd>& R,
                  const std::vector<Eigen::MatrixXd>& G,
-                 const std::vector<Eigen::MatrixXd>& U);
+                 const std::vector<Eigen::MatrixXd>& U,
+                 const std::vector<Eigen::MatrixXd>& Q_extra,
+                 const std::vector<Eigen::MatrixXd>& A_extra);
     bool HasSameDimensionsAs(const CostMatrices& other) const {
       // Check vector and matrix dimensions
       return (Q.size() == other.Q.size() &&
@@ -44,12 +46,21 @@ class C3 {
               G.at(0).cols() == other.G.at(0).cols() &&
               U.size() == other.U.size() &&
               U.at(0).rows() == other.U.at(0).rows() &&
-              U.at(0).cols() == other.U.at(0).cols());
+              U.at(0).cols() == other.U.at(0).cols() &&
+	      Q_extra.size() == other.Q_extra.size() &&
+              Q_extra.at(0).rows() == other.Q_extra.at(0).rows() &&
+              Q_extra.at(0).cols() == other.Q_extra.at(0).cols() &&
+	      A_extra.size() == other.A_extra.size() &&
+              A_extra.at(0).rows() == other.A_extra.at(0).rows() &&
+              A_extra.at(0).cols() == other.A_extra.at(0).cols()
+	      );
     }
     std::vector<Eigen::MatrixXd> Q;
     std::vector<Eigen::MatrixXd> R;
     std::vector<Eigen::MatrixXd> G;
     std::vector<Eigen::MatrixXd> U;
+    std::vector<Eigen::MatrixXd> Q_extra;
+    std::vector<Eigen::MatrixXd> A_extra;
   };
 
   /*!
