@@ -62,13 +62,20 @@ const VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& u,
   VectorXd x_final;
   VectorXd force;
   drake::solvers::MobyLCPSolver<double> LCPSolver;
+
+  bool flag;
   if (config.regularized) {
-    LCPSolver.SolveLcpLemkeRegularized(
+    flag = LCPSolver.SolveLcpLemkeRegularized(
         F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force, config.min_exp,
         config.step_exp, config.max_exp, config.piv_tol, config.zero_tol);
   } else {
-    LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force,
+    flag = LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force,
                             config.piv_tol, config.zero_tol);
+  }
+  if (!flag) {
+    std::cout << "LCP failed: returning x_init" << std::endl;
+    std::cout << "force: " << force.transpose() << std::endl;
+    return x_init;
   }
   x_final = A_[0] * x_init + B_[0] * u + D_[0] * force + d_[0];
   return x_final;
@@ -81,7 +88,7 @@ const std::pair<Eigen::VectorXd, Eigen::VectorXd> LCS::SimulateAndReturnForce(Ve
   VectorXd force;
   drake::solvers::MobyLCPSolver<double> LCPSolver;
 
-  int flag;
+  bool flag;
   if (config.regularized) {
     flag = LCPSolver.SolveLcpLemkeRegularized(
         F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force, config.min_exp,
@@ -90,7 +97,8 @@ const std::pair<Eigen::VectorXd, Eigen::VectorXd> LCS::SimulateAndReturnForce(Ve
     flag = LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * u, &force,
                             config.piv_tol, config.zero_tol);
   }
-  if (flag == 0) {
+  
+  if (!flag) {
     std::cout << "LCP failed: returning x_init" << std::endl;
     std::cout << "force: " << force.transpose() << std::endl;
 
