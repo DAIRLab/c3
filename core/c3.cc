@@ -554,6 +554,31 @@ void C3::AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
   AddLinearConstraint(A, lb, ub, constraint);
 }
 
+void C3::AddStateDifferenceLinearConstraint(
+    const MatrixXd& A, const VectorXd& lower_bound,
+    const VectorXd& upper_bound) {
+  DRAKE_DEMAND(A.cols() == n_x_);
+  DRAKE_DEMAND(lower_bound.size() == A.rows());
+  DRAKE_DEMAND(upper_bound.size() == A.rows());
+
+  MatrixXd A_diff(A.rows(), 2 * n_x_);
+  A_diff << -A, A;
+  for (int i = 0; i < N_; ++i) {
+    user_constraints_.push_back(prog_.AddLinearConstraint(
+        A_diff, lower_bound, upper_bound, {x_.at(i), x_.at(i + 1)}));
+  }
+}
+
+void C3::AddStateDifferenceLinearConstraint(const Eigen::RowVectorXd& A,
+                                            double lower_bound,
+                                            double upper_bound) {
+  VectorXd lb(1);
+  lb << lower_bound;
+  VectorXd ub(1);
+  ub << upper_bound;
+  AddStateDifferenceLinearConstraint(A, lb, ub);
+}
+
 void C3::RemoveConstraints() {
   for (auto& userconstraint : user_constraints_) {
     prog_.RemoveConstraint(userconstraint);

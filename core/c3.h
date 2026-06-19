@@ -154,6 +154,18 @@ class C3 {
   void AddLinearConstraint(const Eigen::RowVectorXd& A, double lower_bound,
                            double upper_bound, ConstraintVariable constraint);
 
+  /*! Add a linear constraint on consecutive state differences:
+   * lower_bound <= A * (x[i + 1] - x[i]) <= upper_bound.
+   */
+  void AddStateDifferenceLinearConstraint(
+      const Eigen::MatrixXd& A, const Eigen::VectorXd& lower_bound,
+      const Eigen::VectorXd& upper_bound);
+
+  /*! Add a single-row constraint on consecutive state differences. */
+  void AddStateDifferenceLinearConstraint(const Eigen::RowVectorXd& A,
+                                          double lower_bound,
+                                          double upper_bound);
+
   /*! Remove all constraints previously added by AddLinearConstraint */
   void RemoveConstraints();
 
