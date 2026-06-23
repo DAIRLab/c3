@@ -1,0 +1,81 @@
+# -*- python -*-
+package(default_visibility = ["//visibility:public"])
+
+py_test(
+    name = "test_c3",
+    srcs = ["test_c3.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+        "@rules_python//python/runfiles",
+    ],
+    data = [
+        "//core:test_data",
+        "//examples:example_data",
+    ],
+    python_version = "PY3",
+    tags = ["smoke"],
+    env_inherit = [
+        "GUROBI_HOME",
+        "GRB_LICENSE_FILE",
+        "PYTHONPATH",
+    ],
+)
+
+py_test(
+    name = "test_systems",
+    srcs = ["test_systems.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+        "//bindings/pyc3:c3_systems_py",
+        "//bindings/pyc3:c3_multibody_py",
+        "@rules_python//python/runfiles",
+    ],
+    data = [
+        "//examples:example_data",
+    ],
+    python_version = "PY3",
+    tags = ["smoke"],
+    env_inherit = [
+        "GUROBI_HOME",
+        "GRB_LICENSE_FILE",
+        "PYTHONPATH",
+    ],
+)
+
+py_test(
+    name = "test_multibody",
+    srcs = ["test_multibody.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+        "//bindings/pyc3:c3_multibody_py",
+        "@rules_python//python/runfiles",
+    ],
+    data = [
+        "//multibody:test_data",
+        "//examples:example_data",
+    ],
+    python_version = "PY3",
+    tags = ["smoke"],
+    env_inherit = [
+        "GUROBI_HOME",
+        "GRB_LICENSE_FILE",
+        "PYTHONPATH",
+    ],
+)
+
+py_test(
+    name = "test_traj_eval",
+    srcs = ["test_traj_eval.py"],
+    deps = [
+        "//bindings/pyc3:c3_py",
+        "//bindings/pyc3:traj_eval_py",
+        "@rules_python//python/runfiles",
+    ],
+    python_version = "PY3",
+    tags = ["smoke"],
+    env_inherit = [
+        "GUROBI_HOME",
+        "GRB_LICENSE_FILE",
+        "PYTHONPATH",
+    ],
+)

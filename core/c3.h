@@ -195,6 +195,12 @@ class C3 {
   std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
   std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
   std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
+  std::vector<Eigen::VectorXd> GetDesiredState() { return x_desired_; }
+  const LCS& GetLCS() const { return lcs_; }
+
+  bool GetPenalizeInputChange() const {
+    return options_.penalize_input_change.value_or(true);
+  }
 
   int GetZSize() const { return n_z_; }
 
@@ -386,6 +392,12 @@ class C3 {
   virtual void StoreQPResults(
       const drake::solvers::MathematicalProgramResult& result,
       int admm_iteration, bool is_final_solve);
+
+  /// Sets a safe fallback solution when the QP solver fails. Sets all states
+  /// to the current state x0 and all inputs/forces to zero, ensuring the
+  /// robot holds position rather than executing stale or undefined commands.
+  virtual void SetFallbackSolution(const Eigen::VectorXd& x0,
+                                   bool is_final_solve);
 
   LCS lcs_;
   double AnDn_ = 1.0;  // Scaling factor for lambdas

@@ -5,7 +5,6 @@ int_options:
   verbose: 0
   scaled_termination: 1
   check_termination: 25
-  polish_refine_iter: 3
   scaling: 10
   adaptive_rho: 1
   adaptive_rho_interval: 0

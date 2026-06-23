@@ -9,3 +9,4 @@ MODULE.bazel.lock
 *.ps
 genhtml/*
 .DS_Store
+.venv/*

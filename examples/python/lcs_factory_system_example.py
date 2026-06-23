@@ -259,39 +259,6 @@ def RunPivotingTest():
     # Build the plant diagram.
     plant_diagram = builder.Build()
 
-    # Retrieve collision geometries for relevant bodies.
-    platform_collision_geoms = plant_for_lcs.GetCollisionGeometriesForBody(
-        plant_for_lcs.GetBodyByName("platform")
-    )
-    cube_collision_geoms = plant_for_lcs.GetCollisionGeometriesForBody(
-        plant_for_lcs.GetBodyByName("cube")
-    )
-    left_finger_collision_geoms = plant_for_lcs.GetCollisionGeometriesForBody(
-        plant_for_lcs.GetBodyByName("left_finger")
-    )
-    right_finger_collision_geoms = plant_for_lcs.GetCollisionGeometriesForBody(
-        plant_for_lcs.GetBodyByName("right_finger")
-    )
-
-    # Map collision geometries to their respective components.
-    contact_geoms = {}
-    contact_geoms["PLATFORM"] = platform_collision_geoms
-    contact_geoms["CUBE"] = cube_collision_geoms
-    contact_geoms["LEFT_FINGER"] = left_finger_collision_geoms
-    contact_geoms["RIGHT_FINGER"] = right_finger_collision_geoms
-
-    # Define contact pairs for the LCS system.
-    contact_pairs = []
-    contact_pairs.append(
-        tuple([contact_geoms["CUBE"][0], contact_geoms["LEFT_FINGER"][0]])
-    )
-    contact_pairs.append(
-        tuple([contact_geoms["CUBE"][0], contact_geoms["PLATFORM"][0]])
-    )
-    contact_pairs.append(
-        tuple([contact_geoms["CUBE"][0], contact_geoms["RIGHT_FINGER"][0]])
-    )
-
     # Build the main diagram.
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.01)
@@ -323,7 +290,6 @@ def RunPivotingTest():
             plant_for_lcs_context,
             plant_autodiff,
             plant_context_autodiff,
-            contact_pairs,
             options.lcs_factory_options,
         )
     )

@@ -278,11 +278,34 @@ GeomGeomCollider<T>::CalcForceBasisInWorldFrame(
     const Context<T>& context, int num_friction_directions,
     const Vector3d& planar_normal) const {
   const auto query_result = GetGeometryQueryResult(context);
+
+  // Compute the force basis in the world frame for contact forces.
+  //
+  // IMPORTANT: Force Direction Convention
+  // ======================================
+  // The forces computed here represent forces that object A exerts on object B.
+  // This is why we use -nhat_BA_W (negative of the normal from B to A).
+  //
+  // Recall that nhat_BA_W points from body B towards body A in the world frame.
+  // For contact forces, we want the force that A applies to B, which acts in
+  // the direction opposite to nhat_BA_W (i.e., from A towards B).
+  //
+  // For friction cone discretization:
+  // - The first basis vector is the normal force direction: -nhat_BA_W
+  // - The remaining basis vectors span the tangent plane (friction directions)
+
   if (num_friction_directions < 1) {
     // Planar contact: basis is constructed from the contact and planar normals.
+    // The planar_normal defines the plane of admissible motion.
+    // This is typically used for 2D contact scenarios or constrained motion.
     return ComputePlanarForceBasis(-query_result.nhat_BA_W, planar_normal);
   } else {
     // 3D contact: build polytope basis and rotate using contact normal.
+    // The polytope basis consists of 2*num_friction_directions + 1 vectors:
+    // - 1 normal force vector
+    // - 2*num_friction_directions tangential vectors (forming a friction cone)
+    // We rotate this basis from the contact frame to the world frame using
+    // R_WC.
     auto R_WC = drake::math::RotationMatrix<T>::MakeFromOneVector(
         -query_result.nhat_BA_W, 0);
     return ComputePolytopeForceBasis(num_friction_directions) *

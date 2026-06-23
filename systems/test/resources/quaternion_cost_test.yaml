@@ -15,8 +15,7 @@ lcs_factory_options:
   contact_model: "anitescu"
   num_friction_directions: 2
   num_contacts: 8
-  spring_stiffness: 0
-  mu: [0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4]
+  mu: 0.4
   N: 10
   dt: 0.02
 

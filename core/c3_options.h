@@ -69,27 +69,23 @@ struct C3Options {
   std::vector<double> q_vector;
   std::vector<double> r_vector;
 
-  std::vector<double> g_vector;
   std::vector<double> g_x;
   std::vector<double> g_gamma;
   std::vector<double> g_lambda_n;
   std::vector<double> g_lambda_t;
   std::vector<double> g_lambda;
   std::vector<double> g_u;
-  std::vector<double> g_eta_vector;
   std::optional<std::vector<double>> g_eta_slack;
   std::optional<std::vector<double>> g_eta_n;
   std::optional<std::vector<double>> g_eta_t;
   std::optional<std::vector<double>> g_eta;
 
-  std::vector<double> u_vector;
   std::vector<double> u_x;
   std::vector<double> u_gamma;
   std::vector<double> u_lambda_n;
   std::vector<double> u_lambda_t;
   std::vector<double> u_lambda;
   std::vector<double> u_u;
-  std::vector<double> u_eta_vector;
   std::optional<std::vector<double>> u_eta_slack;
   std::optional<std::vector<double>> u_eta_n;
   std::optional<std::vector<double>> u_eta_t;
@@ -143,7 +139,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(u_eta_t));
     a->Visit(DRAKE_NVP(u_eta));
 
-    g_vector = std::vector<double>();
+    std::vector<double> g_vector;
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());
     if (g_lambda.empty()) {
       g_lambda.insert(g_lambda.end(), g_gamma.begin(), g_gamma.end());
@@ -152,7 +148,7 @@ struct C3Options {
     }
     g_vector.insert(g_vector.end(), g_lambda.begin(), g_lambda.end());
     g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
-    g_eta_vector = g_eta.value_or(std::vector<double>());
+    std::vector<double> g_eta_vector = g_eta.value_or(std::vector<double>());
     if (g_eta_vector.empty() && g_eta_slack.has_value()) {
       g_eta_vector.insert(g_eta_vector.end(), g_eta_slack->begin(),
                           g_eta_slack->end());
@@ -161,7 +157,7 @@ struct C3Options {
     }
     g_vector.insert(g_vector.end(), g_eta_vector.begin(), g_eta_vector.end());
 
-    u_vector = std::vector<double>();
+    std::vector<double> u_vector;
     u_vector.insert(u_vector.end(), u_x.begin(), u_x.end());
     if (u_lambda.empty()) {
       u_lambda.insert(u_lambda.end(), u_gamma.begin(), u_gamma.end());
@@ -170,7 +166,7 @@ struct C3Options {
     }
     u_vector.insert(u_vector.end(), u_lambda.begin(), u_lambda.end());
     u_vector.insert(u_vector.end(), u_u.begin(), u_u.end());
-    u_eta_vector = u_eta.value_or(std::vector<double>());
+    std::vector<double> u_eta_vector = u_eta.value_or(std::vector<double>());
     if (u_eta_vector.empty() && u_eta_slack.has_value()) {
       u_eta_vector.insert(u_eta_vector.end(), u_eta_slack->begin(),
                           u_eta_slack->end());
@@ -184,9 +180,9 @@ struct C3Options {
     Eigen::VectorXd r = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->r_vector.data(), this->r_vector.size());
     Eigen::VectorXd g = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
-        this->g_vector.data(), this->g_vector.size());
+        g_vector.data(), g_vector.size());
     Eigen::VectorXd u = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
-        this->u_vector.data(), this->u_vector.size());
+        u_vector.data(), u_vector.size());
 
     Q = w_Q * q.asDiagonal();
     R = w_R * r.asDiagonal();

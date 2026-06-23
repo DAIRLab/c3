@@ -1,5 +1,13 @@
 package(default_visibility = ["//visibility:public"])
 
+# Library for common systems
+py_library(
+    name = "common_systems",
+    srcs = ["common_systems.py"],
+    deps = [
+        "//bindings/pyc3:pyc3",
+    ],
+)
 
 py_binary(
     name = "c3_example",
@@ -18,6 +26,7 @@ py_binary(
     deps = [
         "//bindings/pyc3:pyc3",
         ":c3_example",
+        ":common_systems",  # Add this dependency
     ],
     data = [
         "//examples:example_data"
@@ -43,6 +52,7 @@ py_binary(
     deps = [
         "//bindings/pyc3:pyc3",
         ":c3_example",
+        ":common_systems",  # Add this dependency
     ],
     data = [
         "//examples:example_data"

@@ -3,25 +3,39 @@ jammy_task:
   only_if: "$CIRRUS_PR != ''  || $CIRRUS_BRANCH == 'main'" # This condition ensures the task runs only for PRs or on the main branch.
   timeout_in: 120m
   container:
-    image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42
+    image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42.0-2
     cpu: 8
     memory: 24
   format_script:
     - apt update && apt install -y clang-format
     - ./tools/scripts/check_format.sh
   test_script:
+    - | # For PRs, merge the base branch to ensure the latest changes are included in the CI environment. This helps catch merge conflicts early and ensures tests run against the most up-to-date code.
+      if [ -n "$CIRRUS_PR" ]; then
+        git config user.email "ci@ci.com"
+        git config user.name "CI"
+        git fetch origin $CIRRUS_BASE_BRANCH
+        git merge origin/$CIRRUS_BASE_BRANCH --no-edit || (echo "Merge conflict with $CIRRUS_BASE_BRANCH" && exit 1)
+      fi
     - export CC=clang-15
     - export CXX=clang++-15
-    - bazel build
+    - apt update && apt install -y python3-venv
+    - python3 -m venv .venv --system-site-packages
+    - . .venv/bin/activate && python3 -m pip install -r bindings/pyc3/requirements.txt && echo "🍏 Installed Python dependencies in Jammy CI environment $(which python3)"
+    - . .venv/bin/activate && export PYTHONPATH=$(python3 -c "import site; print(':'.join(site.getsitepackages()))") && bazel build
       --local_resources=ram=24000
       --local_resources=cpu=8
       --jobs=8
+      --noallow_analysis_cache_discard
+      --python_path=$(which python3)
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
-    - bazel test
+    - . .venv/bin/activate && export PYTHONPATH=$(python3 -c "import site; print(':'.join(site.getsitepackages()))") && bazel test
       --local_resources=ram=24000
       --local_resources=cpu=8
       --jobs=8
+      --noallow_analysis_cache_discard
+      --python_path=$(which python3)
       --test_output=all
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
@@ -30,29 +44,43 @@ jammy_task:
     format: junit
 
 noble_task:
-  only_if: "$CIRRUS_PR != ''  || $CIRRUS_BRANCH == 'main'" # This condition ensures the task runs only for PRs or on the main branch.
+  only_if: "$CIRRUS_PR != ''  || $CIRRUS_BRANCH == 'main'"
   timeout_in: 120m
   container:
-    image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
+    image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42.0-2
     cpu: 8
     memory: 24
   format_script:
     - apt update && apt install -y clang-format
     - ./tools/scripts/check_format.sh
   test_script:
+    - | # For PRs, merge the base branch to ensure the latest changes are included in the CI environment. This helps catch merge conflicts early and ensures tests run against the most up-to-date code.
+      if [ -n "$CIRRUS_PR" ]; then
+        git config user.email "ci@ci.com"
+        git config user.name "CI"
+        git fetch origin $CIRRUS_BASE_BRANCH
+        git merge origin/$CIRRUS_BASE_BRANCH --no-edit || (echo "Merge conflict with $CIRRUS_BASE_BRANCH" && exit 1)
+      fi
     - export CC=clang-15
     - export CXX=clang++-15
-    - bazel build
+    - apt update && apt install -y python3-venv
+    - python3 -m venv .venv --system-site-packages
+    - . .venv/bin/activate && python3 -m pip install -r bindings/pyc3/requirements.txt && echo "🍏 Installed Python dependencies in Noble CI environment $(which python3)"
+    - . .venv/bin/activate && export PYTHONPATH=$(python3 -c "import site; print(':'.join(site.getsitepackages()))") && bazel build
       --local_resources=ram=24000
       --local_resources=cpu=8
       --jobs=8
+      --noallow_analysis_cache_discard
+      --python_path=$(which python3)
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
-    - bazel test
+    - . .venv/bin/activate && export PYTHONPATH=$(python3 -c "import site; print(':'.join(site.getsitepackages()))") && bazel test
       --local_resources=ram=24000
       --local_resources=cpu=8
       --jobs=8
       --test_output=all
+      --noallow_analysis_cache_discard
+      --python_path=$(which python3)
       --remote_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
   noble_test_artifacts:
