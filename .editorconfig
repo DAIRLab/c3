@@ -1,0 +1,30 @@
+root = true
+
+[*]
+insert_final_newline = true
+charset = utf-8
+end_of_line = lf
+trim_trailing_whitespace = true
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+[*.cc]
+indent_style = space
+indent_size = 2
+
+[*.h]
+indent_style = space
+indent_size = 2
+
+[*.bzl]
+indent_style = space
+indent_size = 4
+
+[BUILD]
+indent_style = space
+indent_size = 4
+
+[Makefile]
+indent_style = tab

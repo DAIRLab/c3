@@ -143,20 +143,6 @@ PYBIND11_MODULE(multibody, m) {
       .def_readwrite("contact_pair_configs",
                      &LCSFactoryOptions::contact_pair_configs);
 
-  py::class_<c3::multibody::LCSContactDescription>(m, "LCSContactDescription")
-      .def(py::init<>())
-      .def_readwrite("witness_point_A",
-                     &c3::multibody::LCSContactDescription::witness_point_A)
-      .def_readwrite("witness_point_B",
-                     &c3::multibody::LCSContactDescription::witness_point_B)
-      .def_readwrite("force_basis",
-                     &c3::multibody::LCSContactDescription::force_basis)
-      .def_readwrite("is_slack",
-                     &c3::multibody::LCSContactDescription::is_slack)
-      .def_static("CreateSlackVariableDescription",
-                  &c3::multibody::LCSContactDescription::
-                      CreateSlackVariableDescription);
-
   py::class_<c3::multibody::LCSFactory>(m, "LCSFactory")
       .def(py::init<const drake::multibody::MultibodyPlant<double>&,
                     drake::systems::Context<double>&,
