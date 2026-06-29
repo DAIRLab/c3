@@ -186,7 +186,7 @@ LCS ElastoPlasticLCSFactory::GenerateLCS() {
   DRAKE_DEMAND(F_ext.cols() == n_lambda_);
   DRAKE_DEMAND(H_ext.rows() == n_lambda_);
   DRAKE_DEMAND(H_ext.cols() == n_u_);
-  DRAKE_DEMAND(c_ext.cols() == n_lambda_);
+  DRAKE_DEMAND(c_ext.size() == n_lambda_);
 
   /*============ Formulate external D, E, F, G and c Matrices ================*/
   /*========== Duplicate computation from LCSFactory:GenerateLCS =============*/
