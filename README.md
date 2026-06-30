@@ -57,7 +57,7 @@ This repository contains the reference implementation of the [Consensus Compleme
 
 2. **Install Drake and its dependencies:**
     ```sh
-    git clone --depth 1 --branch v1.35.0 https://github.com/RobotLocomotion/drake.git
+    git clone --depth 1 --branch v1.51.1 https://github.com/RobotLocomotion/drake.git
     sudo drake/setup/ubuntu/install_prereqs.sh
     ```
 
