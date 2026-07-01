@@ -113,7 +113,7 @@ const std::pair<Eigen::VectorXd, Eigen::VectorXd> LCS::SimulateAndReturnForce(Ve
 }
 
 
-const std::pair<Eigen::VectorXd, Eigen::VectorXd> LCS::SimulateAndReturnForce(VectorXd& x_init, VectorXd& u,
+const std::pair<Eigen::VectorXd, Eigen::VectorXd> LCS::SimulateAndReturnForceAtTimestep(VectorXd& x_init, VectorXd& u,
                              const LCSSimulateConfig& config, int timestep) const {
   DRAKE_DEMAND(0 <= timestep);
   DRAKE_DEMAND(timestep < N_);
