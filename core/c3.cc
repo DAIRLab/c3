@@ -286,7 +286,7 @@ void C3::UpdateFinalCost(const Eigen::MatrixXd Q_final, const Eigen::VectorXd bi
   Q[N_] = Q_final + Q_final.transpose(); 
 
   auto* qf_evaluator = target_costs_[N_];
-  qf_evaluator->UpdateCoefficients(Q[N_], -2 * bias);
+  qf_evaluator->UpdateCoefficients(Q[N_], 2 * bias);
 
   UpdateCostMatrices(CostMatrices(Q, cost_matrices_.R, cost_matrices_.G, cost_matrices_.U));
 }
