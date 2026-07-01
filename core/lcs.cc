@@ -100,6 +100,7 @@ const std::pair<Eigen::VectorXd, Eigen::VectorXd> LCS::SimulateAndReturnForce(Ve
   
   if (!flag) {
     std::cout << "LCP failed: returning x_init" << std::endl;
+    std::cout << "x_init: " << x_init.transpose() << std::endl;
     std::cout << "force: " << force.transpose() << std::endl;
 
     //std::cout << x_init.transpose() << std::endl;
@@ -110,6 +111,41 @@ const std::pair<Eigen::VectorXd, Eigen::VectorXd> LCS::SimulateAndReturnForce(Ve
 
   return std::make_pair(x_final, force);
 }
+
+
+const std::pair<Eigen::VectorXd, Eigen::VectorXd> LCS::SimulateAndReturnForce(VectorXd& x_init, VectorXd& u,
+                             const LCSSimulateConfig& config, int timestep) const {
+  DRAKE_DEMAND(0 <= timestep);
+  DRAKE_DEMAND(timestep < N_);
+
+  VectorXd x_final;
+  VectorXd force;
+  drake::solvers::MobyLCPSolver<double> LCPSolver;
+
+  bool flag;
+  if (config.regularized) {
+    flag = LCPSolver.SolveLcpLemkeRegularized(
+        F_[timestep], E_[timestep] * x_init + c_[timestep] + H_[timestep] * u, &force, config.min_exp,
+        config.step_exp, config.max_exp, config.piv_tol, config.zero_tol);
+  } else {
+    flag = LCPSolver.SolveLcpLemke(F_[timestep], E_[timestep] * x_init + c_[timestep] + H_[timestep] * u, &force,
+                            config.piv_tol, config.zero_tol);
+  }
+  
+  if (!flag) {
+    std::cout << "LCP failed: returning x_init" << std::endl;
+    std::cout << "x_init: " << x_init.transpose() << std::endl;
+    std::cout << "force: " << force.transpose() << std::endl;
+
+    //std::cout << x_init.transpose() << std::endl;
+    return std::make_pair(x_init, VectorXd::Zero(F_[timestep].cols()));
+  }
+
+  x_final = A_[timestep] * x_init + B_[timestep] * u + D_[timestep] * force + d_[timestep];
+
+  return std::make_pair(x_final, force);
+}
+
 
 LCS LCS::CreatePlaceholderLCS(int n_x, int n_u, int n_lambda, int N,
                               double dt) {

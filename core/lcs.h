@@ -72,6 +72,11 @@ class LCS {
     Eigen::VectorXd& x_init, Eigen::VectorXd& u, 
     const LCSSimulateConfig& config = LCSSimulateConfig()) const;
 
+  const std::pair<Eigen::VectorXd, Eigen::VectorXd> SimulateAndReturnForce(
+    Eigen::VectorXd& x_init, Eigen::VectorXd& u, 
+    const LCSSimulateConfig& config = LCSSimulateConfig(), 
+    int timestep = 0) const;
+
   /*!
    * Accessors dynamics terms
    */
