@@ -197,18 +197,20 @@ VectorXd C3Plus::SolveSingleProjection(const MatrixXd& U,
   VectorXd lambda_c = delta_c.segment(n_x_, n_lambda_);
   VectorXd eta_c = delta_c.segment(n_x_ + n_lambda_ + n_u_, n_lambda_);
 
+  VectorXd lambda_hat = lambda_hat_ / AnDn_; // account for scaling
+
   // Get optimal lambda value (if eta=0)
   VectorXd lambda_star = (w_lambda_vec.array() * lambda_c.array() 
-                          + w_lambda_matching_vec.array() * lambda_hat_.array()) / 
+                          + w_lambda_matching_vec.array() * lambda_hat.array()) / 
                           (w_lambda_vec.array() + w_lambda_matching_vec.array());
 
   // Analytically solve
   Eigen::Array<bool, Eigen::Dynamic, 1> eta_larger =
       w_eta_vec.array() * eta_c.array().square() + 
       w_lambda_vec.array() * (lambda_star.array() - lambda_c.array()).square() + 
-      w_lambda_matching_vec.array() * (lambda_star.array() - lambda_hat_.array()).square()
+      w_lambda_matching_vec.array() * (lambda_star.array() - lambda_hat.array()).square()
       > 
-      w_lambda_vec.array() * lambda_c.array().square() + w_lambda_matching_vec.array() * lambda_hat_.array().square();
+      w_lambda_vec.array() * lambda_c.array().square() + w_lambda_matching_vec.array() * lambda_hat.array().square();
      
 
   delta_proj.segment(n_x_, n_lambda_) =

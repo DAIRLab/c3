@@ -137,7 +137,7 @@ class C3 {
 
   // Only implementing this for C3+, reduces to an extra cost for MIQP/QP projections
   void UpdateLambdaMatchingCost(Eigen::MatrixXd W) { W_ = W; }
-  void UpdateLambdaMatchingTarget(Eigen::VectorXd lambda_hat) { lambda_hat_ = lambda_hat; }
+  void UpdateLambdaMatchingTarget(Eigen::VectorXd lambda_hat) { lambda_hat_; }
 
   /**
    * @brief Get the current cost matrices used in the system.

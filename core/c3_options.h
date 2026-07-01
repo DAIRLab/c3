@@ -171,7 +171,7 @@ struct C3Options {
     u_vector.insert(u_vector.end(), u_lambda.begin(), u_lambda.end());
     u_vector.insert(u_vector.end(), u_u.begin(), u_u.end());
     if (u_eta != std::nullopt || u_eta_slack != std::nullopt) {
-      if (u_eta == std::nullopt || u_eta->empty()) {
+      if (u_eta == std::nullopt || u_eta->empty()) { 
         u_vector.insert(u_vector.end(), u_eta_slack->begin(),
                         u_eta_slack->end());
         u_vector.insert(u_vector.end(), u_eta_n->begin(), u_eta_n->end());
