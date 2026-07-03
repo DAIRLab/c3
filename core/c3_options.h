@@ -93,6 +93,9 @@ struct C3Options {
   std::optional<std::vector<double>> u_eta_t;
   std::optional<std::vector<double>> u_eta;
 
+  std::optional<std::vector<double>> lambda_threshold;
+  std::optional<std::vector<double>> eta_threshold;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(warm_start));
@@ -140,7 +143,9 @@ struct C3Options {
     a->Visit(DRAKE_NVP(u_eta_n));
     a->Visit(DRAKE_NVP(u_eta_t));
     a->Visit(DRAKE_NVP(u_eta));
-
+    a->Visit(DRAKE_NVP(lambda_threshold));
+    a->Visit(DRAKE_NVP(eta_threshold));
+    
     g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());
     if (g_lambda.empty()) {

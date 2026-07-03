@@ -197,32 +197,65 @@ VectorXd C3Plus::SolveSingleProjection(const MatrixXd& U,
   VectorXd lambda_c = delta_c.segment(n_x_, n_lambda_);
   VectorXd eta_c = delta_c.segment(n_x_ + n_lambda_ + n_u_, n_lambda_);
 
+  // Set thresholds to 0/inf if not set
+  VectorXd lambda_min(VectorXd::Zero(n_lambda_));
+  VectorXd lambda_max(VectorXd::Constant(n_lambda_, std::numeric_limits<double>::infinity()));
+
+  VectorXd eta_min(VectorXd::Zero(n_lambda_)); 
+  VectorXd eta_max(VectorXd::Constant(n_lambda_, std::numeric_limits<double>::infinity()));
+
+  if (options_.lambda_threshold.has_value() && options_.lambda_threshold.value().size() != 0) {
+    lambda_min = Eigen::Map<const Eigen::VectorXd>(
+          options_.lambda_threshold.value().data(), options_.lambda_threshold.value().size());
+    lambda_min /= AnDn_;
+  }
+  if (options_.eta_threshold.has_value() && options_.eta_threshold.value().size() != 0) {
+    eta_min = Eigen::Map<const Eigen::VectorXd>(
+          options_.eta_threshold.value().data(), options_.eta_threshold.value().size());
+    eta_min /= AnDn_;
+  }
+
+  // Tracking lambda
   VectorXd lambda_hat = lambda_hat_ / AnDn_; // account for scaling
+
 
   // Get optimal lambda value (if eta=0)
   VectorXd lambda_star = (w_lambda_vec.array() * lambda_c.array() 
                           + w_lambda_matching_vec.array() * lambda_hat.array()) / 
                           (w_lambda_vec.array() + w_lambda_matching_vec.array());
+  lambda_star = lambda_star.cwiseMax(lambda_min).cwiseMin(lambda_max); // Optimal value is just projecting onto feasible set
 
-  // Analytically solve
-  Eigen::Array<bool, Eigen::Dynamic, 1> eta_larger =
-      w_eta_vec.array() * eta_c.array().square() + 
-      w_lambda_vec.array() * (lambda_star.array() - lambda_c.array()).square() + 
-      w_lambda_matching_vec.array() * (lambda_star.array() - lambda_hat.array()).square()
-      > 
-      w_lambda_vec.array() * lambda_c.array().square() + w_lambda_matching_vec.array() * lambda_hat.array().square();
-     
+  VectorXd eta_star = eta_c.cwiseMax(eta_min).cwiseMin(eta_max);
 
+  // Analytically solve for costs
+  Eigen::Array<bool, Eigen::Dynamic, 1> eta_cost_smaller =
+      w_lambda_vec.array() * lambda_c.array().square() + // Project lambda to 0
+      w_lambda_matching_vec.array() * lambda_hat.array().square() + 
+      w_eta_vec.array() * (eta_c - eta_star).array().square() 
+      <
+      w_eta_vec.array() * eta_c.array().square() + // Project eta to 0
+      w_lambda_vec.array() * (lambda_c - lambda_star).array().square() + 
+      w_lambda_matching_vec.array() * (lambda_hat - lambda_star).array().square();
+    
+
+  // Change thresholds pointwise to obey complimentarity
+  lambda_min = eta_cost_smaller.select(VectorXd::Zero(n_lambda_), lambda_min); 
+  eta_min = eta_cost_smaller.select(eta_min, VectorXd::Zero(n_lambda_));
+
+  lambda_c = lambda_c.cwiseMax(lambda_min).cwiseMin(lambda_max);
+  eta_c = eta_c.cwiseMax(eta_min).cwiseMin(eta_max);
+
+  // Select variable with smaller cost
   delta_proj.segment(n_x_, n_lambda_) =
-      eta_larger.select(VectorXd::Zero(n_lambda_), lambda_c);
+      eta_cost_smaller.select(VectorXd::Zero(n_lambda_), lambda_c);
   delta_proj.segment(n_x_ + n_lambda_ + n_u_, n_lambda_) =
-      eta_larger.select(eta_c, VectorXd::Zero(n_lambda_));
+      eta_cost_smaller.select(eta_c, VectorXd::Zero(n_lambda_));
 
-  // Clip lambda and eta at 0
   delta_proj.segment(n_x_, n_lambda_) =
       delta_proj.segment(n_x_, n_lambda_).cwiseMax(0);
   delta_proj.segment(n_x_ + n_lambda_ + n_u_, n_lambda_) =
       delta_proj.segment(n_x_ + n_lambda_ + n_u_, n_lambda_).cwiseMax(0);
+
 
   return delta_proj;
 }
