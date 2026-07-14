@@ -1,6 +1,8 @@
 #include "c3_controller.h"
 
 #include <cmath>
+#include <chrono>
+#include <ctime>
 
 #include <Eigen/Dense>
 
@@ -160,6 +162,8 @@ drake::systems::EventStatus C3Controller::ComputePlan(
       context, lcs_state_input_port_);
   drake::VectorX<double> x0 = state->get_data();
   start_time = state->get_timestamp();
+  auto duration = start.time_since_epoch();
+  std::cout << "Computing plan, state utime: " << start_time << "wall t: " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << std::endl;;
 
   // Get the LCS from the input port
   const auto& lcs =
@@ -269,6 +273,11 @@ void C3Controller::OutputC3Solution(
     c3_solution->u_sol_.col(i) =
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
+  auto timenow = std::chrono::high_resolution_clock::now();
+  auto duration = timenow.time_since_epoch();
+  std::cout << "sending solution " << c3_solution->time_vector_(0) << " to " << c3_solution->time_vector_(N_-1)
+	    << " msg t: " << context.get_time() << " // wall t: " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()
+	    << std::endl;
 }
 
 void C3Controller::OutputC3Intermediates(
