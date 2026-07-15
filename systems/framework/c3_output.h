@@ -22,9 +22,11 @@ class C3Output {
  public:
   struct C3Solution {
     C3Solution() = default;
-    C3Solution(int n_x, int n_lambda, int n_u, int N) {
+    C3Solution(int n_x, int n_lambda, int n_u, int N,
+               int n_lambda_internal = 0) {
       x_sol_ = MatrixXf::Zero(n_x, N);
       lambda_sol_ = MatrixXf::Zero(n_lambda, N);
+      lambda_internal_sol_ = MatrixXf::Zero(n_lambda_internal, N);
       u_sol_ = MatrixXf::Zero(n_u, N);
       time_vector_ = VectorXf::Zero(N);
     };
@@ -32,6 +34,10 @@ class C3Output {
     Eigen::MatrixXf GetStateSolution() const { return x_sol_; }
 
     Eigen::MatrixXf GetForceSolution() const { return lambda_sol_; }
+
+    Eigen::MatrixXf GetInternalForceSolution() const {
+      return lambda_internal_sol_;
+    }
 
     Eigen::MatrixXf GetInputSolution() const { return u_sol_; }
 
@@ -41,6 +47,7 @@ class C3Output {
     Eigen::VectorXf time_vector_;
     Eigen::MatrixXf x_sol_;
     Eigen::MatrixXf lambda_sol_;
+    Eigen::MatrixXf lambda_internal_sol_;
     Eigen::MatrixXf u_sol_;
   };
 

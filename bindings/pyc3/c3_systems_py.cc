@@ -116,11 +116,14 @@ PYBIND11_MODULE(systems, m) {
 
   py::class_<C3Output::C3Solution>(m, "C3Solution")
       .def(py::init<>())
-      .def(py::init<int, int, int, int>(), py::arg("n_x"), py::arg("n_lambda"),
-           py::arg("n_u"), py::arg("N"))
+      .def(py::init<int, int, int, int, int>(), py::arg("n_x"),
+           py::arg("n_lambda"), py::arg("n_u"), py::arg("N"),
+           py::arg("n_lambda_internal") = 0)
       .def_readwrite("time_vector", &C3Output::C3Solution::time_vector_)
       .def_readwrite("x_sol", &C3Output::C3Solution::x_sol_)
       .def_readwrite("lambda_sol", &C3Output::C3Solution::lambda_sol_)
+      .def_readwrite("lambda_internal_sol",
+                     &C3Output::C3Solution::lambda_internal_sol_)
       .def_readwrite("u_sol", &C3Output::C3Solution::u_sol_)
       .def("__copy__",
            [](const C3Output::C3Solution& self) {

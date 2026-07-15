@@ -64,9 +64,20 @@ TEST_F(FrameworkTest, C3SolutionAndIntermediatesConstruction) {
   EXPECT_EQ(sol.x_sol_.cols(), N);
   EXPECT_EQ(sol.lambda_sol_.rows(), n_lambda);
   EXPECT_EQ(sol.lambda_sol_.cols(), N);
+  // Internal contact variables default to zero when not specified.
+  EXPECT_EQ(sol.lambda_internal_sol_.rows(), 0);
+  EXPECT_EQ(sol.lambda_internal_sol_.cols(), N);
   EXPECT_EQ(sol.u_sol_.rows(), n_u);
   EXPECT_EQ(sol.u_sol_.cols(), N);
   EXPECT_EQ(sol.time_vector_.size(), N);
+
+  // Verify solution matrix shapes when internal contact variables are
+  // explicitly requested.
+  int n_lambda_internal = 5;
+  C3Output::C3Solution sol_with_internal(n_x, n_lambda, n_u, N,
+                                         n_lambda_internal);
+  EXPECT_EQ(sol_with_internal.lambda_internal_sol_.rows(), n_lambda_internal);
+  EXPECT_EQ(sol_with_internal.lambda_internal_sol_.cols(), N);
 
   // Verify intermediates matrix shapes.
   EXPECT_EQ(interm.z_.rows(), n_x + n_lambda + n_u);

@@ -73,7 +73,7 @@ GetDeformationModelMapToString() {
 
 // NOTE:  can reuse LCSContactDescription, no need for elastoplastic extension.
 
-class ElastoPlasticLCSFactory : LCSFactory {
+class ElastoPlasticLCSFactory : public LCSFactory {
  public:
   /**
    * @brief Constructor for the ElastoPlasticLCSFactory class.
@@ -140,6 +140,16 @@ class ElastoPlasticLCSFactory : LCSFactory {
    * @return LCS The resulting Linear Complementarity System.
    */
   LCS GenerateLCS() override;
+
+  /**
+   * @brief Get the number of internal contact complementarity variables
+   * (n_lambda_internal_).
+   *
+   * @return int
+   */
+  [[nodiscard]] int GetNumInternalContactVariables() const override {
+    return n_lambda_internal_;
+  }
 
   /**
    * @brief Overwrites the base class's static method and throws an error since

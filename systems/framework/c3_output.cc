@@ -20,12 +20,16 @@ lcmt_output C3Output::GenerateLcmObject(double time) const {
   int knot_points = c3_solution.num_points;
   c3_solution.num_state_variables = c3_solution_.x_sol_.rows();
   c3_solution.num_contact_variables = c3_solution_.lambda_sol_.rows();
+  c3_solution.num_internal_contact_variables =
+      c3_solution_.lambda_internal_sol_.rows();
   c3_solution.num_input_variables = c3_solution_.u_sol_.rows();
   c3_solution.time_vec.reserve(knot_points);
   c3_solution.x_sol = vector<vector<float>>(c3_solution.num_state_variables,
                                             vector<float>(knot_points));
   c3_solution.lambda_sol = vector<vector<float>>(
       c3_solution.num_contact_variables, vector<float>(knot_points));
+  c3_solution.lambda_internal_sol = vector<vector<float>>(
+      c3_solution.num_internal_contact_variables, vector<float>(knot_points));
   c3_solution.u_sol = vector<vector<float>>(c3_solution.num_input_variables,
                                             vector<float>(knot_points));
 
@@ -52,6 +56,11 @@ lcmt_output C3Output::GenerateLcmObject(double time) const {
   for (int i = 0; i < c3_solution.num_contact_variables; ++i) {
     VectorXf temp_row = c3_solution_.lambda_sol_.row(i);
     memcpy(c3_solution.lambda_sol[i].data(), temp_row.data(),
+           sizeof(float) * knot_points);
+  }
+  for (int i = 0; i < c3_solution.num_internal_contact_variables; ++i) {
+    VectorXf temp_row = c3_solution_.lambda_internal_sol_.row(i);
+    memcpy(c3_solution.lambda_internal_sol[i].data(), temp_row.data(),
            sizeof(float) * knot_points);
   }
   for (int i = 0; i < c3_solution.num_input_variables; ++i) {

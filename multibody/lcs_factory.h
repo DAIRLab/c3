@@ -249,6 +249,19 @@ class LCSFactory {
    */
   [[nodiscard]] int GetNumContactVariables() const { return n_lambda_; }
 
+  /**
+   * @brief Get the number of internal contact complementarity variables.
+   *
+   * This is 0 for the base LCSFactory. Subclasses that introduce additional
+   * "internal contact" complementarity variables (e.g.
+   * ElastoPlasticLCSFactory) override this to report their count.
+   *
+   * @return int
+   */
+  [[nodiscard]] virtual int GetNumInternalContactVariables() const {
+    return 0;
+  }
+
  protected:
   /**
    * @brief Computes the contact Jacobian matrices for normal and tangential

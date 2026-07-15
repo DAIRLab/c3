@@ -332,6 +332,10 @@ TEST_F(C3OutputGeneratorTest, GeneratesOutput) {
   EXPECT_EQ(output_msg.solution.x_sol[0].size(), pSystem->N());
   EXPECT_EQ(output_msg.solution.lambda_sol.size(), pSystem->num_lambdas());
   EXPECT_EQ(output_msg.solution.lambda_sol[0].size(), pSystem->N());
+  // The mock solution doesn't specify internal contact variables, so these
+  // should default to zero.
+  EXPECT_EQ(output_msg.solution.num_internal_contact_variables, 0);
+  EXPECT_EQ(output_msg.solution.lambda_internal_sol.size(), 0);
   EXPECT_EQ(output_msg.solution.u_sol.size(), pSystem->num_inputs());
   EXPECT_EQ(output_msg.solution.u_sol[0].size(), pSystem->N());
 
