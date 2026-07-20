@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -297,6 +298,34 @@ class TrajectoryEvaluator {
   SimulatePDControlWithLCS(
       const std::vector<Eigen::VectorXd>& x_plan, const Eigen::VectorXd& Kp,
       const Eigen::VectorXd& Kd, const LCS& coarse_lcs, const LCS& fine_lcs,
+      const LCSSimulateConfig& config = LCSSimulateConfig());
+
+  /**
+   * @brief Diagnostic variant of SimulatePDControlWithLCS: same computation,
+   * but also returns the per-step solved complementarity force (lambda)
+   * trajectory (length N, at the given LCS's time resolution).
+   */
+  static std::tuple<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>,
+                     std::vector<Eigen::VectorXd>>
+  SimulatePDControlWithLCSAndForces(
+      const std::vector<Eigen::VectorXd>& x_plan,
+      const std::vector<Eigen::VectorXd>& u_plan, const Eigen::VectorXd& Kp,
+      const Eigen::VectorXd& Kd, const LCS& lcs,
+      const bool& use_feedforward = true,
+      const LCSSimulateConfig& config = LCSSimulateConfig());
+  /**
+   * @brief Diagnostic variant of the coarse/fine SimulatePDControlWithLCS:
+   * same computation, but also returns the per-step solved complementarity
+   * force (lambda) trajectory at the fine LCS's time resolution (length
+   * fine_lcs.N()).
+   */
+  static std::tuple<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>,
+                     std::vector<Eigen::VectorXd>>
+  SimulatePDControlWithLCSAndForces(
+      const std::vector<Eigen::VectorXd>& x_plan,
+      const std::vector<Eigen::VectorXd>& u_plan, const Eigen::VectorXd& Kp,
+      const Eigen::VectorXd& Kd, const LCS& coarse_lcs, const LCS& fine_lcs,
+      const bool& use_feedforward = true,
       const LCSSimulateConfig& config = LCSSimulateConfig());
 
   /**

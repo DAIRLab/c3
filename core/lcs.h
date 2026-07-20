@@ -61,12 +61,16 @@ class LCS {
   /*! Simulate the system for one step
    * @param x_init Initial x value
    * @param u Input value
+   * @param config Configuration for the LCP solve
+   * @param force_out If non-null, filled with the solved complementarity
+   * force (lambda) for this step. Useful for diagnostics/debugging.
    *
    * @return The state at the next timestep
    */
   const Eigen::VectorXd Simulate(
       const Eigen::VectorXd& x_init, const Eigen::VectorXd& u,
-      const LCSSimulateConfig& config = LCSSimulateConfig()) const;
+      const LCSSimulateConfig& config = LCSSimulateConfig(),
+      Eigen::VectorXd* force_out = nullptr) const;
 
   /*!
    * Accessors dynamics terms

@@ -58,7 +58,8 @@ double LCS::ScaleComplementarityDynamics() {
 }
 
 const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& u,
-                             const LCSSimulateConfig& config) const {
+                             const LCSSimulateConfig& config,
+                             VectorXd* force_out) const {
   VectorXd x_final;
   VectorXd force;
   drake::solvers::MobyLcpSolver LcpSolver;
@@ -71,6 +72,9 @@ const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& u,
                             config.piv_tol, config.zero_tol);
   }
   x_final = A_[0] * x_init + B_[0] * u + D_[0] * force + d_[0];
+  if (force_out != nullptr) {
+    *force_out = force;
+  }
   return x_final;
 }
 

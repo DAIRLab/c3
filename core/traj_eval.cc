@@ -75,6 +75,84 @@ TrajectoryEvaluator::SimulatePDControlWithLCS(const vector<VectorXd>& x_plan,
                                   use_feedforward, config);
 }
 
+std::tuple<vector<VectorXd>, vector<VectorXd>, vector<VectorXd>>
+TrajectoryEvaluator::SimulatePDControlWithLCSAndForces(
+    const vector<VectorXd>& x_plan, const vector<VectorXd>& u_plan,
+    const VectorXd& Kp, const VectorXd& Kd, const LCS& lcs,
+    const bool& use_feedforward, const LCSSimulateConfig& config) {
+  CheckLCSAndTrajectoryCompatibility(lcs, x_plan, u_plan);
+
+  int N = lcs.N();
+  int n_x = lcs.num_states();
+  int n_u = lcs.num_inputs();
+  int n_lambda = lcs.num_lambdas();
+
+  // Compute the new trajectory used for cost evaluation.
+  vector<VectorXd> x(N + 1, VectorXd::Zero(n_x));
+  vector<VectorXd> u(N, VectorXd::Zero(n_u));
+  vector<VectorXd> lambda(N, VectorXd::Zero(n_lambda));
+
+  // Ensure the Kp and Kd vectors encode the actuated position and velocity
+  // indices within the state vector.
+  DRAKE_THROW_UNLESS(Kp.rows() == Kd.rows() && Kp.rows() == n_x);
+  DRAKE_THROW_UNLESS((Kp.array() != 0.0).count() == n_u);
+  DRAKE_THROW_UNLESS((Kd.array() != 0.0).count() == n_u);
+  MatrixXd Kp_mat = MatrixXd::Zero(n_u, n_x);
+  MatrixXd Kd_mat = MatrixXd::Zero(n_u, n_x);
+  int kp_i = 0;
+  int kd_i = 0;
+  for (int i = 0; i < n_x; ++i) {
+    if (Kp(i) != 0) {
+      Kp_mat(kp_i, i) = Kp(i);
+      kp_i++;
+    }
+    if (Kd(i) != 0) {
+      Kd_mat(kd_i, i) = Kd(i);
+      kd_i++;
+    }
+  }
+
+  x[0] = x_plan[0];
+  for (int i = 0; i < N; i++) {
+    u[i] = Kp_mat * (x_plan[i] - x[i]) + Kd_mat * (x_plan[i] - x[i]);
+    if (use_feedforward) {
+      u[i] += u_plan[i];
+    }
+    VectorXd force;
+    x[i + 1] = lcs.Simulate(x[i], u[i], config, &force);
+    lambda[i] = force;
+  }
+  return std::make_tuple(x, u, lambda);
+}
+
+std::tuple<vector<VectorXd>, vector<VectorXd>, vector<VectorXd>>
+TrajectoryEvaluator::SimulatePDControlWithLCSAndForces(
+    const vector<VectorXd>& x_plan, const vector<VectorXd>& u_plan,
+    const VectorXd& Kp, const VectorXd& Kd, const LCS& coarse_lcs,
+    const LCS& fine_lcs, const bool& use_feedforward,
+    const LCSSimulateConfig& config) {
+  int upsample_rate = CheckCoarseAndFineLCSCompatibility(coarse_lcs, fine_lcs);
+
+  // Zero-order hold the planned trajectory to match the finer time
+  // discretization of the LCS.
+  auto [x_plan_finer, u_plan_finer] =
+      ZeroOrderHoldTrajectories(x_plan, u_plan, upsample_rate);
+
+  // Do PD control with the finer trajectory and LCS, keeping the per-step
+  // solved forces at the fine resolution.
+  auto [x_sim_fine, u_sim_fine, lambda_sim_fine] =
+      SimulatePDControlWithLCSAndForces(x_plan_finer, u_plan_finer, Kp, Kd,
+                                        fine_lcs, use_feedforward, config);
+
+  // Downsample the resulting state/input trajectory back to the original time
+  // discretization. The force trajectory is left at the fine resolution since
+  // it's diagnostic-only.
+  auto [x_sim, u_sim] =
+      DownsampleTrajectories(x_sim_fine, u_sim_fine, upsample_rate);
+
+  return std::make_tuple(x_sim, u_sim, lambda_sim_fine);
+}
+
 std::pair<vector<VectorXd>, vector<VectorXd>>
 TrajectoryEvaluator::SimulatePDControlWithLCS(
     const vector<VectorXd>& x_plan, const vector<VectorXd>& u_plan,

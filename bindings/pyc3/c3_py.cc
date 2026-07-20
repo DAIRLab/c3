@@ -185,9 +185,15 @@ PYBIND11_MODULE(c3, m) {
            py::arg("F"), py::arg("H"), py::arg("c"), py::arg("N"),
            py::arg("dt"))
       .def(py::init<const LCS&>(), py::arg("other"))
-      .def("Simulate", &LCS::Simulate, py::arg("x_init"), py::arg("u"),
-           py::arg("simulate_config") = LCSSimulateConfig(),
-           "Simulate the system for one step")
+      .def(
+          "Simulate",
+          [](const LCS& self, const Eigen::VectorXd& x_init,
+             const Eigen::VectorXd& u, const LCSSimulateConfig& config) {
+            return self.Simulate(x_init, u, config);
+          },
+          py::arg("x_init"), py::arg("u"),
+          py::arg("simulate_config") = LCSSimulateConfig(),
+          "Simulate the system for one step")
       .def("A", &LCS::A, py::return_value_policy::copy)
       .def("B", &LCS::B, py::return_value_policy::copy)
       .def("D", &LCS::D, py::return_value_policy::copy)
