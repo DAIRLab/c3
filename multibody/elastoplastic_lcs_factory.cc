@@ -413,17 +413,17 @@ void ElastoPlasticLCSFactory::FormulateInternalPlasticContactDynamics(
     MatrixXd MinvJ_t_T = M_ldlt.solve(Jt.transpose());  // = M_inv @ D
 
     // Now build the coupled portions of the F matrix.
-    F_coupling_bl.block(n_internal_contacts_, n_external_contacts,
-                        n_internal_contacts_, n_external_contacts) =
+    F_coupling_bl.block(n_internal_contacts_, n_external_contacts, n_sigma,
+                        n_external_contacts) =
         dt_ * Jp * MinvJ_n_T;
     F_coupling_bl.block(n_internal_contacts_, 2 * n_external_contacts,
-                        n_internal_contacts_, Jt_row_sizes_.sum()) =
+                        n_sigma, Jt_row_sizes_.sum()) =
         dt_ * Jp * MinvJ_t_T;
     F_coupling_ur.block(n_external_contacts, n_internal_contacts_,
-                        n_external_contacts, n_internal_contacts_) =
+                        n_external_contacts, n_sigma) =
         dt_ * dt_ * Jn * MinvJp_t_T;
     F_coupling_ur.block(2 * n_external_contacts, n_internal_contacts_,
-                        Jt_row_sizes_.sum(), n_internal_contacts_) =
+                        Jt_row_sizes_.sum(), n_sigma) =
         dt_ * Jt * MinvJp_t_T;
   } else if (contact_model_ == ContactModel::kAnitescu) {
     // Compute a few more quantities used only by the Anitescu external contact
