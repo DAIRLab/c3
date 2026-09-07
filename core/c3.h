@@ -188,6 +188,8 @@ class C3 {
   /*! Remove all constraints previously added by AddLinearConstraint */
   void RemoveConstraints();
 
+  void AddLambdaBound(double bound, std::vector<int> indices);
+
   /**
    * @brief Creates cost matrices from the provided C3Options.
    *

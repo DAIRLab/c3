@@ -645,6 +645,20 @@ void C3::RemoveConstraints() {
   user_constraints_.clear();
 }
 
+void C3::AddLambdaBound(double bound, std::vector<int> indices) {
+  DRAKE_DEMAND(bound >= 0);
+
+  // const double lb = -std::numeric_limits<double>::infinity();
+  const double lb = 0;
+  const double ub = bound / AnDn_;
+
+  for (int i = 0; i < N_; i++) {
+    for (int idx : indices) {
+      prog_.AddBoundingBoxConstraint(lb, ub, lambda_[i](idx));
+    }
+  }
+}
+
 const std::vector<LinearConstraintBinding>& C3::GetLinearConstraints() {
   return user_constraints_;
 }
