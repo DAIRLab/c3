@@ -304,6 +304,65 @@ TEST_F(C3CartpoleTest, ZSolStaleTest) {
   }
 }
 
+// Test that shifting advances the stored solution by whole knots and holds the
+// final knot over the tail, without re-solving.
+TEST_F(C3CartpoleTest, ShiftSolutionForwardTest) {
+  pOpt->Solve(x0);
+
+  const vector<VectorXd> z_before = pOpt->GetFullSolution();
+  const vector<VectorXd> x_before = pOpt->GetStateSolution();
+  const vector<VectorXd> u_before = pOpt->GetInputSolution();
+  const vector<VectorXd> lambda_before = pOpt->GetForceSolution();
+  ASSERT_EQ(z_before.size(), N);
+
+  // Non-positive shifts leave the solution alone.
+  pOpt->ShiftSolutionForward(0);
+  EXPECT_EQ(pOpt->GetFullSolution()[0].isApprox(z_before[0]), true);
+  pOpt->ShiftSolutionForward(-3);
+  EXPECT_EQ(pOpt->GetFullSolution()[0].isApprox(z_before[0]), true);
+
+  pOpt->ShiftSolutionForward(1);
+
+  const vector<VectorXd> z_after = pOpt->GetFullSolution();
+  const vector<VectorXd> x_after = pOpt->GetStateSolution();
+  const vector<VectorXd> u_after = pOpt->GetInputSolution();
+  const vector<VectorXd> lambda_after = pOpt->GetForceSolution();
+
+  // Length is preserved for every container.
+  ASSERT_EQ(z_after.size(), z_before.size());
+  ASSERT_EQ(x_after.size(), x_before.size());
+  ASSERT_EQ(u_after.size(), u_before.size());
+  ASSERT_EQ(lambda_after.size(), lambda_before.size());
+
+  // Knot i now holds what knot i + 1 held.
+  for (int i = 0; i < N - 1; ++i) {
+    EXPECT_EQ(z_after[i].isApprox(z_before[i + 1]), true);
+    EXPECT_EQ(x_after[i].isApprox(x_before[i + 1]), true);
+    EXPECT_EQ(u_after[i].isApprox(u_before[i + 1]), true);
+    EXPECT_EQ(lambda_after[i].isApprox(lambda_before[i + 1]), true);
+  }
+  // The final knot is held rather than dropped.
+  EXPECT_EQ(z_after[N - 1].isApprox(z_before[N - 1]), true);
+  EXPECT_EQ(x_after[N - 1].isApprox(x_before[N - 1]), true);
+  EXPECT_EQ(u_after[N - 1].isApprox(u_before[N - 1]), true);
+  EXPECT_EQ(lambda_after[N - 1].isApprox(lambda_before[N - 1]), true);
+}
+
+// Test that a shift at or beyond the horizon saturates into a constant plan
+// rather than running off the end.
+TEST_F(C3CartpoleTest, ShiftSolutionForwardSaturatesTest) {
+  pOpt->Solve(x0);
+  const vector<VectorXd> z_before = pOpt->GetFullSolution();
+
+  pOpt->ShiftSolutionForward(10 * N);
+
+  const vector<VectorXd> z_after = pOpt->GetFullSolution();
+  ASSERT_EQ(z_after.size(), z_before.size());
+  for (int i = 0; i < N; ++i) {
+    EXPECT_EQ(z_after[i].isApprox(z_before[N - 1]), true);
+  }
+}
+
 // Test if CreatePlaceholderLCS works as expected
 TEST_F(C3CartpoleTest, CreatePlaceholder) {
   // Create a placeholder LCS object

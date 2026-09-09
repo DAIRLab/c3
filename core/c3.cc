@@ -1,5 +1,6 @@
 #include "c3.h"
 
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 
@@ -243,6 +244,45 @@ void C3::UpdateTarget(const vector<VectorXd>& x_des) {
         2 * cost_matrices_.Q.at(i),
         -2 * cost_matrices_.Q.at(i) * x_desired_.at(i));
   }
+}
+
+namespace {
+
+// Drops the leading `shift` entries of `solution` and holds its last remaining
+// entry over the tail, leaving the length unchanged.
+void ShiftKnotsForward(vector<VectorXd>* solution, int shift) {
+  if (solution == nullptr || solution->empty() || shift <= 0) {
+    return;
+  }
+  const int num_knots = static_cast<int>(solution->size());
+  // Never shift past the final knot; something has to be left to hold.
+  const int knots_to_drop = std::min(shift, num_knots - 1);
+  if (knots_to_drop <= 0) {
+    return;
+  }
+  std::rotate(solution->begin(), solution->begin() + knots_to_drop,
+              solution->end());
+  // The rotate wrapped the dropped knots around to the back.  The last real
+  // knot now sits at num_knots - knots_to_drop - 1; hold it over them.
+  for (int i = num_knots - knots_to_drop; i < num_knots; ++i) {
+    solution->at(i) = solution->at(num_knots - knots_to_drop - 1);
+  }
+}
+
+}  // namespace
+
+void C3::ShiftSolutionForward(int num_knots) {
+  if (num_knots <= 0) {
+    return;
+  }
+  ShiftKnotsForward(x_sol_.get(), num_knots);
+  ShiftKnotsForward(lambda_sol_.get(), num_knots);
+  ShiftKnotsForward(u_sol_.get(), num_knots);
+  ShiftKnotsForward(z_sol_.get(), num_knots);
+  // The ADMM duals are per-knot quantities published alongside the primal
+  // solution, so they are shifted too and stay aligned with it.
+  ShiftKnotsForward(delta_sol_.get(), num_knots);
+  ShiftKnotsForward(w_sol_.get(), num_knots);
 }
 
 void C3::UpdateCostMatrices(const CostMatrices& costs) {

@@ -99,6 +99,28 @@ class C3 {
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
 
   /**
+   * @brief Advance the stored solution in time by whole knots.
+   *
+   * Drops the first @p num_knots knots of every solution container and repeats
+   * the final knot to refill, so the solution keeps its length while its
+   * contents move one step closer to the end of the horizon.  Nothing is
+   * re-solved:  this only reindexes what Solve() last produced.
+   *
+   * Intended for a receding-horizon caller that wants to reuse a previous
+   * solve's plan on a later control loop.  Such a plan's leading knots describe
+   * time that has already passed, so a caller that re-executes it unshifted
+   * replays those knots later and later instead of consuming them.  Shifting it
+   * forward once per loop is what makes reuse advance through the plan, and
+   * repeated shifting fills the solution with copies of its last knot, so a
+   * stale plan degrades into a constant one rather than staying valid forever.
+   *
+   * @param num_knots  How many knots to advance.  Values <= 0 are a no-op, and
+   *                   the shift saturates at the horizon length so at least one
+   *                   knot always remains to be held.
+   */
+  void ShiftSolutionForward(int num_knots);
+
+  /**
    * @brief Updates the provided cost matrices with new or modified values.
    *
    * This function takes a reference to a CostMatrices.
