@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <string>
 
@@ -975,6 +976,85 @@ TEST_F(C3CartpoleTest, FallbackSolutionRecoveryAfterConstraintRemoval) {
   EXPECT_TRUE(has_nonzero_input)
       << "After removing infeasible constraints, solver should recover and "
          "produce non-zero inputs.";
+}
+
+// An LCS integrates a quaternion as four independent coordinates, so a rollout
+// that rotates a body walks it off the unit sphere.  Simulate() puts it back,
+// but only for the state indices the LCS was told about.
+class LCSQuaternionTest : public testing::Test {
+ protected:
+  static constexpr int kNx = 8;
+  static constexpr int kNu = 1;
+  static constexpr int kNLambda = 1;
+  static constexpr int kN = 3;
+  static constexpr int kQuatStart = 2;
+  static constexpr double kGrowth = 1.1;
+
+  // A system whose only dynamics inflate the quaternion block by kGrowth each
+  // step.  c > 0 with E and H zero keeps the LCP solution at lambda = 0, so
+  // the step is exactly x <- A x.
+  LCS MakeInflatingLCS() const {
+    MatrixXd A = MatrixXd::Identity(kNx, kNx);
+    A.block(kQuatStart, kQuatStart, 4, 4) = kGrowth * MatrixXd::Identity(4, 4);
+    return LCS(A, MatrixXd::Zero(kNx, kNu), MatrixXd::Zero(kNx, kNLambda),
+               VectorXd::Zero(kNx), MatrixXd::Zero(kNLambda, kNx),
+               MatrixXd::Identity(kNLambda, kNLambda),
+               MatrixXd::Zero(kNLambda, kNu), VectorXd::Ones(kNLambda), kN,
+               0.1);
+  }
+
+  VectorXd UnitQuaternionState() const {
+    VectorXd x = VectorXd::Ones(kNx);
+    x.segment(kQuatStart, 4) << 1, 0, 0, 0;
+    return x;
+  }
+};
+
+TEST_F(LCSQuaternionTest, SimulateLeavesTheStateAloneByDefault) {
+  const LCS lcs = MakeInflatingLCS();
+  VectorXd x = UnitQuaternionState();
+  for (int i = 0; i < kN; ++i) {
+    x = lcs.Simulate(x, VectorXd::Zero(kNu));
+  }
+  // No indices were set, so this is a plain linear step and the norm has run.
+  EXPECT_TRUE(lcs.quaternion_start_indices().empty());
+  EXPECT_NEAR(x.segment(kQuatStart, 4).norm(), std::pow(kGrowth, kN), 1e-12);
+}
+
+TEST_F(LCSQuaternionTest, SimulateRenormalizesTheBlocksItIsToldAbout) {
+  LCS lcs = MakeInflatingLCS();
+  lcs.set_quaternion_start_indices({kQuatStart});
+
+  const VectorXd x0 = UnitQuaternionState();
+  VectorXd x = x0;
+  for (int i = 0; i < kN; ++i) {
+    x = lcs.Simulate(x, VectorXd::Zero(kNu));
+    EXPECT_NEAR(x.segment(kQuatStart, 4).norm(), 1.0, 1e-12);
+  }
+  // Renormalizing rescales, so the direction survives...
+  EXPECT_TRUE(x.segment(kQuatStart, 4).isApprox(x0.segment(kQuatStart, 4)));
+  // ...and nothing outside the quaternion block is touched.
+  EXPECT_TRUE(x.head(kQuatStart).isApprox(x0.head(kQuatStart)));
+  EXPECT_TRUE(x.tail(kNx - kQuatStart - 4).isApprox(x0.tail(kNx - kQuatStart - 4)));
+}
+
+TEST_F(LCSQuaternionTest, SimulateLeavesACollapsedBlockAlone) {
+  LCS lcs = MakeInflatingLCS();
+  lcs.set_quaternion_start_indices({kQuatStart});
+
+  // A zero block has no direction to preserve; dividing by its norm would
+  // amplify numerical noise into a bogus orientation.
+  VectorXd x = VectorXd::Ones(kNx);
+  x.segment(kQuatStart, 4).setZero();
+  const VectorXd x_next = lcs.Simulate(x, VectorXd::Zero(kNu));
+  EXPECT_TRUE(x_next.segment(kQuatStart, 4).isZero(0.0));
+}
+
+TEST_F(LCSQuaternionTest, RejectsIndicesThatOverrunTheState) {
+  LCS lcs = MakeInflatingLCS();
+  EXPECT_THROW(lcs.set_quaternion_start_indices({kNx - 3}), std::exception);
+  EXPECT_THROW(lcs.set_quaternion_start_indices({-1}), std::exception);
+  EXPECT_NO_THROW(lcs.set_quaternion_start_indices({kNx - 4}));
 }
 
 int main(int argc, char** argv) {

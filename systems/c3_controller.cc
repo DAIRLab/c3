@@ -63,11 +63,8 @@ C3Controller::C3Controller(
     state_prediction_joints_.push_back(joint_description);
   }
 
-  for (const auto& body_idx : plant_.GetFloatingBaseBodies()) {
-    const auto& body = plant_.get_body(body_idx);
-    int start = body.floating_positions_start();
-    quaternion_indices_.push_back(start);
-  }
+  quaternion_indices_ =
+      multibody::LCSFactory::GetQuaternionStartIndices(plant_);
 
   // Determine the size of lambda based on the contact model
   n_lambda_ = multibody::LCSFactory::GetNumContactVariables(

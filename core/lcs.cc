@@ -38,6 +38,14 @@ LCS::LCS(const MatrixXd& A, const MatrixXd& B, const MatrixXd& D,
           vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
           vector<MatrixXd>(N, H), vector<VectorXd>(N, c), dt) {}
 
+void LCS::set_quaternion_start_indices(const std::vector<int>& indices) {
+  for (int index : indices) {
+    DRAKE_THROW_UNLESS(index >= 0);
+    DRAKE_THROW_UNLESS(index + 4 <= n_);
+  }
+  quaternion_start_indices_ = indices;
+}
+
 bool LCS::HasSameDimensionsAs(const LCS& other) const {
   return (n_ == other.n_ and m_ == other.m_ and k_ == other.k_ and
           N_ == other.N_);
@@ -71,6 +79,19 @@ const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& u,
                             config.piv_tol, config.zero_tol);
   }
   x_final = A_[0] * x_init + B_[0] * u + D_[0] * force + d_[0];
+
+  // The linear step above treats each quaternion coefficient as an independent
+  // coordinate, so a rollout that rotates the body drifts off the unit sphere
+  // and keeps going.  Put it back.  A block that has collapsed toward zero has
+  // no direction left to preserve, so leave it alone rather than amplify
+  // whatever numerical noise remains.
+  constexpr double kMinQuaternionNorm = 1e-8;
+  for (int index : quaternion_start_indices_) {
+    const double norm = x_final.segment<4>(index).norm();
+    if (norm > kMinQuaternionNorm) {
+      x_final.segment<4>(index) /= norm;
+    }
+  }
   return x_final;
 }
 

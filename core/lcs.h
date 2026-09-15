@@ -89,6 +89,29 @@ class LCS {
   [[nodiscard]] int num_inputs() const { return k_; }
   [[nodiscard]] int num_lambdas() const { return m_; }
 
+  /*!
+   * The state indices at which a unit quaternion (w, x, y, z) begins.
+   *
+   * The LCS is a linearization, so its A matrix integrates the four
+   * quaternion coefficients as if they were independent coordinates: a rollout
+   * that rotates the object leaves the quaternion block off the unit sphere,
+   * growing without bound over a long horizon.  Simulate() renormalizes these
+   * blocks so that anything consuming a rollout -- a quaternion-dependent cost
+   * above all -- sees a valid orientation.
+   *
+   * Empty by default, which leaves Simulate() bit-identical to a plain linear
+   * step.  LCSFactory::GenerateLCS() fills it in from the plant's floating
+   * base bodies; an LCS assembled by hand (CreatePlaceholderLCS, tests) has
+   * no plant to read and so carries none.
+   */
+  [[nodiscard]] const std::vector<int>& quaternion_start_indices() const {
+    return quaternion_start_indices_;
+  }
+
+  /*! Sets the indices documented above.  Each must leave a full 4-vector
+   *  inside the state. */
+  void set_quaternion_start_indices(const std::vector<int>& indices);
+
   void set_A(const std::vector<Eigen::MatrixXd>& A) {
     DRAKE_DEMAND(A.size() == N_);
     A_ = A;
@@ -159,6 +182,8 @@ class LCS {
   std::vector<Eigen::MatrixXd> F_;
   std::vector<Eigen::MatrixXd> H_;
   std::vector<Eigen::VectorXd> c_;
+
+  std::vector<int> quaternion_start_indices_;
 
   size_t N_;
   double dt_;

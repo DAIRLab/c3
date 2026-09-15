@@ -237,6 +237,21 @@ class LCSFactory {
       const drake::multibody::MultibodyPlant<double>* plant = nullptr);
 
   /**
+   * @brief The state indices at which each floating base body's quaternion
+   * (w, x, y, z) begins.
+   *
+   * The LCS stacks the plant's generalized positions first, so a floating
+   * body's quaternion sits at its floating_positions_start().  Used to tell an
+   * LCS which of its state entries must stay on the unit sphere across a
+   * rollout -- see LCS::quaternion_start_indices().
+   *
+   * @param plant The plant the LCS is linearized from.
+   * @return The start index of every floating base body's quaternion.
+   */
+  static std::vector<int> GetQuaternionStartIndices(
+      const drake::multibody::MultibodyPlant<double>& plant);
+
+  /**
    * @brief Get the Num Contact Variables object based on the internal state of
    * the factory.
    *

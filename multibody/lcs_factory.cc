@@ -418,7 +418,24 @@ LCS LCSFactory::GenerateLCS() {
   }
   /*============== Formulate D, E, F, G and c Matrices ==================*/
 
-  return LCS(A, B, D, d, E, F, H, c, options_.N, dt_);  // Return the system;
+  LCS lcs(A, B, D, d, E, F, H, c, options_.N, dt_);
+  // Tell the LCS which of its state entries are quaternions, so a rollout
+  // renormalizes them instead of letting the linearization inflate them.  The
+  // LCS state stacks q then v, so the plant's position indices are the LCS's.
+  lcs.set_quaternion_start_indices(GetQuaternionStartIndices(plant_));
+  return lcs;  // Return the system;
+}
+
+std::vector<int> LCSFactory::GetQuaternionStartIndices(
+    const drake::multibody::MultibodyPlant<double>& plant) {
+  std::vector<int> quaternion_start_indices;
+  for (const auto& body_index : plant.GetFloatingBaseBodies()) {
+    const auto& body = plant.get_body(body_index);
+    if (body.has_quaternion_dofs()) {
+      quaternion_start_indices.push_back(body.floating_positions_start());
+    }
+  }
+  return quaternion_start_indices;
 }
 void LCSFactory::FormulateFrictionlessSpringContactDynamics(
     const VectorXd& phi, const MatrixXd& Jn, const MatrixXd& qdotNv,
@@ -782,7 +799,11 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
     D.push_back(D_k);
     d.push_back(d_k);
   }
-  return LCS(A, B, D, d, E, F, H, c, other.dt());
+  // Only lambda is eliminated here; the state keeps its layout, so the
+  // quaternion blocks are still in the same places.
+  LCS lcs(A, B, D, d, E, F, H, c, other.dt());
+  lcs.set_quaternion_start_indices(other.quaternion_start_indices());
+  return lcs;
 }
 
 int LCSFactory::GetNumContactVariables(

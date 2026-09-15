@@ -373,6 +373,38 @@ INSTANTIATE_TEST_SUITE_P(ContactModelTests, LCSFactoryParameterizedPivotingTest,
                                            std::tuple("anitescu", 1),
                                            std::tuple("anitescu", 2)));
 
+// An LCS built from a plant must know where its floating bodies' quaternions
+// sit, so rollouts renormalize them instead of letting the linearization
+// inflate them.
+GTEST_TEST(LCSFactoryTest, GetQuaternionStartIndicesFindsFloatingBodies) {
+  DiagramBuilder<double> plant_builder;
+  auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
+  Parser parser(&plant, &scene_graph);
+  parser.AddModels("multibody/test/resources/sphere-and-mesh.sdf");
+  plant.Finalize();
+
+  const std::vector<int> indices =
+      LCSFactory::GetQuaternionStartIndices(plant);
+
+  // One entry per floating body with quaternion dofs, at the index where that
+  // body's (w, x, y, z) begins.
+  std::vector<int> expected;
+  for (const auto& body_index : plant.GetFloatingBaseBodies()) {
+    const auto& body = plant.get_body(body_index);
+    if (body.has_quaternion_dofs()) {
+      expected.push_back(body.floating_positions_start());
+    }
+  }
+  EXPECT_EQ(indices, expected);
+  EXPECT_FALSE(indices.empty()) << "the sphere in this model is floating, so "
+                                   "the fixture cannot prove anything if this "
+                                   "comes back empty";
+  for (int index : indices) {
+    EXPECT_GE(index, 0);
+    EXPECT_LE(index + 4, plant.num_positions());
+  }
+}
+
 // Test distance computation between sphere and mesh geometries
 GTEST_TEST(GeomGeomColliderTest, SphereMeshDistance) {
   auto MESH_HEIGHT = 0.015;  // Approximate height of mesh above z=0 plane
