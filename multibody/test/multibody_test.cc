@@ -469,6 +469,109 @@ GTEST_TEST(GeomGeomColliderTest, SphereMeshDistance) {
   EXPECT_TRUE(J_contact.allFinite());
 }
 
+// Checks every row of CalcForceBasisInWorldFrame against the Jacobian of the
+// same contact.  EvalPolytope's row k maps the k-th force variable to
+// generalized forces that push geometry A away from geometry B, so basis row k
+// must be the force on B, and its negation the force on A.  Both are read off
+// the translational generalized forces of whichever of the two bodies float.
+void ExpectForceBasisMatchesJacobian(const MultibodyPlant<double>& plant,
+                                     const drake::systems::Context<double>& context,
+                                     const SortedPair<GeometryId>& pair) {
+  const auto& inspector =
+      plant.get_geometry_query_input_port()
+          .Eval<drake::geometry::QueryObject<double>>(context)
+          .inspector();
+  GeomGeomCollider<double> collider(plant, pair);
+  for (int num_friction_directions : {2, 3}) {
+    const auto [distance, J] =
+        collider.EvalPolytope(context, num_friction_directions);
+    const auto basis =
+        collider.CalcForceBasisInWorldFrame(context, num_friction_directions);
+    ASSERT_EQ(basis.rows(), J.rows());
+    int bodies_checked = 0;
+    for (const auto& [id, sign] : {std::pair{pair.first(), -1.0},
+                                   std::pair{pair.second(), 1.0}}) {
+      const auto* body = plant.GetBodyFromFrameId(inspector.GetFrameId(id));
+      ASSERT_NE(body, nullptr);
+      if (!body->is_floating()) continue;
+      const int v_start = body->floating_velocities_start_in_v();
+      for (int k = 0; k < J.rows(); ++k) {
+        const Eigen::Vector3d force =
+            J.row(k).transpose().segment<3>(v_start + 3);
+        EXPECT_LT((force - sign * basis.row(k).transpose()).norm(), 1e-10)
+            << body->name() << ", " << num_friction_directions
+            << " friction directions, row " << k << ":  Jacobian force "
+            << force.transpose() << " vs basis " << basis.row(k);
+      }
+      ++bodies_checked;
+    }
+    EXPECT_GT(bodies_checked, 0);
+  }
+}
+
+// The sphere-mesh query path.
+GTEST_TEST(GeomGeomColliderTest, ForceBasisMatchesJacobianSphereMesh) {
+  DiagramBuilder<double> plant_builder;
+  auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
+  Parser parser(&plant, &scene_graph);
+  parser.AddModels("multibody/test/resources/sphere-and-mesh.sdf");
+  plant.Finalize();
+  auto diagram = plant_builder.Build();
+  auto diagram_context = diagram->CreateDefaultContext();
+  auto& context =
+      diagram->GetMutableSubsystemContext(plant, diagram_context.get());
+  plant.SetFreeBodyPose(
+      &context, plant.GetBodyByName("sphere"),
+      drake::math::RigidTransformd(Eigen::Quaterniond::Identity(),
+                                   Eigen::Vector3d(0.0, 0.0, 0.01)));
+
+  const auto sphere_geoms =
+      plant.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"));
+  const auto mesh_geoms =
+      plant.GetCollisionGeometriesForBody(plant.GetBodyByName("mesh"));
+  ASSERT_FALSE(sphere_geoms.empty());
+  ASSERT_FALSE(mesh_geoms.empty());
+  ExpectForceBasisMatchesJacobian(
+      plant, context, SortedPair<GeometryId>(sphere_geoms[0], mesh_geoms[0]));
+}
+
+// The general query path, with a contact normal that is not axis-aligned:  a
+// ball resting on the top face of a tilted block.
+GTEST_TEST(GeomGeomColliderTest, ForceBasisMatchesJacobianGeneral) {
+  DiagramBuilder<double> plant_builder;
+  auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
+  const drake::multibody::CoulombFriction<double> friction(0.5, 0.5);
+  const auto& ball = plant.AddRigidBody(
+      "ball", drake::multibody::SpatialInertia<double>::SolidSphereWithMass(
+                  0.1, 0.01));
+  plant.RegisterCollisionGeometry(ball, drake::math::RigidTransformd(),
+                                  drake::geometry::Sphere(0.01), "ball",
+                                  friction);
+  const auto& block = plant.AddRigidBody(
+      "block", drake::multibody::SpatialInertia<double>::SolidBoxWithMass(
+                   0.5, 0.1, 0.1, 0.02));
+  plant.RegisterCollisionGeometry(block, drake::math::RigidTransformd(),
+                                  drake::geometry::Box(0.1, 0.1, 0.02),
+                                  "block", friction);
+  plant.Finalize();
+  auto diagram = plant_builder.Build();
+  auto diagram_context = diagram->CreateDefaultContext();
+  auto& context =
+      diagram->GetMutableSubsystemContext(plant, diagram_context.get());
+  const drake::math::RigidTransformd X_WBlock(
+      drake::math::RollPitchYawd(0.3, -0.2, 0.5), Eigen::Vector3d::Zero());
+  plant.SetFreeBodyPose(&context, block, X_WBlock);
+  plant.SetFreeBodyPose(
+      &context, ball,
+      drake::math::RigidTransformd(X_WBlock *
+                                   Eigen::Vector3d(0.01, -0.02, 0.0205)));
+
+  ExpectForceBasisMatchesJacobian(
+      plant, context,
+      SortedPair<GeometryId>(plant.GetCollisionGeometriesForBody(ball)[0],
+                             plant.GetCollisionGeometriesForBody(block)[0]));
+}
+
 // Parameterized test for GetNClosestContactPairs with different values of N
 class GetNClosestContactPairsTest
     : public ::testing::TestWithParam<unsigned int> {

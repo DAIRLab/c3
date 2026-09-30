@@ -117,7 +117,9 @@ class GeomGeomCollider {
    * @param planar_normal The normal vector defining the plane for planar
    * contact (default: {0, 1, 0}).
    * @return A matrix whose rows form an orthonormal basis for the contact
-   * forces in the world frame.
+   * forces in the world frame.  Row k is the force geometry A exerts on
+   * geometry B per unit of the LCS's k-th force variable, i.e. the negation of
+   * the basis behind EvalPolytope/EvalPlanar's Jacobian (same row order).
    */
   Eigen::Matrix<double, Eigen::Dynamic, 3> CalcForceBasisInWorldFrame(
       const drake::systems::Context<T>& context, int num_friction_directions,
