@@ -741,10 +741,17 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
   }
 
   for (int k = 0; k < other.N(); k++) {
-    Eigen::BDCSVD<MatrixXd> svd;
-    svd.setThreshold(1e-5);
-    svd.compute(S_a * other.F()[k] * S_a.transpose(),
-                Eigen::ComputeFullU | Eigen::ComputeFullV);
+    // F_a_inv_S_a = pinv(S_a * F * S_a^T) * S_a.  With no active modes it is
+    // empty, and so are the products it enters below; BDCSVD cannot be run on
+    // the empty block.
+    MatrixXd F_a_inv_S_a = MatrixXd::Zero(0, n_lambda_);
+    if (n_active > 0) {
+      Eigen::BDCSVD<MatrixXd> svd;
+      svd.setThreshold(1e-5);
+      svd.compute(S_a * other.F()[k] * S_a.transpose(),
+                  Eigen::ComputeFullU | Eigen::ComputeFullV);
+      F_a_inv_S_a = svd.solve(S_a);
+    }
 
     // F_active likely to be low-rank due to friction, but that should be OK
     // MatrixXd res = svd.solve(F_ar);
@@ -767,7 +774,7 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
     //  H_k = L H
     //  c_k = L c
     MatrixXd L = S_r * (MatrixXd::Identity(n_lambda_, n_lambda_) -
-                        other.F()[k] * S_a.transpose() * svd.solve(S_a));
+                        other.F()[k] * S_a.transpose() * F_a_inv_S_a);
     MatrixXd E_k = L * other.E()[k];
     MatrixXd F_k = L * other.F()[k] * S_r.transpose();
     MatrixXd H_k = L * other.H()[k];
@@ -785,7 +792,7 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
     //  B_k = B - P H
     //  D_k = S_r D - P S_r^T
     //  d_k = d - P c
-    MatrixXd P = other.D()[k] * S_a.transpose() * svd.solve(S_a);
+    MatrixXd P = other.D()[k] * S_a.transpose() * F_a_inv_S_a;
     MatrixXd A_k = other.A()[k] - P * other.E()[k];
     MatrixXd B_k = other.B()[k] - P * other.H()[k];
     MatrixXd D_k = other.D()[k] * S_r.transpose() - P * S_r.transpose();
@@ -802,6 +809,60 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
   // Only lambda is eliminated here; the state keeps its layout, so the
   // quaternion blocks are still in the same places.
   LCS lcs(A, B, D, d, E, F, H, c, other.dt());
+  lcs.set_quaternion_start_indices(other.quaternion_start_indices());
+  return lcs;
+}
+
+LCS LCSFactory::FixSomeModesKeepingSize(const LCS& other,
+                                        set<int> active_lambda_inds,
+                                        set<int> inactive_lambda_inds) {
+  const int n_lambda = other.num_lambdas();
+  std::vector<int> remaining_inds;
+  for (int i = 0; i < n_lambda; i++) {
+    DRAKE_THROW_UNLESS(!active_lambda_inds.count(i) ||
+                       !inactive_lambda_inds.count(i));
+    if (!active_lambda_inds.count(i) && !inactive_lambda_inds.count(i)) {
+      remaining_inds.push_back(i);
+    }
+  }
+  for (int i : active_lambda_inds) DRAKE_THROW_UNLESS(0 <= i && i < n_lambda);
+  for (int i : inactive_lambda_inds) {
+    DRAKE_THROW_UNLESS(0 <= i && i < n_lambda);
+  }
+
+  const LCS reduced =
+      FixSomeModes(other, active_lambda_inds, inactive_lambda_inds);
+  const int n_x = other.num_states();
+  const int n_u = other.num_inputs();
+
+  std::vector<MatrixXd> D, E, F, H;
+  std::vector<VectorXd> c;
+  for (int k = 0; k < other.N(); k++) {
+    // Free lambdas go back into their own slots; fixed ones keep a zero column
+    // of D and a row forcing them to zero.
+    MatrixXd D_k = MatrixXd::Zero(n_x, n_lambda);
+    MatrixXd E_k = MatrixXd::Zero(n_lambda, n_x);
+    MatrixXd F_k = MatrixXd::Identity(n_lambda, n_lambda);
+    MatrixXd H_k = MatrixXd::Zero(n_lambda, n_u);
+    VectorXd c_k = VectorXd::Ones(n_lambda);
+    for (int r = 0; r < static_cast<int>(remaining_inds.size()); r++) {
+      const int i = remaining_inds[r];
+      D_k.col(i) = reduced.D()[k].col(r);
+      E_k.row(i) = reduced.E()[k].row(r);
+      H_k.row(i) = reduced.H()[k].row(r);
+      c_k(i) = reduced.c()[k](r);
+      F_k(i, i) = 0;
+      for (int s = 0; s < static_cast<int>(remaining_inds.size()); s++) {
+        F_k(i, remaining_inds[s]) = reduced.F()[k](r, s);
+      }
+    }
+    D.push_back(D_k);
+    E.push_back(E_k);
+    F.push_back(F_k);
+    H.push_back(H_k);
+    c.push_back(c_k);
+  }
+  LCS lcs(reduced.A(), reduced.B(), D, reduced.d(), E, F, H, c, other.dt());
   lcs.set_quaternion_start_indices(other.quaternion_start_indices());
   return lcs;
 }

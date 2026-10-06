@@ -362,6 +362,70 @@ TEST_P(LCSFactoryParameterizedPivotingTest, FixSomeModes) {
   EXPECT_EQ(new_lcs.F()[0].rows(), updated_num_lambda);
   EXPECT_EQ(new_lcs.H()[0].rows(), updated_num_lambda);
   EXPECT_EQ(new_lcs.c()[0].rows(), updated_num_lambda);
+
+  // Inactive modes only: nothing is solved for, so the free rows and columns
+  // carry over unchanged.
+  LCS inactive_only = LCSFactory::FixSomeModes(lcs, {}, {1});
+  EXPECT_EQ(inactive_only.F()[0].rows(), lcs.num_lambdas() - 1);
+  EXPECT_TRUE(inactive_only.A()[0].isApprox(lcs.A()[0]));
+  EXPECT_DOUBLE_EQ(inactive_only.c()[0](0), lcs.c()[0](0));
+}
+
+// Fixing modes while keeping the LCS's size: the free block is FixSomeModes's,
+// and the fixed slots are inert and forced to zero.
+TEST_P(LCSFactoryParameterizedPivotingTest, FixSomeModesKeepingSize) {
+  LCS lcs = fixture.lcs_factory->GenerateLCS();
+  const int n_lambda = lcs.num_lambdas();
+  ASSERT_GE(n_lambda, 3);
+
+  for (const auto& [active, inactive] :
+       std::vector<std::pair<std::set<int>, std::set<int>>>{{{0}, {1}},
+                                                            {{}, {1, 2}}}) {
+    LCS reduced = LCSFactory::FixSomeModes(lcs, active, inactive);
+    LCS kept = LCSFactory::FixSomeModesKeepingSize(lcs, active, inactive);
+
+    EXPECT_EQ(kept.num_lambdas(), n_lambda);
+    EXPECT_EQ(kept.num_states(), lcs.num_states());
+    EXPECT_EQ(kept.num_inputs(), lcs.num_inputs());
+    EXPECT_EQ(kept.N(), lcs.N());
+
+    std::vector<int> remaining;
+    for (int i = 0; i < n_lambda; i++) {
+      if (!active.count(i) && !inactive.count(i)) remaining.push_back(i);
+    }
+    for (int k = 0; k < lcs.N(); k++) {
+      EXPECT_TRUE(kept.A()[k].isApprox(reduced.A()[k]));
+      EXPECT_TRUE(kept.B()[k].isApprox(reduced.B()[k]));
+      EXPECT_TRUE(kept.d()[k].isApprox(reduced.d()[k]));
+      for (int r = 0; r < static_cast<int>(remaining.size()); r++) {
+        const int i = remaining[r];
+        EXPECT_TRUE(kept.D()[k].col(i).isApprox(reduced.D()[k].col(r)));
+        EXPECT_TRUE(kept.E()[k].row(i).isApprox(reduced.E()[k].row(r)));
+        EXPECT_TRUE(kept.H()[k].row(i).isApprox(reduced.H()[k].row(r)));
+        EXPECT_DOUBLE_EQ(kept.c()[k](i), reduced.c()[k](r));
+        for (int s = 0; s < static_cast<int>(remaining.size()); s++) {
+          EXPECT_DOUBLE_EQ(kept.F()[k](i, remaining[s]), reduced.F()[k](r, s));
+        }
+      }
+      for (int i = 0; i < n_lambda; i++) {
+        if (!active.count(i) && !inactive.count(i)) continue;
+        // A fixed slot touches neither the dynamics nor the other rows.
+        EXPECT_TRUE(kept.D()[k].col(i).isZero());
+        EXPECT_TRUE(kept.E()[k].row(i).isZero());
+        EXPECT_TRUE(kept.H()[k].row(i).isZero());
+        EXPECT_DOUBLE_EQ(kept.c()[k](i), 1.0);
+        for (int j = 0; j < n_lambda; j++) {
+          EXPECT_DOUBLE_EQ(kept.F()[k](i, j), i == j ? 1.0 : 0.0);
+          if (j != i) EXPECT_DOUBLE_EQ(kept.F()[k](j, i), 0.0);
+        }
+      }
+    }
+
+    // The same step from the same state and input.
+    const Eigen::VectorXd x0 = Eigen::VectorXd::Random(lcs.num_states()) * 0.01;
+    const Eigen::VectorXd u0 = Eigen::VectorXd::Random(lcs.num_inputs());
+    EXPECT_TRUE(kept.Simulate(x0, u0).isApprox(reduced.Simulate(x0, u0), 1e-6));
+  }
 }
 
 // Instantiate parameterized tests with different contact models and friction
@@ -383,8 +447,7 @@ GTEST_TEST(LCSFactoryTest, GetQuaternionStartIndicesFindsFloatingBodies) {
   parser.AddModels("multibody/test/resources/sphere-and-mesh.sdf");
   plant.Finalize();
 
-  const std::vector<int> indices =
-      LCSFactory::GetQuaternionStartIndices(plant);
+  const std::vector<int> indices = LCSFactory::GetQuaternionStartIndices(plant);
 
   // One entry per floating body with quaternion dofs, at the index where that
   // body's (w, x, y, z) begins.
@@ -474,9 +537,10 @@ GTEST_TEST(GeomGeomColliderTest, SphereMeshDistance) {
 // generalized forces that push geometry A away from geometry B, so basis row k
 // must be the force on B, and its negation the force on A.  Both are read off
 // the translational generalized forces of whichever of the two bodies float.
-void ExpectForceBasisMatchesJacobian(const MultibodyPlant<double>& plant,
-                                     const drake::systems::Context<double>& context,
-                                     const SortedPair<GeometryId>& pair) {
+void ExpectForceBasisMatchesJacobian(
+    const MultibodyPlant<double>& plant,
+    const drake::systems::Context<double>& context,
+    const SortedPair<GeometryId>& pair) {
   const auto& inspector =
       plant.get_geometry_query_input_port()
           .Eval<drake::geometry::QueryObject<double>>(context)
@@ -489,8 +553,8 @@ void ExpectForceBasisMatchesJacobian(const MultibodyPlant<double>& plant,
         collider.CalcForceBasisInWorldFrame(context, num_friction_directions);
     ASSERT_EQ(basis.rows(), J.rows());
     int bodies_checked = 0;
-    for (const auto& [id, sign] : {std::pair{pair.first(), -1.0},
-                                   std::pair{pair.second(), 1.0}}) {
+    for (const auto& [id, sign] :
+         {std::pair{pair.first(), -1.0}, std::pair{pair.second(), 1.0}}) {
       const auto* body = plant.GetBodyFromFrameId(inspector.GetFrameId(id));
       ASSERT_NE(body, nullptr);
       if (!body->is_floating()) continue;
@@ -542,8 +606,8 @@ GTEST_TEST(GeomGeomColliderTest, ForceBasisMatchesJacobianGeneral) {
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
   const drake::multibody::CoulombFriction<double> friction(0.5, 0.5);
   const auto& ball = plant.AddRigidBody(
-      "ball", drake::multibody::SpatialInertia<double>::SolidSphereWithMass(
-                  0.1, 0.01));
+      "ball",
+      drake::multibody::SpatialInertia<double>::SolidSphereWithMass(0.1, 0.01));
   plant.RegisterCollisionGeometry(ball, drake::math::RigidTransformd(),
                                   drake::geometry::Sphere(0.01), "ball",
                                   friction);
@@ -551,8 +615,8 @@ GTEST_TEST(GeomGeomColliderTest, ForceBasisMatchesJacobianGeneral) {
       "block", drake::multibody::SpatialInertia<double>::SolidBoxWithMass(
                    0.5, 0.1, 0.1, 0.02));
   plant.RegisterCollisionGeometry(block, drake::math::RigidTransformd(),
-                                  drake::geometry::Box(0.1, 0.1, 0.02),
-                                  "block", friction);
+                                  drake::geometry::Box(0.1, 0.1, 0.02), "block",
+                                  friction);
   plant.Finalize();
   auto diagram = plant_builder.Build();
   auto diagram_context = diagram->CreateDefaultContext();
@@ -561,10 +625,9 @@ GTEST_TEST(GeomGeomColliderTest, ForceBasisMatchesJacobianGeneral) {
   const drake::math::RigidTransformd X_WBlock(
       drake::math::RollPitchYawd(0.3, -0.2, 0.5), Eigen::Vector3d::Zero());
   plant.SetFreeBodyPose(&context, block, X_WBlock);
-  plant.SetFreeBodyPose(
-      &context, ball,
-      drake::math::RigidTransformd(X_WBlock *
-                                   Eigen::Vector3d(0.01, -0.02, 0.0205)));
+  plant.SetFreeBodyPose(&context, ball,
+                        drake::math::RigidTransformd(
+                            X_WBlock * Eigen::Vector3d(0.01, -0.02, 0.0205)));
 
   ExpectForceBasisMatchesJacobian(
       plant, context,

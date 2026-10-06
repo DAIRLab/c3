@@ -192,6 +192,25 @@ class LCSFactory {
                           std::set<int> inactive_lambda_inds);
 
   /**
+   * @brief FixSomeModes, but returning an LCS with the original number of
+   * lambdas, for solvers whose problem size is fixed at construction.
+   *
+   * The free lambdas are exactly FixSomeModes's.  Each fixed lambda keeps its
+   * slot, but its column of D is zero, so it has no effect on the dynamics,
+   * and its complementarity row is replaced by 0 <= lambda_i ⊥ lambda_i + 1,
+   * which only lambda_i = 0 satisfies.  An active mode's force still acts --
+   * FixSomeModes folds it into A, B, D and d -- but its own slot reads zero.
+   *
+   * @param other The original LCS to modify.
+   * @param active_lambda_inds Indices for lambda that must be non-zero.
+   * @param inactive_lambda_inds Indices for lambda that must be zero.
+   * @return LCS The modified LCS, with other's dimensions.
+   */
+  static LCS FixSomeModesKeepingSize(const LCS& other,
+                                     std::set<int> active_lambda_inds,
+                                     std::set<int> inactive_lambda_inds);
+
+  /**
    * @brief Computes the number of contact variables based on the contact model
    * and number of contacts.
    *
